@@ -397,7 +397,12 @@ async function handleLoginStep1(e) {
 
     const otpInput = document.getElementById("otp-code-input");
     if (otpInput) {
-      otpInput.value = "";
+      if (res.dev_otp) {
+        otpInput.value = res.dev_otp;
+        showToast(`🔑 Tasdiqlash kodi: ${res.dev_otp}`, "info");
+      } else {
+        otpInput.value = "";
+      }
       otpInput.focus();
     }
   } catch (err) {

@@ -96,7 +96,8 @@ async def login(req: LoginRequest):
             "message": message,
             "telegram_id": req.telegram_id,
             "expires_in": OTP_EXPIRATION_SECONDS,
-            "bot_username": BOT_USERNAME
+            "bot_username": BOT_USERNAME,
+            "dev_otp": otp_code if (not sent or DEBUG) else None
         }
 
 @router.post("/verify-otp")

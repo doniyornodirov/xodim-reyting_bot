@@ -3,11 +3,20 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env", override=True)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+# 1. Lokal .env va Render /etc/secrets yuklash
+for secret_path in [
+    BASE_DIR / ".env",
+    Path("/etc/secrets/.env"),
+    Path("/etc/secrets/secrets.env"),
+    Path(".env")
+]:
+    if secret_path.exists() and secret_path.is_file():
+        load_dotenv(secret_path, override=True)
+
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8932019841:AAFCkLdoBhzmkGJy3L0MY4-esw0_aToQiZY").strip()
 BOT_USERNAME = os.getenv("BOT_USERNAME", "xodimreyting_bot").strip().lstrip("@")
-TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID", "").strip()
+TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID", "-5381348358").strip()
 RAHBAR_ID = os.getenv("RAHBAR_ID", "8686341550").strip()
 JWT_SECRET = os.getenv("JWT_SECRET", "super_secret_jwt_key_xodim_reyting_2026_xyz")
 JWT_ALGORITHM = "HS256"
