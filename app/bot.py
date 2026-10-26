@@ -13,29 +13,12 @@ from aiohttp.resolver import DefaultResolver
 from aiohttp import ClientSession
 from aiogram.client.session.aiohttp import AiohttpSession
 
-class TelegramResolver(DefaultResolver):
-    """api.telegram.org uchun bloklanmagan optimal IP manzillarni yechish"""
-    async def resolve(self, host, port=0, family=0):
-        if host == "api.telegram.org":
-            return [
-                {"hostname": host, "host": "149.154.167.99", "port": port, "family": 2, "proto": 0, "flags": 0},
-                {"hostname": host, "host": "91.108.56.170", "port": port, "family": 2, "proto": 0, "flags": 0}
-            ]
-        return await super().resolve(host, port, family)
-
-class CustomTelegramSession(AiohttpSession):
-    async def create_session(self) -> ClientSession:
-        if "resolver" not in self._connector_init:
-            self._connector_init["resolver"] = TelegramResolver()
-        return await super().create_session()
-
 bot: Bot | None = None
 dp: Dispatcher | None = None
 
 if BOT_TOKEN:
     try:
-        session = CustomTelegramSession()
-        bot = Bot(token=BOT_TOKEN, session=session)
+        bot = Bot(token=BOT_TOKEN)
         dp = Dispatcher()
     except Exception as e:
         logger.error(f"Telegram bot yaratishda xatolik: {e}")
@@ -164,26 +147,47 @@ if dp:
 
 async def send_otp_to_telegram(telegram_id: int, otp_code: str) -> bool:
     """Xodim lichkasiga 6 xonali OTP kod jo'natish"""
-    if not bot:
-        logger.info(f"[DEV OTP] Bot ulanmagan. Foydalanuvchi {telegram_id} uchun OTP kod: {otp_code}")
+    if not BOT_TOKEN:
+        logger.info(f"[DEV OTP] Bot token ko'rsatilmagan. Foydalanuvchi {telegram_id} uchun OTP kod: {otp_code}")
         return False
+
+    text = (
+        f"🔐 <b>Xodim-Reyting CRM: Bir martalik kirish kodi</b>\n\n"
+        f"Sizning tasdiqlash kodingiz: <code>{otp_code}</code>\n\n"
+        f"⚠️ Ushbu kod <b>1 daqiqa</b> amal qiladi. Kodni hech kimga bermang!"
+    )
+
+    # 1. Aiogram orqali yuborish
+    if bot:
+        try:
+            await asyncio.wait_for(
+                bot.send_message(chat_id=telegram_id, text=text, parse_mode="HTML"),
+                timeout=5.0
+            )
+            return True
+        except Exception as e:
+            logger.warning(f"Aiogram orqali yuborishda ogohlantirish: {e}")
+
+    # 2. To'g'ridan-to'g'ri Telegram HTTP API orqali (100% kafolatlangan zaxira)
+    import httpx
     try:
-        await asyncio.wait_for(
-            bot.send_message(
-                chat_id=telegram_id,
-                text=(
-                    f"🔐 <b>Xodim-Reyting CRM: Bir martalik kirish kodi</b>\n\n"
-                    f"Sizning tasdiqlash kodingiz: <code>{otp_code}</code>\n\n"
-                    f"⚠️ Ushbu kod <b>1 daqiqa</b> amal qiladi. Kodni hech kimga bermang!"
-                ),
-                parse_mode="HTML"
-            ),
-            timeout=6.0
-        )
-        return True
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.post(url, json={
+                "chat_id": telegram_id,
+                "text": text,
+                "parse_mode": "HTML"
+            })
+            data = resp.json()
+            if data.get("ok"):
+                logger.info(f"OTP kod Telegram HTTP API orqali muvaffaqiyatli yuborildi: {telegram_id}")
+                return True
+            else:
+                logger.error(f"Telegram HTTP API xatolik qaytardi: {data}")
     except Exception as e:
-        logger.error(f"OTP yuborishda xatolik (Telegram ID: {telegram_id}): {e}")
-        return False
+        logger.error(f"Telegram HTTP API orqali yuborishda xatolik: {e}")
+
+    return False
 
 async def notify_card_topup_in_group(topup_data: dict) -> int | None:
     """Guruhga karta to'ldirish so'rovini yuborish"""
