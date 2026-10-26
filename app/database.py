@@ -187,7 +187,6 @@ async def init_db():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_employee ON sim_cards(employee_id);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_operator ON sim_cards(operator_type);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_sold ON sim_cards(status, sold_at);")
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_distributions_created ON sim_distributions(created_at);")
 
         # 10. Tizim sozlamalari (Dollar kursi)
         await conn.execute("""
@@ -216,6 +215,7 @@ async def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_distributions_created ON sim_distributions(created_at);")
 
         # Agar sim_distributions bo'sh bo'lsa va sim_cards da ma'lumot bo'lsa, mavjud tarqatishlarni partiya qilib o'tkazish
         cur_dist = await conn.execute("SELECT COUNT(*) FROM sim_distributions")
