@@ -1,0 +1,31 @@
+# Muhit o'zgaruvchilari va maxfiy ma'lumotlar
+.env
+.env.*
+!.env.example
+
+# Ma'lumotlar bazasi va zaxira fayllar
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.bak
+
+# Python kesh va virtual muhit
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# IDE va agent fayllari
+.agents/
+.gemini/
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Loglar va vaqtinchalik fayllar
+*.log
+scratch/

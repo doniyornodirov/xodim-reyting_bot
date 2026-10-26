@@ -1,0 +1,36 @@
+# =========================================================================
+# Systemd Service Fayli: Xodim-Reyting & Paynet CRM
+# Joylashuvi: /etc/systemd/system/xodim-reyting.service
+# Faollashtirish:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable xodim-reyting
+#   sudo systemctl start xodim-reyting
+# =========================================================================
+
+[Unit]
+Description=Xodim-Reyting CRM Backend & Telegram Bot Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/var/www/xodim-reyting
+EnvironmentFile=/var/www/xodim-reyting/.env
+ExecStart=/var/www/xodim-reyting/venv/bin/python run.py
+
+# O'z-o'zini tiklash va avtomatik qayta yondirish (Self-healing)
+Restart=always
+RestartSec=5s
+
+# Xavfsizlik cheklovlari
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Standart loglar
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=xodim-reyting
+
+[Install]
+WantedBy=multi-user.target

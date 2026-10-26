@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xodim-Reyting & Paynet CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css?v=808">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            crm: {
+              primary: '#6366f1',
+              'primary-hover': '#4f46e5',
+              success: '#10b981',
+              warning: '#f59e0b',
+              danger: '#ef4444',
+            }
+          },
+          borderRadius: {
+            DEFAULT: '8px',
+            sm: '6px',
+            md: '8px',
+            lg: '12px',
+            xl: '14px',
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('app_theme');
+        if (t === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.classList.remove('dark');
+          document.documentElement.classList.add('theme-light');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('theme-light');
+        }
+      } catch(e) {}
+    })();
+  </script>
+</head>
+<body class="font-sans antialiased min-h-screen text-[14px] transition-colors duration-200">
+  <script>
+    (function() {
+      try {
+        var t = localStorage.getItem('app_theme');
+        if (t === 'light') {
+          document.body.classList.add('theme-light');
+          document.body.classList.remove('dark');
+        } else {
+          document.body.classList.add('dark');
+          document.body.classList.remove('theme-light');
+        }
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- Asosiy Navbar (Modern Executive SaaS Header) -->
+  <header class="navbar sticky top-0 z-50 px-4 sm:px-6 h-16 flex items-center transition-colors">
+    <div class="nav-container max-w-7xl mx-auto flex items-center justify-between w-full">
+      <div class="flex items-center gap-3">
+        <button type="button" id="btn-sidebar-toggle" class="btn-sidebar-toggle inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition" onclick="toggleSidebarMenu()" aria-label="Menyu">
+          <span class="hamburger-icon">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+          <span class="btn-sidebar-text hidden sm:inline">Menyu</span>
+        </button>
+
+        <a href="#" class="brand flex items-center gap-2.5 no-underline">
+          <div class="brand-icon w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-base font-bold shadow-sm shadow-indigo-500/25">⚡</div>
+          <div>
+            <span class="brand-title text-[15px] font-bold block leading-tight">XODIM-REITING</span>
+            <span class="brand-subtitle text-[12px] text-slate-400 font-normal block">Paynet & Sim-karta CRM</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="user-nav-badge flex items-center gap-2" id="nav-user-area">
+        <div id="nav-usd-rate-container" class="flex items-center">
+          <div id="usd-rate-badge" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" onclick="handleUsdRateClick()">
+            <span>💵</span> <span id="usd-rate-text">1$ = 12 000 so'm</span>
+          </div>
+        </div>
+        <button id="btn-rahbar-cashier-toggle" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" onclick="toggleRahbarCashierMode()">
+          <span>💼</span> Kassir rejimi
+        </button>
+        <span id="nav-user-name" class="text-xs font-semibold hidden md:inline-block">Mehmon</span>
+        <span id="nav-user-role" class="badge badge-employee inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold">Xodim</span>
+        <span id="nav-user-debt" class="badge badge-debt inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold" style="display: none;">Qarz: 0 so'm</span>
+        <button id="btn-theme-toggle" class="btn-theme-toggle inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium transition" onclick="toggleAppTheme()" aria-label="Mavzuni almashtirish" title="Tungi / Kunduzgi rejimni almashtirish">
+          <span id="theme-icon">🌙</span> <span id="theme-text">Tungi</span>
+        </button>
+        <button class="btn-logout inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium transition" onclick="logout()">Chiqish 🚪</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- CHAP TOMONDAGI RESPONSIV YON MENYU (DRAWER) -->
+  <!-- ========================================== -->
+  <div id="sidebar-overlay" class="sidebar-overlay" onclick="closeSidebarMenu()"></div>
+
+  <aside id="sidebar-drawer" class="sidebar-drawer" aria-label="Yon menyu">
+    <div class="sidebar-header">
+      <div class="brand" style="gap: 0.65rem;">
+        <div class="brand-icon" style="width: 34px; height: 34px; font-size: 1.1rem;">⚡</div>
+        <div>
+          <span class="brand-title" style="font-size: 1.05rem;">XODIM-REITING</span>
+          <span class="brand-subtitle" style="font-size: 0.7rem;">CRM Tizimi</span>
+        </div>
+      </div>
+      <button type="button" class="sidebar-close-btn" onclick="closeSidebarMenu()" aria-label="Yopish">✕</button>
+    </div>
+
+    <div class="sidebar-user-card" id="sidebar-user-card">
+      <div class="sidebar-avatar">👤</div>
+      <div class="sidebar-user-info">
+        <div id="sidebar-user-name" style="font-weight: 700; color: #fff; font-size: 0.95rem;">Mehmon</div>
+        <div style="display: flex; gap: 0.35rem; align-items: center; margin-top: 0.35rem; flex-wrap: wrap;">
+          <span id="sidebar-user-role" class="badge badge-employee">Xodim</span>
+          <span id="sidebar-user-debt" class="badge badge-debt" style="display: none;">Qarz: 0 so'm</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-menu-section-title">
+      <span>ASOSIY BO'LIMLAR</span>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav-list">
+      <!-- JavaScript dinamik ravishda to'ldiradi -->
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-item" id="sidebar-theme-item" onclick="toggleAppTheme()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.25);">
+        <span style="display: flex; align-items: center; gap: 0.5rem;"><span id="sidebar-theme-icon">🌙</span> Rejim:</span>
+        <b id="sidebar-theme-text" style="color: var(--accent-primary);">Tungi rejim</b>
+      </div>
+      <div class="sidebar-footer-item" id="sidebar-usd-rate-item" onclick="handleUsdRateClick()">
+        <span>💵 Dollar kursi:</span>
+        <b id="sidebar-usd-rate-text" style="color: #34d399;">1$ = 12 000 so'm</b>
+      </div>
+      <button type="button" class="btn-logout" style="width: 100%; margin-top: 0.65rem; justify-content: center; display: flex; gap: 0.5rem; align-items: center;" onclick="logout()">
+        <span>🚪</span> Tizimdan chiqish
+      </button>
+    </div>
+  </aside>
+
+  <!-- Asosiy Ilova Maydoni -->
+  <main class="main-wrapper max-w-[1440px] mx-auto px-4 sm:px-6 py-6" id="app-content" style="display: none;">
+
+    <!-- ========================================== -->
+    <!-- RAHBAR (ADMIN) TABLARI NAVIGATSIYASI       -->
+    <!-- Faqat Rahbar (ADMIN) uchun chiqadi         -->
+    <!-- ========================================== -->
+    <nav class="tabs-header flex items-center gap-1.5 p-1.5 rounded-xl shadow-sm mb-5" id="nav-tabs-admin" style="display: none;">
+      <button class="tab-btn active inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-reports" onclick="switchAdminTab('reports')">
+        <span>📋</span> Hisobotlar
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-analytics" onclick="switchAdminTab('analytics')">
+        <span>📈</span> Savdo monitoringi
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-givens" onclick="switchAdminTab('givens')">
+        <span>💵</span> Berilgan summalar
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-topups" onclick="switchAdminTab('topups')">
+        <span>💳</span> Karta so'rovlari
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-comparison" onclick="switchAdminTab('comparison')">
+        <span>⚖️</span> Kassa taqqoslash
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-users" onclick="switchAdminTab('users')">
+        <span>👥</span> Xodimlar & Qarz
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-cashier" onclick="switchAdminTab('cashier')">
+        <span>💼</span> Kassir & Tarix
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-sims" onclick="switchAdminTab('sims')">
+        <span>📲</span> Sim-kartalar
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-rating" onclick="switchAdminTab('rating')">
+        <span>🏆</span> Reyting & KPI
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-audit" onclick="switchAdminTab('audit')">
+        <span>🛡️</span> Audit loglar
+      </button>
+    </nav>
+
+    <!-- ========================================== -->
+    <!-- XODIM VA KASSIR TABLARI NAVIGATSIYASI      -->
+    <!-- (Xodim uchun 4 ta oyna + Kassir uchun qabul)-->
+    <!-- ========================================== -->
+    <nav class="tabs-header flex items-center gap-1.5 p-1.5 rounded-xl shadow-sm mb-5" id="nav-tabs-employee" style="display: none;">
+      <button class="tab-btn active inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-card-topup" onclick="switchEmployeeTab('card-topup')">
+        <span>💳</span> Karta to'ldirish
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-given-amount" onclick="switchEmployeeTab('given-amount')">
+        <span>💵</span> Berilgan summa
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-daily-report" onclick="switchEmployeeTab('daily-report')">
+        <span>📊</span> Hisobot topshirish
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-cashier-intake" onclick="switchEmployeeTab('cashier-intake')" style="display: none;">
+        <span>📥</span> Kassa qabul qilish
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-cashier-sims" onclick="switchEmployeeTab('cashier-sims')" style="display: none;">
+        <span>📲</span> Sim-karta tarqatish
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-emp-rating" onclick="switchEmployeeTab('emp-rating')">
+        <span>🏆</span> Reyting oynasi
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-rahbar-back" onclick="toggleRahbarCashierMode()" style="display: none;">
+        <span>⬅️</span> Rahbar paneliga qaytish
+      </button>
+    </nav>
+
+    <!-- ========================================================= -->
+    <!-- RAHBAR (ADMIN) PANELLARI                                  -->
+    <!-- ========================================================= -->
+
+    <!-- Rahbar 1: Hisobotlarni qabul qilish -->
+    <!-- Rahbar 1: Hisobotlarni qabul qilish -->
+    <section class="tab-pane admin-pane" id="pane-admin-reports" style="display: none;">
+      <div class="card-box">
+        <div class="card-header-bar">
+          <div>
+            <h2 class="card-title">📋 Kunlik hisobotlar</h2>
+            <span class="card-desc">Xodimlar topshirgan kassa hisobotlari va to'liq tafsilotlar</span>
+          </div>
+
+          <!-- Kalendar bo'yicha saralash filtri (Alohida ochiluvchi chiroyli Date Range Picker) -->
+          <div class="filter-actions-bar flex items-center gap-2 flex-wrap">
+            <button type="button" class="date-range-trigger-btn" id="admin-reports-calendar-btn" onclick="openDateRangeModal()">
+              <span class="cal-icon">📅</span>
+              <span id="admin-reports-date-display">Barcha sanalar</span>
+              <span class="cal-caret">▾</span>
+            </button>
+            <button type="button" class="btn-primary-sm" onclick="setAdminReportsTodayFilter()">Bugun</button>
+            <button type="button" class="btn-secondary-sm" onclick="resetAdminReportsFilter()">Barcha sanalar</button>
+          </div>
+        </div>
+
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Sana</th>
+                <th>Xodim</th>
+                <th>Kirim (Tarkibi)</th>
+                <th>Chiqim (Tarkibi)</th>
+                <th>Sof kassa (Net)</th>
+                <th>Qarz to'landi</th>
+                <th>Sim-karta</th>
+                <th>Tafsilotlar</th>
+                <th>Status / Amallar</th>
+              </tr>
+            </thead>
+            <tbody id="admin-reports-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar: Savdo monitoringi va Diagrammalar (Modern Executive SaaS Analytics) -->
+    <section class="tab-pane admin-pane" id="pane-admin-analytics" style="display: none;">
+      <!-- Sarlavha va Vaqt Miqyosi Filtrlari -->
+      <div class="card-box mb-4">
+        <div class="flex justify-between items-center flex-wrap gap-3">
+          <div>
+            <h2 class="card-title text-base font-bold flex items-center gap-2 mb-0.5">
+              <span>📈</span> Savdo monitoringi & Diagrammalar
+            </h2>
+            <span class="card-desc text-xs block mb-0">
+              Topshirilayotgan summalar, sotilayotgan sim-kartalar va to'ldirilayotgan kartalar dinamikasi
+            </span>
+          </div>
+
+          <div class="flex gap-2 items-center flex-wrap">
+            <div class="analytics-period-selector inline-flex items-center p-1 rounded-lg gap-1" id="analytics-period-buttons">
+              <button class="analytics-period-btn active px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="7d" onclick="changeAnalyticsPeriod('7d')">Oxirgi 7 kun</button>
+              <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="30d" onclick="changeAnalyticsPeriod('30d')">Oxirgi 30 kun</button>
+              <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="this_month" onclick="changeAnalyticsPeriod('this_month')">Joriy oy</button>
+              <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="all" onclick="changeAnalyticsPeriod('all')">Barcha davr</button>
+            </div>
+            <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminAnalytics()" title="Yangilash">
+              <span>🔄</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 ta Asosiy KPI Kartochkasi (Executive SaaS Metric Cards) -->
+        <div class="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+          <!-- 1. Jami topshirilgan summa -->
+          <div class="analytics-kpi-card kpi-card-revenue p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
+            <div class="kpi-header flex justify-between items-center mb-1.5">
+              <span class="kpi-title text-xs font-medium">💰 Jami Topshirilgan Summa</span>
+              <span class="kpi-badge trend-flat inline-flex items-center gap-1 px-2 h-5 rounded-full text-xs font-semibold" id="kpi-revenue-trend">0%</span>
+            </div>
+            <div class="kpi-value text-2xl font-bold tracking-tight" id="kpi-revenue-val">0 so'm</div>
+            <div class="kpi-subtext text-xs mt-1" id="kpi-revenue-sub">O'tgan davrga nisbatan</div>
+          </div>
+
+          <!-- 2. Sotilgan sim-kartalar -->
+          <div class="analytics-kpi-card kpi-card-sims p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
+            <div class="kpi-header flex justify-between items-center mb-1.5">
+              <span class="kpi-title text-xs font-medium">📱 Sotilgan Sim-kartalar</span>
+              <span class="kpi-badge trend-flat inline-flex items-center gap-1 px-2 h-5 rounded-full text-xs font-semibold" id="kpi-sims-trend">0%</span>
+            </div>
+            <div class="kpi-value text-2xl font-bold tracking-tight" id="kpi-sims-val">0 dona</div>
+            <div class="kpi-subtext text-xs mt-1" id="kpi-sims-sub">Faol sotuvlar soni</div>
+          </div>
+
+          <!-- 3. To'ldirilgan kartalar -->
+          <div class="analytics-kpi-card kpi-card-cards p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
+            <div class="kpi-header flex justify-between items-center mb-1.5">
+              <span class="kpi-title text-xs font-medium">💳 Karta To'ldirish (+3%)</span>
+              <span class="kpi-badge trend-flat inline-flex items-center gap-1 px-2 h-5 rounded-full text-xs font-semibold" id="kpi-cards-trend">0%</span>
+            </div>
+            <div class="kpi-value text-2xl font-bold tracking-tight" id="kpi-cards-val">0 so'm</div>
+            <div class="kpi-subtext text-xs mt-1" id="kpi-cards-sub">0 ta muvaffaqiyatli to'ldirish</div>
+          </div>
+
+          <!-- 4. Sof kassa (Net) & Kunlik o'rtacha -->
+          <div class="analytics-kpi-card kpi-card-net p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
+            <div class="kpi-header flex justify-between items-center mb-1.5">
+              <span class="kpi-title text-xs font-medium">⚖️ Sof Kassa & Kunlik O'rtacha</span>
+              <span class="kpi-badge trend-flat inline-flex items-center gap-1 px-2 h-5 rounded-full text-xs font-semibold" id="kpi-net-trend">0%</span>
+            </div>
+            <div class="kpi-value text-2xl font-bold tracking-tight" id="kpi-net-val">0 so'm</div>
+            <div class="kpi-subtext text-xs mt-1" id="kpi-net-sub">O'rtacha kunlik: 0 so'm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Asosiy Diagramma Kartochkasi -->
+      <div class="card-box mb-4">
+        <div class="flex justify-between items-center flex-wrap gap-3 mb-4">
+          <h3 class="card-title text-base font-bold flex items-center gap-2 m-0">
+            <span>📊</span> Vaqt Bo'yicha Asosiy Dinamika Diagrammasi
+          </h3>
+
+          <!-- Diagramma metrikalarini tanlash tugmalari -->
+          <div class="chart-metric-selector inline-flex items-center p-1 rounded-lg gap-1 flex-wrap" id="chart-metric-buttons">
+            <button class="chart-metric-btn active px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="all" onclick="setChartMetric('all')">Hammasi</button>
+            <button class="chart-metric-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="submitted" onclick="setChartMetric('submitted')">💰 Topshirilgan summa</button>
+            <button class="chart-metric-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="sims" onclick="setChartMetric('sims')">📱 Sim-kartalar</button>
+            <button class="chart-metric-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="cards" onclick="setChartMetric('cards')">💳 Karta to'ldirish</button>
+          </div>
+        </div>
+
+        <!-- Canvas Chart -->
+        <div class="chart-canvas-wrapper" id="main-chart-wrapper" style="position: relative; height: 360px; width: 100%;">
+          <canvas id="monitoring-main-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Ikkilamchi diagrammalar (2 ustun) -->
+      <div class="grid-2" style="margin-bottom: 1.25rem;">
+        <!-- Diagramma 2A: Kunbay O'sish/Pasayish Bar Chart -->
+        <div class="card-box">
+          <h3 class="card-title text-sm font-bold flex items-center gap-2 mb-3">
+            <span>⚡</span> Kunbay O'sish va Pasayish Foizlari (Trend)
+          </h3>
+          <div class="relative h-[260px] w-full">
+            <canvas id="monitoring-growth-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Diagramma 2B: Sim-karta operatorlari taqsimoti -->
+        <div class="card-box">
+          <h3 class="card-title text-sm font-bold flex items-center gap-2 mb-3">
+            <span>📲</span> Operatorlar Bo'yicha Sim-karta Savdosi
+          </h3>
+          <div class="relative h-[260px] w-full">
+            <canvas id="monitoring-operator-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kunlik Tafsilotlar Jadvali -->
+      <div class="card-box">
+        <h3 class="card-title text-base font-bold flex items-center gap-2 mb-3">
+          <span>📋</span> Kunbay Savdo Monitoringi Tafsilotlari
+        </h3>
+        <div class="table-container">
+          <table class="custom-table w-full text-left">
+            <thead>
+              <tr>
+                <th>Sana</th>
+                <th>Topshirilgan summa</th>
+                <th>Sof kassa (Net)</th>
+                <th>Sotilgan sim-karta</th>
+                <th>Karta to'ldirish (+3%)</th>
+                <th>Karta soni</th>
+                <th>Kunlik o'zgarish</th>
+              </tr>
+            </thead>
+            <tbody id="analytics-table-tbody">
+              <!-- JS to'ldiradi -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 2: Berilgan summalarni tasdiqlash -->
+    <section class="tab-pane admin-pane" id="pane-admin-givens" style="display: none;">
+      <div class="card-box">
+        <h2 class="card-title">💵 Berilgan summalar</h2>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Xodim</th>
+                <th>Summa</th>
+                <th>Izoh</th>
+                <th>Vaqti</th>
+                <th>Status / Amallar</th>
+              </tr>
+            </thead>
+            <tbody id="admin-givens-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 3: Karta to'ldirish so'rovlari -->
+    <section class="tab-pane admin-pane" id="pane-admin-topups" style="display: none;">
+      <div class="card-box">
+        <h2 class="card-title">💳 Karta so'rovlari</h2>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#Tartib</th>
+                <th>Xodim</th>
+                <th>Karta raqami</th>
+                <th>Karta egasi</th>
+                <th>Asosiy summa</th>
+                <th>+3% Ustama</th>
+                <th>Vaqti</th>
+                <th>Status / Amallar</th>
+              </tr>
+            </thead>
+            <tbody id="admin-topups-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 4: Taqqoslash (Xodim hisoboti vs Kassir qabul qilgan) -->
+    <section class="tab-pane admin-pane" id="pane-admin-comparison" style="display: none;">
+      <div class="card-box">
+        <h2 class="card-title">⚖️ Kassa taqqoslash</h2>
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Xodim</th>
+                <th>Xodim hisoboti (Net summa)</th>
+                <th>Kassir qabul qilgan (So'm + $)</th>
+                <th>Tafovut (Farq)</th>
+                <th>Qabul qilgan Kassir</th>
+              </tr>
+            </thead>
+            <tbody id="admin-comparison-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 5: Xodimlar, ishdan bo'shatish va qarz belgilash (Yagona oyna) -->
+    <section class="tab-pane admin-pane" id="pane-admin-users" style="display: none;">
+      <div class="card-box">
+        <h2 class="card-title">👥 Xodimlar va Qarz boshqaruvi</h2>
+
+        <!-- 2 ta alohida forma: 1) Yangi xodim qo'shish, 2) Xodimga qarz belgilash -->
+        <div class="grid-2" style="margin-bottom: 1.5rem;">
+          <!-- 1. Yangi xodim qo'shish formasi -->
+          <form id="create-user-form" style="background: rgba(255, 255, 255, 0.03); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <h4 style="margin-bottom: 0.85rem; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem;">
+                <span>👤</span> Yangi xodim qo'shish
+              </h4>
+              <div class="form-group">
+                <label class="form-label">Telegram ID *</label>
+                <input type="number" id="new-user-tg-id" class="form-input" placeholder="Xodim Telegram ID raqami" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">F.I.SH *</label>
+                <input type="text" id="new-user-name" class="form-input" placeholder="Xodimning to'liq ismi" required>
+              </div>
+            </div>
+            <button type="submit" class="btn-success" style="width: 100%; margin-top: 0.75rem;">
+              ➕ Xodimni qo'shish
+            </button>
+          </form>
+
+          <!-- 2. Xodimga qarz belgilash formasi -->
+          <form id="assign-debt-form" style="background: rgba(245, 158, 11, 0.05); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid rgba(245, 158, 11, 0.3); display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <h4 style="margin-bottom: 0.85rem; color: #fbbf24; display: flex; align-items: center; gap: 0.5rem;">
+                <span>💵</span> Xodimga qarz belgilash
+              </h4>
+              <div class="form-group">
+                <label class="form-label">Xodimni tanlang *</label>
+                <select id="assign-debt-user-select" class="form-input" required>
+                  <option value="">-- Xodimni tanlang --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Qarz summasi (so'm) *</label>
+                <input type="text" id="assign-debt-amount" class="form-input" placeholder="0" required autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Qarz sababi / Izoh *</label>
+                <input type="text" id="assign-debt-reason" class="form-input" placeholder="Masalan: Kamomad, Avans..." required>
+              </div>
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%; margin-top: 0.75rem; background: #d97706;">
+              💵 Qarzni biriktirish
+            </button>
+          </form>
+        </div>
+
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Xodim F.I.SH</th>
+                <th>Telegram ID</th>
+                <th>Roli</th>
+                <th>Mavjud qarzdorlik</th>
+                <th>Holati</th>
+                <th>Boshqaruv amallari</th>
+              </tr>
+            </thead>
+            <tbody id="admin-users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 6: Kassir tayinlash va Kassir qabul qilgan summalar tarixi -->
+    <section class="tab-pane admin-pane" id="pane-admin-cashier" style="display: none;">
+      <div class="card-box">
+        <h2 class="card-title">💼 Kassir tayinlash</h2>
+
+        <!-- Kassir saylash bloki -->
+        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <h4 style="margin-bottom: 0.35rem; color: #fbbf24;">Kassir saylash:</h4>
+          <div style="font-size: 0.85rem; color: #fef3c7; opacity: 0.85; margin-bottom: 0.85rem;">
+            Tizimda har doim faqat <b>1 ta</b> kassir bo'ladi. Agar boshqa xodim kassir etib tayinlansa, oldingi kassir avtomatik oddiy xodimga aylanadi.
+          </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+            <select id="appoint-cashier-select" class="form-input" style="max-width: 350px;">
+              <option value="">-- Xodimni tanlang --</option>
+            </select>
+            <button class="btn-primary" style="background: #d97706;" onclick="handleAppointCashierSubmit()">
+              💼 Kassir etib tayinlash
+            </button>
+          </div>
+        </div>
+
+        <h3 class="card-title" style="font-size: 1.1rem; margin-top: 1.5rem;">Kassaga topshirilgan summalar:</h3>
+        <div class="table-container table-scroll-5" style="margin-bottom: 1.5rem;">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Sana</th>
+                <th>Xodim</th>
+                <th>So'mda</th>
+                <th>Dollarda</th>
+                <th>Jami ekvivalent</th>
+                <th>Qabul qilgan Kassir</th>
+                <th>Vaqti</th>
+              </tr>
+            </thead>
+            <tbody id="admin-all-handovers-tbody"></tbody>
+          </table>
+        </div>
+
+        <h3 class="card-title" style="font-size: 1.1rem;">Kassirlik tarixi:</h3>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Tayinlangan Kassir</th>
+                <th>Harakat</th>
+                <th>Tayinlagan Rahbar</th>
+                <th>Vaqti</th>
+              </tr>
+            </thead>
+            <tbody id="admin-cashier-history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar: Sim-karta boshqaruvi va Qidiruv -->
+    <section class="tab-pane admin-pane" id="pane-admin-sims" style="display: none;">
+      <!-- 1. Tezkor Qidiruv Bloki -->
+      <div class="card-box" style="margin-bottom: 1.5rem; border: 1px solid rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.04);">
+        <h2 class="card-title" style="color: #818cf8;">🔍 Sim-karta seriyasi bo'yicha qidiruv</h2>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;">
+          <input 
+            type="text" 
+            id="admin-sim-search-input" 
+            class="form-input" 
+            style="max-width: 400px; font-size: 1.1rem; letter-spacing: 1px; font-weight: 600;" 
+            maxlength="18" 
+            placeholder="18 xonali seriya raqami..."
+            oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+          >
+          <button type="button" class="btn-primary" onclick="searchSimCard()">
+            🔍 Qidirish
+          </button>
+        </div>
+
+        <!-- Qidiruv natijasi konteyneri -->
+        <div id="admin-sim-search-result" style="display: none; padding: 1rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color);">
+        </div>
+      </div>
+
+      <!-- 2. Sim-karta tarqatish formasi -->
+      <div class="card-box" style="margin-bottom: 1.5rem;">
+        <h2 class="card-title">📲 Yangi sim-karta tarqatish</h2>
+        <form id="admin-distribute-sim-form" onsubmit="handleDistributeSim(event, 'admin')">
+          <div class="grid-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Sim-karta turi (Operator) *</label>
+              <select id="admin-sim-operator" class="form-input" required>
+                <option value="Uzmobile">Uzmobile</option>
+                <option value="Beeline">Beeline</option>
+                <option value="Ucell">Ucell</option>
+                <option value="Mobiuz">Mobiuz</option>
+                <option value="Perfectum">Perfectum</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Boshlang'ich seriya (18 xonali) *</label>
+              <input 
+                type="text" 
+                id="admin-sim-start" 
+                class="form-input" 
+                maxlength="18" 
+                required 
+                placeholder="Masalan: 899981234567890001"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+              >
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tugash seriya (18 xonali)</label>
+              <input 
+                type="text" 
+                id="admin-sim-end" 
+                class="form-input" 
+                maxlength="18" 
+                placeholder="Bitta dona bo'lsa bo'sh qoldiring"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+              >
+            </div>
+            <div class="form-group">
+              <label class="form-label">Xodimni tanlang *</label>
+              <select id="admin-sim-employee-select" class="form-input" required>
+                <option value="">-- Xodimni tanlang --</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn-success" style="margin-top: 0.5rem;">
+            📲 Sim-kartalarni xodimga biriktirish
+          </button>
+        </form>
+      </div>
+
+      <!-- 3. Xodimlar balansi va oxirgi tarqatilganlar -->
+      <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div class="card-box">
+          <h3 class="card-title" style="font-size: 1.1rem;">👥 Xodimlar sim-karta balansi</h3>
+          <div class="table-container">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Xodim F.I.SH</th>
+                  <th>Qo'lidagi (Xodimda)</th>
+                  <th>Sotilgan</th>
+                </tr>
+              </thead>
+              <tbody id="admin-sim-balance-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <h3 class="card-title" style="font-size: 1.1rem;">📜 Oxirgi tarqatilganlar</h3>
+          <div class="table-container table-scroll-5">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Seriya raqami (dan - gacha)</th>
+                  <th>Operator</th>
+                  <th>Xodim</th>
+                  <th>Tarqatuvchi</th>
+                  <th>Holati</th>
+                </tr>
+              </thead>
+              <tbody id="admin-sim-recent-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 7: Reyting & KPI -->
+    <section class="tab-pane admin-pane" id="pane-admin-rating" style="display: none;">
+      <div class="card-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+          <div>
+            <h2 class="card-title" style="margin-bottom: 0.25rem;">🏆 Reyting & KPI</h2>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-primary" id="btn-admin-rating-monthly" onclick="loadLeaderboard('monthly', 'admin')">Oylik reyting</button>
+            <button class="btn-logout" id="btn-admin-rating-overall" onclick="loadLeaderboard('overall', 'admin')">Umumiy reyting</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>O'rin</th>
+                <th>Xodim F.I.SH</th>
+                <th>Topshirgan jami summasi</th>
+                <th>Summa balli</th>
+                <th>Sim-kartalar</th>
+                <th>Jami KPI Ball</th>
+                <th>Hisobot kunlari</th>
+              </tr>
+            </thead>
+            <tbody id="admin-rating-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 8: Audit loglar va Ma'lumotlarni Saqlash Siyosati -->
+    <section class="tab-pane admin-pane" id="pane-admin-audit" style="display: none;">
+      <!-- 90 kunlik ma'lumotlar saqlanish siyosati (Data Retention Card) -->
+      <div class="card-box" style="margin-bottom: 1.25rem; border-left: 4px solid #6366f1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+          <div>
+            <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+              <span>📅</span> 90 Kunlik Ma'lumotlarni Saqlash Siyosati (Data Retention)
+            </h3>
+            <p style="font-size: 0.82rem; color: #94a3b8; margin: 0;">
+              Tizimda barcha operatsiya va tarix ma'lumotlari <b>90 kun</b> davomida saqlanadi. 90 kundan oshgan eski yozuvlar avtomatik tarzda tozalanib boriladi, yangilari esa uzluksiz yoziladi.
+            </p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <span id="retention-cutoff-badge" class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3);">
+              Saqlash muddati: 90 kun
+            </span>
+            <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem;" onclick="triggerManualRetentionCleanup()">
+              🔄 Tozalashni tekshirish
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-box">
+        <h2 class="card-title">🛡️ Audit loglar</h2>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Obyekt</th>
+                <th>Harakat</th>
+                <th>Mas'ul shaxs</th>
+                <th>Tafsilotlar</th>
+                <th>Vaqti</th>
+              </tr>
+            </thead>
+            <tbody id="admin-audit-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- XODIM VA KASSIR PANELLARI (4 ta oyna + Kassa qabul)      -->
+    <!-- ========================================================= -->
+
+    <!-- Xodim 1: Karta to'ldirish oynasi -->
+    <section class="tab-pane employee-pane" id="pane-card-topup" style="display: none;">
+      <div class="card-box">
+        <!-- Ogohlantirish banneri -->
+        <div class="alert-card-danger">
+          <span style="font-size: 1.5rem;">⚠️</span>
+          <div>
+            <div class="alert-danger-text">Sizning birgina xatoyingiz sizni qiyin ahvolga soladi!</div>
+            <div style="font-size: 0.8rem; color: #fca5a5;">Karta raqami va summani kiritishda o'ta diqqatli bo'ling.</div>
+          </div>
+        </div>
+
+        <h2 class="card-title">💳 Karta to'ldirish so'rovi</h2>
+
+        <form id="card-topup-form">
+          <div class="grid-2">
+            <!-- 1. Karta raqam (16 talik) -->
+            <div class="form-group">
+              <label class="form-label">Karta raqami *</label>
+              <input type="text" id="topup-card-number" class="form-input card-number-input" 
+                     placeholder="0000 0000 0000 0000" maxlength="19" required autocomplete="off">
+            </div>
+
+            <!-- 2. Karta egasi -->
+            <div class="form-group">
+              <label class="form-label">Karta egasi *</label>
+              <input type="text" id="topup-card-holder" class="form-input" 
+                     placeholder="" required autocomplete="off">
+            </div>
+          </div>
+
+          <!-- 3. Summa -->
+          <div class="form-group">
+            <label class="form-label">Summa *</label>
+            <input type="text" id="topup-amount" class="form-input" 
+                   placeholder="0 (kamida 30 000)" style="font-size: 1.35rem; font-weight: 700;" required autocomplete="off">
+          </div>
+
+          <!-- Reaktiv qism: O'qilishi, +3% va Hayratlanish emojisi -->
+          <div class="reactive-box">
+            <div class="reactive-main">
+              <div class="reactive-surcharge" id="topup-surcharge-readout">+3% Ustama bilan: 0 so'm</div>
+              <div class="reactive-words" id="topup-words-readout"></div>
+            </div>
+            <div class="reactive-emoji-wrapper">
+              <span class="reactive-emoji" id="topup-emoji-readout">🙂</span>
+              <span id="topup-emoji-label" class="reactive-emoji-text"></span>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.5rem;">
+            <button type="submit" class="btn-primary" style="width: 100%;">
+              <span>🚀</span> Karta to'ldirish so'rovini yuborish
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card-box">
+        <h3 class="card-title">📜 So'rovlar tarixi</h3>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Tartib #</th>
+                <th>Karta raqami</th>
+                <th>Karta egasi</th>
+                <th>Asosiy summa</th>
+                <th>+3% Ustama</th>
+                <th>Status</th>
+                <th>Vaqti</th>
+              </tr>
+            </thead>
+            <tbody id="card-history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Xodim 2: Berilgan summa oynasi -->
+    <section class="tab-pane employee-pane" id="pane-given-amount" style="display: none;">
+      <div class="card-box" style="max-width: 650px; margin: 0 auto 1.75rem;">
+        <h2 class="card-title">💵 Berilgan summa</h2>
+
+        <form id="given-amount-form">
+          <div class="form-group">
+            <label class="form-label">Summa *</label>
+            <input type="text" id="given-amount-input" class="form-input" 
+                   placeholder="0" style="font-size: 1.25rem; font-weight: 700;" required autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Izoh *</label>
+            <input type="text" id="given-comment-input" class="form-input" 
+                   placeholder="" required autocomplete="off">
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%;">
+            <span>📤</span> Berilgan summani yuborish
+          </button>
+        </form>
+      </div>
+
+      <div class="card-box">
+        <h3 class="card-title">📜 Tarix</h3>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Summa</th>
+                <th>Izoh</th>
+                <th>Status</th>
+                <th>Vaqti</th>
+              </tr>
+            </thead>
+            <tbody id="given-history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Xodim 3: Hisobot topshirish oynasi -->
+    <section class="tab-pane employee-pane" id="pane-daily-report" style="display: none;">
+      <div class="card-box">
+        <div id="rep-pending-alert" class="alert-card-danger" style="display: none;"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-title" style="margin-bottom: 0;">📊 Kunlik hisobot</h2>
+          <span class="badge badge-cashier" id="rep-date-display">Bugungi sana</span>
+        </div>
+
+        <form id="daily-report-form">
+          <!-- Kirimlar Bloki -->
+          <h3 style="font-size: 1.05rem; color: var(--accent-success); margin-bottom: 0.75rem; border-bottom: 1px dashed rgba(16, 185, 129, 0.3); padding-bottom: 0.35rem;">
+            🟢 KIRIMLAR
+          </h3>
+          <div class="grid-3" style="margin-bottom: 1.5rem;">
+            <div class="form-group">
+              <label class="form-label">Paynet</label>
+              <input type="text" id="rep-paynet" class="form-input" placeholder="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Karta (+3%)</label>
+              <input type="text" id="rep-card-amount" class="form-input" placeholder="0" readonly>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Leviy</label>
+              <input type="text" id="rep-leviy" class="form-input" placeholder="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Qarzdorlik</label>
+              <input type="text" id="rep-debt-snapshot" class="form-input" placeholder="0" readonly>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Qarz uchun to'lov</label>
+              <input type="text" id="rep-debt-paid" class="form-input" placeholder="0">
+            </div>
+          </div>
+
+          <!-- Sim karta (soni) -->
+          <div class="sim-karta-compact-box">
+            <div class="sim-karta-info">
+              <span class="sim-karta-icon">📱</span>
+              <div>
+                <div class="sim-karta-title">Sim-karta sotuvi</div>
+                <div class="sim-karta-hint">Kunlik hisobot uchun donada</div>
+              </div>
+            </div>
+            <div class="sim-karta-input-wrap">
+              <input type="number" id="rep-sim-cards" class="form-input sim-karta-input" min="0" placeholder="0">
+              <span class="sim-karta-unit">dona</span>
+            </div>
+          </div>
+
+          <!-- Chiqimlar Bloki -->
+          <h3 style="font-size: 1.05rem; color: #f87171; margin-bottom: 0.75rem; border-bottom: 1px dashed rgba(239, 68, 68, 0.3); padding-bottom: 0.35rem;">
+            🔴 CHIQIMLAR
+          </h3>
+          <div class="grid-3" style="margin-bottom: 1.5rem;">
+            <div class="form-group">
+              <label class="form-label">Kunlik</label>
+              <input type="text" id="rep-kunlik" class="form-input" placeholder="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Terminal</label>
+              <input type="text" id="rep-terminal" class="form-input" placeholder="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Berilgan summa</label>
+              <input type="text" id="rep-given-amount" class="form-input" placeholder="0" readonly>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Skidka</label>
+              <input type="text" id="rep-skidka" class="form-input" placeholder="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Xarajat</label>
+              <input type="text" id="rep-xarajat" class="form-input" placeholder="0">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Izoh</label>
+            <input type="text" id="rep-comment" class="form-input" placeholder="">
+          </div>
+
+          <!-- Formula Natijasi -->
+          <div class="calc-summary-banner">
+            <div class="calc-interim-row">
+              <span class="calc-interim-label">Oraliq hisob:</span>
+              <div class="calc-interim-values">
+                Kirim: <b id="rep-total-inflow-display" style="color: var(--accent-success);">0 so'm</b> | 
+                Chiqim: <b id="rep-total-outflow-display" style="color: #f87171;">0 so'm</b>
+              </div>
+            </div>
+            <div class="calc-net-row">
+              <div class="calc-net-label">Topshiriladigan summa:</div>
+              <div class="calc-net-amount" id="rep-net-amount-display">0 so'm</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.5rem;">
+            <button type="submit" id="btn-submit-report" class="btn-primary" style="width: 100%;">
+              <span>📤</span> Kunlik hisobotni tasdiqlashga yuborish
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card-box">
+        <h3 class="card-title">📜 Hisobotlar tarixi</h3>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Sana</th>
+                <th>Jami kirim</th>
+                <th>Jami chiqim</th>
+                <th>Umumiy summa</th>
+                <th>Sim-karta</th>
+                <th>Status</th>
+                <th>Izoh</th>
+              </tr>
+            </thead>
+            <tbody id="report-history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Kassir: Kassa qabul qilish oynasi (Faqat Kassir uchun) -->
+    <section class="tab-pane employee-pane" id="pane-cashier-intake" style="display: none;">
+      <div class="card-box" style="max-width: 650px; margin: 0 auto 1.75rem;">
+        <h2 class="card-title">📥 Kassa qabul qilish</h2>
+
+        <form id="cashier-handover-form">
+          <div class="form-group">
+            <label class="form-label">Xodimni tanlang *</label>
+            <select id="cashier-employee-select" class="form-input" required>
+              <option value="">-- Xodimni tanlang --</option>
+            </select>
+          </div>
+
+          <div class="grid-2" style="gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">💵 So'mda summa</label>
+              <input type="text" id="cashier-amount-uzs" class="form-input" 
+                     placeholder="0" style="font-size: 1.15rem; font-weight: 700;" autocomplete="off">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">💲 AQSH Dollarda summa</label>
+              <input type="text" id="cashier-amount-usd" class="form-input" 
+                     placeholder="0" style="font-size: 1.15rem; font-weight: 700; color: #34d399;" autocomplete="off">
+            </div>
+          </div>
+
+
+          <!-- Real vaqtda jami ekvivalent summa hisobi -->
+          <div class="equivalent-summary-box">
+            <div class="eq-left">
+              <div class="eq-label">Jami ekvivalent summa:</div>
+              <div id="cashier-formula-breakdown" class="eq-formula">0 so'm</div>
+            </div>
+            <div id="cashier-total-equivalent-display" class="eq-amount">
+              0 so'm
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%;">
+            <span>📥</span> Kassaga qabul qilish & Xodimga chek yuborish 🧾
+          </button>
+        </form>
+      </div>
+
+      <div class="card-box">
+        <h3 class="card-title">📜 Qabul qilingan summalar</h3>
+        <div class="table-container table-scroll-5">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Xodim</th>
+                <th>Qabul qildi</th>
+                <th>So'mda</th>
+                <th>Dollarda</th>
+                <th>Jami ekvivalent</th>
+                <th>Sana</th>
+                <th>Vaqti</th>
+              </tr>
+            </thead>
+            <tbody id="cashier-my-handovers-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Kassir: Sim-karta tarqatish oynasi (Faqat Kassir uchun) -->
+    <section class="tab-pane employee-pane" id="pane-cashier-sims" style="display: none;">
+      <div class="card-box" style="max-width: 750px; margin: 0 auto 1.75rem;">
+        <h2 class="card-title">📲 Sim-karta tarqatish (Kassir)</h2>
+        <form id="cashier-distribute-sim-form" onsubmit="handleDistributeSim(event, 'cashier')">
+          <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label class="form-label">Sim-karta turi (Operator) *</label>
+              <select id="cashier-sim-operator" class="form-input" required>
+                <option value="Uzmobile">Uzmobile</option>
+                <option value="Beeline">Beeline</option>
+                <option value="Ucell">Ucell</option>
+                <option value="Mobiuz">Mobiuz</option>
+                <option value="Perfectum">Perfectum</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Xodimni tanlang *</label>
+              <select id="cashier-sim-employee-select" class="form-input" required>
+                <option value="">-- Xodimni tanlang --</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group">
+              <label class="form-label">Boshlang'ich seriya (18 xonali) *</label>
+              <input 
+                type="text" 
+                id="cashier-sim-start" 
+                class="form-input" 
+                maxlength="18" 
+                required 
+                placeholder="Masalan: 899981234567890001"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+              >
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tugash seriya (18 xonali)</label>
+              <input 
+                type="text" 
+                id="cashier-sim-end" 
+                class="form-input" 
+                maxlength="18" 
+                placeholder="Bitta dona bo'lsa bo'sh qoldiring"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+              >
+            </div>
+          </div>
+          <button type="submit" class="btn-success" style="width: 100%;">
+            📲 Sim-kartalarni xodimga biriktirish
+          </button>
+        </form>
+      </div>
+
+      <div class="card-box">
+        <h3 class="card-title">👥 Xodimlar sim-karta balansi</h3>
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Xodim F.I.SH</th>
+                <th>Qo'lidagi (Xodimda)</th>
+                <th>Sotilgan</th>
+              </tr>
+            </thead>
+            <tbody id="cashier-sim-balance-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Xodim 4: Reyting oynasi -->
+    <section class="tab-pane employee-pane" id="pane-emp-rating" style="display: none;">
+      <div class="card-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+          <div>
+            <h2 class="card-title" style="margin-bottom: 0.25rem;">🏆 Reyting jadvali</h2>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn-primary" id="btn-emp-rating-monthly" onclick="loadLeaderboard('monthly', 'emp')">Oylik reyting</button>
+            <button class="btn-logout" id="btn-emp-rating-overall" onclick="loadLeaderboard('overall', 'emp')">Umumiy reyting</button>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>O'rin</th>
+                <th>Xodim F.I.SH</th>
+                <th>Topshirgan jami summasi</th>
+                <th>Summa balli</th>
+                <th>Sim-kartalar</th>
+                <th>Jami KPI Ball</th>
+                <th>Hisobot kunlari</th>
+              </tr>
+            </thead>
+            <tbody id="emp-rating-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- LOGIN MODAL                                -->
+  <!-- ========================================== -->
+  <div class="modal-overlay" id="login-modal" style="display: flex;">
+    <div class="modal-content" style="max-width: 400px;">
+      <!-- 1-Qadam: Telegram ID & Parol -->
+      <div id="login-step-1">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <div class="brand-icon" style="margin: 0 auto 0.75rem; width: 48px; height: 48px; font-size: 1.5rem;">⚡</div>
+          <h2 style="font-size: 1.35rem; font-weight: 800;">Xodim-Reyting CRM</h2>
+        </div>
+
+        <form id="login-form-step-1">
+          <div class="form-group">
+            <label class="form-label">Telegram ID *</label>
+            <input type="number" id="login-telegram-id" class="form-input" placeholder="Masalan: 8686341550" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Parol *</label>
+            <input type="password" id="login-password" class="form-input" placeholder="••••••" required>
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%; margin-top: 0.5rem;">
+            Kirish ➡️
+          </button>
+        </form>
+      </div>
+
+      <!-- 2-Qadam: 6 xonali OTP Kod -->
+      <div id="login-step-2" style="display: none;">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔐</div>
+          <h2 style="font-size: 1.35rem; font-weight: 800;">Tasdiqlash Kodi</h2>
+          <p style="font-size: 0.85rem; color: #94a3b8; margin: 0 0 0.4rem 0;">
+            Tasdiqlash kodi Telegram hisobingizga (<b id="otp-tg-id-display" style="color: #cbd5e1;"></b>) yuborildi
+          </p>
+          <div style="margin-top: 0.4rem; font-size: 0.85rem;">
+            Qolgan vaqt: <b id="otp-timer" style="color: var(--accent-warning); font-size: 1.1rem;">60s</b>
+          </div>
+        </div>
+
+        <form id="login-form-step-2">
+          <div class="form-group">
+            <label class="form-label" style="text-align: center;">Tasdiqlash kodi *</label>
+            <input type="text" id="otp-code-input" class="form-input" 
+                   maxlength="6" placeholder="••••••" 
+                   style="font-size: 1.75rem; text-align: center; letter-spacing: 0.35em; font-family: monospace; font-weight: 800;" 
+                   required autofocus autocomplete="off">
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%; margin-top: 0.5rem;">
+            Tasdiqlash va Kirish 🔓
+          </button>
+          <button type="button" id="btn-retry-login" class="btn-logout" style="width: 100%; margin-top: 0.5rem;" onclick="handleRetryLogin()">
+            ⬅️ Qaytadan urinish
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- DOLLAR KURSI MODALI (RAHBAR UCHUN)         -->
+  <!-- ========================================== -->
+  <div class="modal-overlay" id="usd-rate-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 440px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+          <span>💵</span> Dollar kursini belgilash
+        </h3>
+        <button type="button" class="btn-logout" style="padding: 0.25rem 0.6rem; font-size: 0.85rem;" onclick="closeUsdRateModal()">✕</button>
+      </div>
+
+      <form id="usd-rate-form" onsubmit="handleUsdRateSubmit(event)">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label">1 AQSH Dollari kursi (so'mda) *</label>
+          <input type="text" id="usd-rate-input" class="form-input" placeholder="Masalan: 12 000" required style="font-size: 1.2rem; font-weight: 700; color: #34d399;">
+          <div id="usd-rate-preview" style="font-size: 0.85rem; color: #a5b4fc; margin-top: 0.35rem;">
+            Ko'rinishi: <b>1$ = 12 000 so'm</b>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="submit" class="btn-primary" style="flex: 1;">💾 Saqlash</button>
+          <button type="button" class="btn-logout" style="flex: 1;" onclick="closeUsdRateModal()">Bekor qilish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- ALOHIDA CHIROYLI KALENDAR VA SANA SARALASH -->
+  <!-- ========================================== -->
+  <div class="modal-overlay" id="date-range-modal" style="display: none;" onclick="handleDateModalOverlayClick(event)">
+    <div class="modal-content date-picker-modal-box" style="max-width: 520px; width: 100%; padding: 1.5rem;" onclick="event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="date-modal-header flex justify-between items-center pb-3 mb-3 border-b border-[var(--border-color)]">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2 m-0" id="date-range-modal-title">
+            <span>🗓️</span> Sana bo'yicha saralash
+          </h3>
+          <p class="text-xs text-[var(--text-sub)] m-0 mt-0.5">
+            Hisobotlarni aniq sana yoki ...dan ...gacha davr bo'yicha filtrlash
+          </p>
+        </div>
+        <button type="button" class="btn-logout text-xs px-2.5 py-1" onclick="closeDateRangeModal()">✕</button>
+      </div>
+
+      <!-- Tezkor Tanlovlar (Quick Presets) -->
+      <div class="date-preset-grid grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3.5">
+        <button type="button" class="date-preset-btn" id="preset-today" onclick="applyDatePreset('today')">Bugun</button>
+        <button type="button" class="date-preset-btn" id="preset-yesterday" onclick="applyDatePreset('yesterday')">Kecha</button>
+        <button type="button" class="date-preset-btn" id="preset-7d" onclick="applyDatePreset('7d')">7 kun</button>
+        <button type="button" class="date-preset-btn" id="preset-30d" onclick="applyDatePreset('30d')">30 kun</button>
+        <button type="button" class="date-preset-btn" id="preset-this_month" onclick="applyDatePreset('this_month')">Shu oy</button>
+        <button type="button" class="date-preset-btn" id="preset-all" onclick="applyDatePreset('all')">Barchasi</button>
+      </div>
+
+      <!-- ...dan ...gacha Maydonlar -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3.5">
+        <div class="date-range-field-card p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface-elevated)]">
+          <label class="block text-[11px] font-semibold text-[var(--text-muted)] mb-1 flex items-center gap-1">
+            <span>🛫</span> Boshlanish sanasi (...dan):
+          </label>
+          <input type="date" id="cal-modal-start-date" class="form-input text-xs font-semibold py-1 px-2 h-8" onchange="onModalDateInputChange()">
+        </div>
+        <div class="date-range-field-card p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface-elevated)]">
+          <label class="block text-[11px] font-semibold text-[var(--text-muted)] mb-1 flex items-center gap-1">
+            <span>🛬</span> Tugash sanasi (...gacha):
+          </label>
+          <input type="date" id="cal-modal-end-date" class="form-input text-xs font-semibold py-1 px-2 h-8" onchange="onModalDateInputChange()">
+        </div>
+      </div>
+
+      <!-- Interaktiv Chiroyli Kalendar Vidjeti (O'zbek tilida) -->
+      <div class="custom-calendar-widget p-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface-elevated)] mb-4">
+        <!-- Kalendar oylari navigatsiyasi -->
+        <div class="calendar-nav-bar flex justify-between items-center mb-2.5 px-1">
+          <button type="button" class="cal-nav-btn prev-btn" onclick="navigateCalendarMonth(-1)" title="Oldingi oy">‹</button>
+          <span class="cal-month-year-label text-sm font-bold text-white tracking-wide" id="cal-month-year-text">Oktyabr 2026</span>
+          <button type="button" class="cal-nav-btn next-btn" onclick="navigateCalendarMonth(1)" title="Keyingi oy">›</button>
+        </div>
+
+        <!-- Hafta kunlari (O'zbekcha) -->
+        <div class="calendar-weekdays-grid grid grid-cols-7 text-center text-[11px] font-bold text-[var(--text-muted)] mb-1.5">
+          <span>Dsh</span>
+          <span>Ssh</span>
+          <span>Chsh</span>
+          <span>Psh</span>
+          <span>Jm</span>
+          <span style="color: #fbbf24;">Sh</span>
+          <span style="color: #fb7185;">Ysh</span>
+        </div>
+
+        <!-- Kunlar katakchalari (Dinamik JS) -->
+        <div class="calendar-days-grid grid grid-cols-7 gap-1" id="cal-days-container"></div>
+      </div>
+
+      <!-- Tanlangan oraliq ma'lumoti va Amallar -->
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-3 pt-3 border-t border-[var(--border-color)]">
+        <div class="text-xs text-[var(--text-muted)] flex items-center gap-1.5" id="cal-modal-summary-text">
+          <span>📅</span> <span>Hozircha oraliq tanlanmagan</span>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <button type="button" class="btn-logout text-xs px-3 py-2 flex-1 sm:flex-initial" onclick="clearDateRangeModalFilter()">Tozalash</button>
+          <button type="button" class="btn-primary text-xs px-4 py-2 font-bold flex-1 sm:flex-initial" onclick="applyDateRangeFilterFromModal()">✅ Filtrlash</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- HISOBOT TAFSILOTLARI MODALI                -->
+  <!-- ========================================== -->
+  <div class="modal-overlay" id="report-details-modal" style="display: none;">
+    <div class="modal-content" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        <div>
+          <h3 id="rep-detail-modal-title" style="font-size: 1.25rem; font-weight: 800; margin: 0; color: #e0e7ff;">
+            📋 Hisobot tafsilotlari
+          </h3>
+          <div id="rep-detail-subtitle" style="font-size: 0.85rem; color: var(--text-sub); margin-top: 0.25rem;"></div>
+        </div>
+        <button type="button" class="btn-logout" style="padding: 0.3rem 0.7rem; font-size: 0.9rem;" onclick="closeReportDetailsModal()">✕</button>
+      </div>
+
+      <div id="rep-detail-body">
+        <!-- JS orqali to'ldiriladi -->
+      </div>
+
+      <div id="rep-detail-actions" style="margin-top: 1.25rem; display: flex; gap: 0.75rem; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <!-- Dinamik tugmalar: Tasdiqlash / Rad etish / Yopish -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=308"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: xodim-reyting-crm
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: DATABASE_URL
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_GROUP_ID
+        sync: false
+      - key: RAHBAR_ID
+        sync: false
+      - key: JWT_SECRET
+        sync: false
