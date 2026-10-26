@@ -3075,22 +3075,6 @@ button:active,
     align-items: flex-end;
   }
 
-  /* Kirish (Login) modali mobilda doimo markazda turishi kerak */
-  #login-modal.modal-overlay {
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 1rem !important;
-    min-height: 100dvh;
-  }
-
-  #login-modal .modal-content {
-    margin: auto !important;
-    border-radius: var(--radius-xl) !important;
-    max-width: 390px !important;
-    width: 100% !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
-  }
-
   .modal-content {
     padding: 1.35rem 1rem;
     border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md);
@@ -3099,6 +3083,22 @@ button:active,
     max-height: 92vh;
     overflow-y: auto;
     margin: 0 auto;
+  }
+
+  /* Kirish (Login) modali mobilda doimo markazda turishi shart */
+  #login-modal.modal-overlay {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    min-height: 100dvh !important;
+  }
+
+  #login-modal .modal-content {
+    margin: auto !important;
+    border-radius: var(--radius-xl) !important;
+    max-width: 390px !important;
+    width: 100% !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
   }
 
   #report-details-modal .modal-content {
