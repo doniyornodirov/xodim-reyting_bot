@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env", override=True)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-BOT_USERNAME = os.getenv("BOT_USERNAME", "xodim_reyting_bot").strip().lstrip("@")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "xodimreyting_bot").strip().lstrip("@")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID", "").strip()
 RAHBAR_ID = os.getenv("RAHBAR_ID", "8686341550").strip()
 JWT_SECRET = os.getenv("JWT_SECRET", "super_secret_jwt_key_xodim_reyting_2026_xyz")
