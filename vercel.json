@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://api.yourdomain.com/api/:match*"
+      "destination": "https://xodim-reyting-bot.onrender.com/api/:match*"
     },
     {
       "source": "/static/:match*",
