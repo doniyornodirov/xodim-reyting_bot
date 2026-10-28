@@ -2393,7 +2393,7 @@ body.theme-light .rep-modal-sim-total {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  z-index: 200;
+  z-index: 999999 !important;
   background: var(--bg-surface-elevated);
   border: 1px solid var(--border-color);
   padding: 1rem 1.25rem;
@@ -3118,6 +3118,7 @@ button:active,
 
   /* Toast xabarnomasi mobilda pastki qismda qulay joylashuvi */
   .toast {
+    z-index: 999999 !important;
     bottom: 1rem;
     left: 0.75rem;
     right: 0.75rem;

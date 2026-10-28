@@ -101,7 +101,7 @@ async function api(endpoint, method = "GET", data = null) {
     const res = await fetch(targetUrl, options);
     const json = await res.json();
     if (!res.ok) {
-      if (res.status === 401) {
+      if (res.status === 401 && !endpoint.includes("/api/auth/")) {
         logout();
       }
       throw new Error(json.detail || json.message || "Xatolik yuz berdi");
@@ -360,36 +360,44 @@ function updateRetryButtonUI() {
 }
 
 async function handleLoginStep1(e) {
-  e.preventDefault();
-  const left = getCooldownSecondsLeft();
-  if (left > 0) {
-    showToast(`1 minutda faqat 1 marta urinish mumkin! Qayta urinish ${left} soniyadan keyin.`, "warning");
+  if (e) e.preventDefault();
+  const alertEl = document.getElementById("login-error-alert");
+  if (alertEl) alertEl.style.display = "none";
+
+  const tgIdRaw = document.getElementById("login-telegram-id")?.value || "";
+  const password = document.getElementById("login-password")?.value || "";
+  const tgIdClean = tgIdRaw.replace(/\D/g, "");
+
+  if (!tgIdClean || !password.trim()) {
+    const msg = "Telegram ID va parolni kiriting!";
+    if (alertEl) { alertEl.innerText = msg; alertEl.style.display = "block"; }
+    showToast(msg, "danger");
     return;
   }
 
-  const tgId = document.getElementById("login-telegram-id").value.trim();
-  const password = document.getElementById("login-password").value.trim();
-
-  if (!tgId || !password) {
-    showToast("Telegram ID va parolni kiriting!", "danger");
+  const left = getCooldownSecondsLeft();
+  if (left > 0) {
+    const msg = `1 minutda faqat 1 marta urinish mumkin! Qayta urinish ${left} soniyadan keyin.`;
+    if (alertEl) { alertEl.innerText = msg; alertEl.style.display = "block"; }
+    showToast(msg, "warning");
     return;
   }
 
   try {
     const res = await api("/api/auth/login", "POST", {
-      telegram_id: parseInt(tgId),
-      password: password
+      telegram_id: parseInt(tgIdClean, 10),
+      password: password.trim()
     });
 
-    pendingTelegramId = parseInt(tgId);
+    pendingTelegramId = parseInt(tgIdClean, 10);
 
-    // Step 2 ga o'tish
+    // Step 2 ga o'tish (OTP Kod kiritish oynasi)
     document.getElementById("login-step-1").style.display = "none";
     document.getElementById("login-step-2").style.display = "block";
 
     // Telegram ID ko'rsatish
     const tgDisplay = document.getElementById("otp-tg-id-display");
-    if (tgDisplay) tgDisplay.innerText = tgId;
+    if (tgDisplay) tgDisplay.innerText = tgIdClean;
 
     showToast(res.message || "Tasdiqlash kodi Telegram lichkangizga yuborildi!", "success");
 
@@ -401,12 +409,17 @@ async function handleLoginStep1(e) {
       otpInput.focus();
     }
   } catch (err) {
-    if (err.message && err.message.includes("1 minutda faqat 1 marta")) {
-      pendingTelegramId = parseInt(tgId);
+    const errText = err.message || "Kirishda xatolik yuz berdi!";
+    if (alertEl) {
+      alertEl.innerText = errText;
+      alertEl.style.display = "block";
+    }
+    if (errText.includes("1 minutda faqat 1 marta")) {
+      pendingTelegramId = parseInt(tgIdClean, 10);
       document.getElementById("login-step-1").style.display = "none";
       document.getElementById("login-step-2").style.display = "block";
       const tgDisplay = document.getElementById("otp-tg-id-display");
-      if (tgDisplay) tgDisplay.innerText = tgId;
+      if (tgDisplay) tgDisplay.innerText = tgIdClean;
       startOtpCountdown(getCooldownSecondsLeft() || 60);
     }
   }
@@ -447,10 +460,15 @@ function handleRetryLogin() {
 
 // Login Step 2: Verify OTP
 async function handleVerifyOtp(e) {
-  e.preventDefault();
-  const otp = document.getElementById("otp-code-input").value.trim();
+  if (e) e.preventDefault();
+  const alertEl = document.getElementById("otp-error-alert");
+  if (alertEl) alertEl.style.display = "none";
+
+  const otp = document.getElementById("otp-code-input")?.value.trim() || "";
   if (!otp || otp.length !== 6) {
-    showToast("6 xonali tasdiqlash kodini to'liq kiriting!", "danger");
+    const msg = "6 xonali tasdiqlash kodini to'liq kiriting!";
+    if (alertEl) { alertEl.innerText = msg; alertEl.style.display = "block"; }
+    showToast(msg, "danger");
     return;
   }
 
@@ -470,7 +488,12 @@ async function handleVerifyOtp(e) {
     document.getElementById("login-modal").style.display = "none";
     showToast("Tizimga muvaffaqiyatli kirdingiz!", "success");
     renderApp();
-  } catch (err) {}
+  } catch (err) {
+    if (alertEl) {
+      alertEl.innerText = err.message || "Kodni tekshirishda xatolik!";
+      alertEl.style.display = "block";
+    }
+  }
 }
 
 // ==========================================

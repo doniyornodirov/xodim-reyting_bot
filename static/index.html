@@ -1250,10 +1250,10 @@
           <h2 style="font-size: 1.35rem; font-weight: 800;">Xodim-Reyting CRM</h2>
         </div>
 
-        <form id="login-form-step-1">
+        <form id="login-form-step-1" onsubmit="handleLoginStep1(event)">
           <div class="form-group">
             <label class="form-label">Telegram ID *</label>
-            <input type="number" id="login-telegram-id" class="form-input" autocomplete="off" required>
+            <input type="text" inputmode="numeric" id="login-telegram-id" class="form-input" placeholder="Masalan: 8686341550" autocomplete="off" required>
           </div>
 
           <div class="form-group">
@@ -1261,7 +1261,9 @@
             <input type="password" id="login-password" class="form-input" placeholder="••••••" required>
           </div>
 
-          <button type="submit" class="btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          <div id="login-error-alert" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
+
+          <button type="submit" id="btn-login-submit" class="btn-primary" style="width: 100%; margin-top: 0.25rem;">
             Kirish ➡️
           </button>
         </form>
@@ -1280,7 +1282,7 @@
           </div>
         </div>
 
-        <form id="login-form-step-2">
+        <form id="login-form-step-2" onsubmit="handleVerifyOtp(event)">
           <div class="form-group">
             <label class="form-label" style="text-align: center;">Tasdiqlash kodi *</label>
             <input type="text" id="otp-code-input" class="form-input" 
@@ -1289,7 +1291,9 @@
                    required autofocus autocomplete="off">
           </div>
 
-          <button type="submit" class="btn-primary" style="width: 100%; margin-top: 0.5rem;">
+          <div id="otp-error-alert" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
+
+          <button type="submit" id="btn-verify-submit" class="btn-primary" style="width: 100%; margin-top: 0.25rem;">
             Tasdiqlash va Kirish 🔓
           </button>
           <button type="button" id="btn-retry-login" class="btn-logout" style="width: 100%; margin-top: 0.5rem;" onclick="handleRetryLogin()">
@@ -1435,6 +1439,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=308"></script>
+  <script src="/static/js/app.js?v=315"></script>
 </body>
 </html>
