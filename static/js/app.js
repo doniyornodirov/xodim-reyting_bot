@@ -1049,7 +1049,9 @@ async function loadCardHistory() {
       tbody.innerHTML += `
         <tr>
           <td><b>#${item.transaction_number}</b></td>
-          <td><span class="copyable-card" onclick="copyToClipboard('${item.card_number}')">${item.card_number} 📋</span></td>
+          <td>${item.status === 'REJECTED' 
+            ? `<span style="color: var(--text-sub);">${item.card_number}</span>` 
+            : `<span class="copyable-card" onclick="copyToClipboard('${item.card_number}')">${item.card_number} 📋</span>`}</td>
           <td>${item.card_holder}</td>
           <td><b>${formatNumberSpaces(item.amount)} so'm</b></td>
           <td style="color: var(--accent-success);">${formatNumberSpaces(item.surcharge_amount)} so'm</td>

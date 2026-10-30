@@ -107,7 +107,12 @@ if dp:
         # 2. Bazada yangilash
         async with aiosqlite.connect(DB_PATH) as conn:
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ?", (topup_id,))
+            cursor = await conn.execute("""
+                SELECT c.*, u.full_name as employee_name
+                FROM card_topups c
+                JOIN users u ON c.employee_id = u.id
+                WHERE c.id = ?
+            """, (topup_id,))
             topup = await cursor.fetchone()
             if not topup:
                 await query.answer("So'rov topilmadi!", show_alert=True)
@@ -140,14 +145,42 @@ if dp:
 
         # 3. Telegram xabari matnini yangilash
         keyboard = get_topup_keyboard(topup_id, new_status)
-        lines = query.message.text.split("\n")
-        updated_lines = []
-        for line in lines:
-            if "Status:" in line or line.strip().startswith("⏳") or line.strip().startswith("✅") or line.strip().startswith("❌"):
-                updated_lines.append(f"{status_text} (Admin: {actor_name})")
+        amount_formatted = f"{int(topup['amount']):,}".replace(",", " ")
+        surcharge_formatted = f"{int(topup['surcharge_amount']):,}".replace(",", " ")
+
+        from app.security import get_tashkent_now
+        try:
+            from datetime import datetime, timedelta
+            c_time = topup['created_at']
+            if isinstance(c_time, str):
+                clean_time = c_time.split(".")[0].replace("T", " ")
+                dt = datetime.fromisoformat(clean_time)
+                dt_tashkent = dt + timedelta(hours=5)
+                tashkent_str = dt_tashkent.strftime("%d.%m.%Y %H:%M")
             else:
-                updated_lines.append(line)
-        new_text = "\n".join(updated_lines)
+                tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
+        except Exception:
+            tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
+
+        if new_status == "REJECTED":
+            # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz, oddiy matn) qilinadi!
+            card_display = f"{topup['card_number']}"
+            status_line = f"❌ <b>Rad etildi</b> <i>(Admin: {actor_name})</i>"
+            keyboard = None
+        else:
+            card_display = f"<code>{topup['card_number']}</code>"
+            status_line = f"✅ <b>Tasdiqlandi</b> <i>(Admin: {actor_name})</i>"
+
+        new_text = (
+            f"💳 <b>Karta to'ldirish so'rovi #{topup['transaction_number']}</b>\n\n"
+            f"👤 {topup['employee_name']}\n"
+            f"🔢 {card_display}\n"
+            f"🏷️ {topup['card_holder']}\n"
+            f"💰 {amount_formatted} so'm\n"
+            f"📈 {surcharge_formatted} so'm (+3%)\n"
+            f"⏰ {tashkent_str}\n\n"
+            f"{status_line}"
+        )
 
         try:
             await query.message.edit_text(new_text, reply_markup=keyboard, parse_mode="HTML")
@@ -299,16 +332,26 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
     except Exception:
         tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
 
-    reason = reason_text or f"Xodim o'zi bekor qildi ({actor_name})"
+    if new_status == "REJECTED":
+        reason = reason_text or f"Xodim o'zi bekor qildi ({actor_name})"
+        status_line = f"❌ <b>Rad etildi</b> <i>({reason})</i>"
+        # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz, oddiy matn) qilinadi!
+        card_display = f"{topup['card_number']}"
+        markup = None
+    else:
+        status_line = f"✅ <b>Tasdiqlandi</b> <i>(Admin: {actor_name})</i>"
+        card_display = f"<code>{topup['card_number']}</code>"
+        markup = get_topup_keyboard(topup_id, "APPROVED")
+
     text = (
         f"💳 <b>Karta to'ldirish so'rovi #{topup['transaction_number']}</b>\n\n"
         f"👤 {topup['employee_name']}\n"
-        f"🔢 <code>{topup['card_number']}</code>\n"
+        f"🔢 {card_display}\n"
         f"🏷️ {topup['card_holder']}\n"
         f"💰 {amount_formatted} so'm\n"
         f"📈 {surcharge_formatted} so'm (+3%)\n"
         f"⏰ {tashkent_str}\n\n"
-        f"❌ <b>Rad etildi</b> <i>({reason})</i>"
+        f"{status_line}"
     )
 
     target_chat_ids = []
@@ -331,10 +374,10 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
                     chat_id=cid,
                     message_id=message_id,
                     text=text,
-                    reply_markup=None,
+                    reply_markup=markup,
                     parse_mode="HTML"
                 )
-                logger.info(f"Guruh xabari muvaffaqiyatli 'Rad etildi' matniga yangilandi: {cid}")
+                logger.info(f"Guruh xabari muvaffaqiyatli '{new_status}' holatiga yangilandi: {cid}")
                 return True
             except Exception as e:
                 logger.warning(f"Aiogram bilan guruh xabarini yangilashda urinish: {e}")
@@ -343,16 +386,17 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
         try:
             url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
             async with httpx.AsyncClient(timeout=8.0) as client:
+                reply_markup_payload = markup.model_dump(exclude_none=True) if markup else None
                 resp = await client.post(url, json={
                     "chat_id": cid,
                     "message_id": message_id,
                     "text": text,
                     "parse_mode": "HTML",
-                    "reply_markup": None
+                    "reply_markup": reply_markup_payload
                 })
                 data = resp.json()
                 if data.get("ok"):
-                    logger.info(f"Telegram HTTP API orqali guruh xabari 'Rad etildi'ga yangilandi: {cid}")
+                    logger.info(f"Telegram HTTP API orqali guruh xabari '{new_status}' holatiga yangilandi: {cid}")
                     return True
         except Exception as e:
             logger.error(f"Telegram HTTP API orqali guruh xabarini yangilashda xatolik: {e}")
