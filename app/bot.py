@@ -308,8 +308,7 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
         f"💰 {amount_formatted} so'm\n"
         f"📈 {surcharge_formatted} so'm (+3%)\n"
         f"⏰ {tashkent_str}\n\n"
-        f"❌ <b>Rad etildi</b> <i>({reason})</i>\n"
-        f"🚫 <i>Ushbu so'rov bekor qilingan va adminlar tomonidan o'zgartirilmaydi.</i>"
+        f"❌ <b>Rad etildi</b> <i>({reason})</i>"
     )
 
     target_chat_ids = []
