@@ -23,16 +23,15 @@ if BOT_TOKEN:
     except Exception as e:
         logger.error(f"Telegram bot yaratishda xatolik: {e}")
 
-def get_topup_keyboard(topup_id: int, current_status: str) -> InlineKeyboardMarkup:
-    """Statusga qarab o'zgaruvchi inline tugmalar"""
-    if current_status == "APPROVED":
+def get_topup_keyboard(topup_id: int, current_status: str) -> InlineKeyboardMarkup | None:
+    """Statusga qarab o'zgaruvchi inline tugmalar (Rad etilganda tugmalar ko'rinmaydi)"""
+    if current_status == "REJECTED":
+        return None  # Rad etilgan so'rov uchun tugmalar butunlay yo'q qilinadi
+    elif current_status == "APPROVED":
         buttons = [
             [InlineKeyboardButton(text="❌ Rad etish", callback_data=f"topup_reject_{topup_id}")]
         ]
-    elif current_status == "REJECTED":
-        buttons = [
-            [InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"topup_approve_{topup_id}")]
-        ]
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
     else:  # PENDING
         buttons = [
             [
@@ -40,7 +39,7 @@ def get_topup_keyboard(topup_id: int, current_status: str) -> InlineKeyboardMark
                 InlineKeyboardButton(text="❌ Rad etish", callback_data=f"topup_reject_{topup_id}")
             ]
         ]
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 async def check_is_group_admin(chat_id: int, user_id: int) -> bool:
     """Foydalanuvchi guruh admini ekanligini tekshirish"""
@@ -114,6 +113,18 @@ if dp:
                 await query.answer("So'rov topilmadi!", show_alert=True)
                 return
 
+            # Agar so'rov allaqachon RAD ETILGAN bo'lsa (xodim yoki admin tomonidan), guruh admini o'zgartira olmaydi!
+            if topup["status"] == "REJECTED":
+                await query.answer("❌ Ushbu so'rov xodim tomonidan bekor qilingan! Guruh adminlari uni o'zgartira olmaydi.", show_alert=True)
+                try:
+                    await query.message.edit_reply_markup(reply_markup=None)
+                except Exception:
+                    pass
+                return
+
+            new_status = "APPROVED" if action == "approve" else "REJECTED"
+            status_text = "Tasdiqlandi ✅" if new_status == "APPROVED" else "Rad etildi ❌"
+
             await conn.execute("""
                 UPDATE card_topups 
                 SET status = ?, approved_by_name = ?
@@ -133,7 +144,7 @@ if dp:
         updated_lines = []
         for line in lines:
             if "Status:" in line or line.strip().startswith("⏳") or line.strip().startswith("✅") or line.strip().startswith("❌"):
-                updated_lines.append(f"⏳ {status_text} (Admin: {actor_name})")
+                updated_lines.append(f"{status_text} (Admin: {actor_name})")
             else:
                 updated_lines.append(line)
         new_text = "\n".join(updated_lines)
@@ -247,12 +258,59 @@ async def notify_card_topup_in_group(topup_data: dict) -> int | None:
     return None
 
 async def update_group_card_topup_status(message_id: int, topup_id: int, new_status: str, actor_name: str, reason_text: str = "") -> bool:
-    """Guruhdagi karta to'ldirish xabarini yangilash (Xodim yoki Admin rad etganda)"""
-    if not bot or not TELEGRAM_GROUP_ID or not message_id:
+    """Guruhdagi karta to'ldirish xabari matnini 'Rad etildi'ga yangilash va tugmalarni butunlay olib tashlash"""
+    if not BOT_TOKEN or not TELEGRAM_GROUP_ID or not message_id:
         return False
 
-    status_text = "Tasdiqlandi ✅" if new_status == "APPROVED" else "Rad etildi ❌"
-    keyboard = get_topup_keyboard(topup_id, new_status)
+    import httpx
+    from app.security import get_tashkent_now
+
+    # Bazadan so'rov ma'lumotlarini olish
+    topup = None
+    try:
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("""
+                SELECT c.*, u.full_name as employee_name
+                FROM card_topups c
+                JOIN users u ON c.employee_id = u.id
+                WHERE c.id = ?
+            """, (topup_id,))
+            topup = await cur.fetchone()
+    except Exception as e:
+        logger.warning(f"Bazada topup ma'lumotlarini olishda xatolik: {e}")
+
+    if not topup:
+        return False
+
+    amount_formatted = f"{int(topup['amount']):,}".replace(",", " ")
+    surcharge_formatted = f"{int(topup['surcharge_amount']):,}".replace(",", " ")
+
+    try:
+        from datetime import datetime, timedelta
+        c_time = topup['created_at']
+        if isinstance(c_time, str):
+            clean_time = c_time.split(".")[0].replace("T", " ")
+            dt = datetime.fromisoformat(clean_time)
+            dt_tashkent = dt + timedelta(hours=5)
+            tashkent_str = dt_tashkent.strftime("%d.%m.%Y %H:%M")
+        else:
+            tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
+    except Exception:
+        tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
+
+    reason = reason_text or f"Xodim o'zi bekor qildi ({actor_name})"
+    text = (
+        f"💳 <b>Karta to'ldirish so'rovi #{topup['transaction_number']}</b>\n\n"
+        f"👤 {topup['employee_name']}\n"
+        f"🔢 <code>{topup['card_number']}</code>\n"
+        f"🏷️ {topup['card_holder']}\n"
+        f"💰 {amount_formatted} so'm\n"
+        f"📈 {surcharge_formatted} so'm (+3%)\n"
+        f"⏰ {tashkent_str}\n\n"
+        f"❌ <b>Rad etildi</b> <i>({reason})</i>\n"
+        f"🚫 <i>Ushbu so'rov bekor qilingan va adminlar tomonidan o'zgartirilmaydi.</i>"
+    )
 
     target_chat_ids = []
     try:
@@ -267,15 +325,39 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
             pass
 
     for cid in target_chat_ids:
+        # 1. Aiogram orqali yangilash
+        if bot:
+            try:
+                await bot.edit_message_text(
+                    chat_id=cid,
+                    message_id=message_id,
+                    text=text,
+                    reply_markup=None,
+                    parse_mode="HTML"
+                )
+                logger.info(f"Guruh xabari muvaffaqiyatli 'Rad etildi' matniga yangilandi: {cid}")
+                return True
+            except Exception as e:
+                logger.warning(f"Aiogram bilan guruh xabarini yangilashda urinish: {e}")
+
+        # 2. To'g'ridan-to'g'ri Telegram HTTP API orqali (100% kafolat)
         try:
-            await bot.edit_message_reply_markup(
-                chat_id=cid,
-                message_id=message_id,
-                reply_markup=keyboard
-            )
-            return True
+            url = f"https://api.telegram.org/bot{BOT_TOKEN}/editMessageText"
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                resp = await client.post(url, json={
+                    "chat_id": cid,
+                    "message_id": message_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "reply_markup": None
+                })
+                data = resp.json()
+                if data.get("ok"):
+                    logger.info(f"Telegram HTTP API orqali guruh xabari 'Rad etildi'ga yangilandi: {cid}")
+                    return True
         except Exception as e:
-            logger.warning(f"Telegram guruh xabarini yangilashda ogohlantirish ({cid}): {e}")
+            logger.error(f"Telegram HTTP API orqali guruh xabarini yangilashda xatolik: {e}")
+
     return False
 
 async def send_cashier_receipt_to_telegram(employee_tg_id: int, receipt_data: dict) -> bool:
