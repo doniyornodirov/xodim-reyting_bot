@@ -163,8 +163,8 @@ if dp:
             tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
 
         if new_status == "REJECTED":
-            # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz, oddiy matn) qilinadi!
-            card_display = f"{topup['card_number']}"
+            # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz va ko'rinmas \u200b bilan) qilinadi!
+            card_display = "\u200b".join(str(topup['card_number']))
             status_line = f"❌ <b>Rad etildi</b> <i>(Admin: {actor_name})</i>"
             keyboard = None
         else:
@@ -335,8 +335,8 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
     if new_status == "REJECTED":
         reason = reason_text or f"Xodim o'zi bekor qildi ({actor_name})"
         status_line = f"❌ <b>Rad etildi</b> <i>({reason})</i>"
-        # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz, oddiy matn) qilinadi!
-        card_display = f"{topup['card_number']}"
+        # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz va ko'rinmas \u200b bilan) qilinadi!
+        card_display = "\u200b".join(str(topup['card_number']))
         markup = None
     else:
         status_line = f"✅ <b>Tasdiqlandi</b> <i>(Admin: {actor_name})</i>"
