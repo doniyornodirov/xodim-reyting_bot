@@ -335,8 +335,16 @@ function handleInactivityLogout() {
   currentUser = null;
   localStorage.removeItem("crm_token");
   localStorage.removeItem("crm_last_activity");
-  alert("⚠️ Xavfsizlik: Tizimda 3 soat davomida hech qanday amal bajarilmadi!\n\nXavfsizlik yuzasidan tizimga qayta kirishingiz lozim.");
-  window.location.reload();
+
+  // Hech qanday ogohlantirish oynasi (alert) ko'rsatilmasdan, avtomatik ravishda Login oynasi ochiladi
+  const appContent = document.getElementById("app-content");
+  if (appContent) appContent.style.display = "none";
+  const navTabsAdmin = document.getElementById("nav-tabs-admin");
+  if (navTabsAdmin) navTabsAdmin.style.display = "none";
+  const navTabsEmployee = document.getElementById("nav-tabs-employee");
+  if (navTabsEmployee) navTabsEmployee.style.display = "none";
+
+  showLoginModal();
 }
 
 // Barcha harakatlarni tinglash
@@ -1055,9 +1063,6 @@ async function loadCardHistory() {
 }
 
 async function handleRejectMyCardTopup(topupId, txNum) {
-  if (!confirm(`Haqiqatan ham #${txNum} sonli karta to'ldirish so'rovini rad etmoqchimisiz?`)) {
-    return;
-  }
   try {
     const res = await api(`/api/cards/${topupId}/reject`, "POST");
     showToast(res.message || "So'rov rad etildi!", "success");
