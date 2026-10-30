@@ -116,9 +116,6 @@
         <span id="nav-user-name" class="text-xs font-semibold hidden md:inline-block">Mehmon</span>
         <span id="nav-user-role" class="badge badge-employee inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold">Xodim</span>
         <span id="nav-user-debt" class="badge badge-debt inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold" style="display: none;">Qarz: 0 so'm</span>
-        <button id="btn-pwa-install" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none; background: linear-gradient(135deg, #6366f1, #06b6d4); color: white;" onclick="triggerPwaInstall()" title="Ilovani o'rnatish">
-          <span>📲</span> <span class="hidden sm:inline">Ilovani o'rnatish</span>
-        </button>
         <button id="btn-theme-toggle" class="btn-theme-toggle inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium transition" onclick="toggleAppTheme()" aria-label="Mavzuni almashtirish" title="Tungi / Kunduzgi rejimni almashtirish">
           <span id="theme-icon">🌙</span> <span id="theme-text">Tungi</span>
         </button>
@@ -164,10 +161,6 @@
     </nav>
 
     <div class="sidebar-footer">
-      <div class="sidebar-footer-item" id="sidebar-pwa-install-item" onclick="triggerPwaInstall()" style="display: none; cursor: pointer; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2)); border: 1px solid rgba(99, 102, 241, 0.4);">
-        <span style="display: flex; align-items: center; gap: 0.5rem;"><span>📲</span> Ilovani o'rnatish:</span>
-        <b style="color: #67e8f9; font-size: 0.8rem;">O'rnatish</b>
-      </div>
       <div class="sidebar-footer-item" id="sidebar-theme-item" onclick="toggleAppTheme()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.25);">
         <span style="display: flex; align-items: center; gap: 0.5rem;"><span id="sidebar-theme-icon">🌙</span> Rejim:</span>
         <b id="sidebar-theme-text" style="color: var(--accent-primary);">Tungi rejim</b>
@@ -1458,31 +1451,6 @@
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- IPHONE (IOS) UCHUN PWA QO'LLANMA MODALI    -->
-  <!-- ========================================== -->
-  <div class="modal-overlay" id="ios-pwa-modal" style="display: none; align-items: center;">
-    <div class="modal-content" style="max-width: 420px; text-align: center;">
-      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📲</div>
-      <h3 style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem;">Ilovani iPhone'ga o'rnatish</h3>
-      <p style="font-size: 0.875rem; color: var(--text-sub); line-height: 1.5; margin-bottom: 1.25rem;">
-        iPhone (iOS) da ilovani o'rnatish uchun Safari brauzeridan foydalaning va quyidagi oddiy qadamlarni bajaring:
-      </p>
-      <div style="text-align: left; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; font-size: 0.85rem; line-height: 1.6;">
-        <div style="margin-bottom: 0.5rem;">
-          <b>1.</b> Safari brauzerida pastdagi <b>"Ulashish" (Share 📤)</b> tugmasini bosing.
-        </div>
-        <div style="margin-bottom: 0.5rem;">
-          <b>2.</b> Menyu ro'yxatidan <b>"Bosh ekranga qo'shish" (Add to Home Screen ➕)</b> bandini tanlang.
-        </div>
-        <div>
-          <b>3.</b> Yuqori o'ng burchakdagi <b>"Qo'shish" (Add)</b> tugmasini bosing.
-        </div>
-      </div>
-      <button type="button" class="btn-primary" style="width: 100%; justify-content: center;" onclick="closeIosPwaModal()">Tushunarli</button>
-    </div>
-  </div>
-
-  <script src="/static/js/app.js?v=331"></script>
+  <script src="/static/js/app.js?v=332"></script>
 </body>
 </html>

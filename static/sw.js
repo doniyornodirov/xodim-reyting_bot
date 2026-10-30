@@ -1,5 +1,5 @@
 // Service Worker for Xodim-Reyting CRM PWA
-const CACHE_NAME = 'xodim-crm-cache-v2';
+const CACHE_NAME = 'xodim-crm-cache-v3';
 
 const STATIC_ASSETS = [
   '/',

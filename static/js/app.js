@@ -3272,10 +3272,8 @@ function setupUsdRateInput() {
 }
 
 // ==========================================
-// PROGRESSIVE WEB APP (PWA) INTEGRATSIYASI
+// PROGRESSIVE WEB APP (PWA) SERVICE WORKER
 // ==========================================
-let deferredPrompt = null;
-
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -3290,69 +3288,6 @@ function registerServiceWorker() {
   }
 }
 
-function initPwaInstallPrompt() {
-  const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-  const isInStandaloneMode = ('standalone' in window.navigator) && (window.navigator.standalone);
-
-  // iOS Safari uchun o'rnatish tugmasini faollashtirish
-  if (isIos && !isInStandaloneMode) {
-    const pwaBtn = document.getElementById('btn-pwa-install');
-    const pwaSidebar = document.getElementById('sidebar-pwa-install-item');
-    if (pwaBtn) pwaBtn.style.display = 'inline-flex';
-    if (pwaSidebar) pwaSidebar.style.display = 'flex';
-  }
-
-  // Android / Chrome / Desktop uchun install prompt hodisasi
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const pwaBtn = document.getElementById('btn-pwa-install');
-    const pwaSidebar = document.getElementById('sidebar-pwa-install-item');
-    if (pwaBtn) pwaBtn.style.display = 'inline-flex';
-    if (pwaSidebar) pwaSidebar.style.display = 'flex';
-  });
-
-  window.addEventListener('appinstalled', () => {
-    showToast("Ilova qurilmangizga muvaffaqiyatli o'rnatildi! 🎉", "success");
-    const pwaBtn = document.getElementById('btn-pwa-install');
-    const pwaSidebar = document.getElementById('sidebar-pwa-install-item');
-    if (pwaBtn) pwaBtn.style.display = 'none';
-    if (pwaSidebar) pwaSidebar.style.display = 'none';
-    deferredPrompt = null;
-  });
-}
-
-async function triggerPwaInstall() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    if (choice && choice.outcome === 'accepted') {
-      const pwaBtn = document.getElementById('btn-pwa-install');
-      const pwaSidebar = document.getElementById('sidebar-pwa-install-item');
-      if (pwaBtn) pwaBtn.style.display = 'none';
-      if (pwaSidebar) pwaSidebar.style.display = 'none';
-    }
-    deferredPrompt = null;
-  } else {
-    const isIos = /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
-    if (isIos) {
-      showIosPwaModal();
-    } else {
-      showToast("Ilovani o'rnatish uchun brauzeringiz menyusidan (⋮) 'Ilovani o'rnatish' bandini tanlang.", "info");
-    }
-  }
-}
-
-function showIosPwaModal() {
-  const m = document.getElementById('ios-pwa-modal');
-  if (m) m.style.display = 'flex';
-}
-
-function closeIosPwaModal() {
-  const m = document.getElementById('ios-pwa-modal');
-  if (m) m.style.display = 'none';
-}
-
 // Window load init
 window.addEventListener("DOMContentLoaded", () => {
   initTheme();
@@ -3361,7 +3296,6 @@ window.addEventListener("DOMContentLoaded", () => {
   setupReportCalculationListeners();
   setupUsdRateInput();
   registerServiceWorker();
-  initPwaInstallPrompt();
 
   document.getElementById("login-form-step-1")?.addEventListener("submit", handleLoginStep1);
   document.getElementById("login-form-step-2")?.addEventListener("submit", handleVerifyOtp);
