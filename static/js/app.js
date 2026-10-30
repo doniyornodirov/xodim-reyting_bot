@@ -304,16 +304,64 @@ function formatDateOnly(dateStr) {
 // Auth & App Init
 // ==========================================
 
+// ==========================================
+// 3 SOAT HARAKATSIZLIK (INACTIVITY TIMEOUT) STANDARTI
+// ==========================================
+const INACTIVITY_TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 soat = 10 800 000 ms
+let lastActivitySaved = 0;
+
+function recordUserActivity() {
+  const now = Date.now();
+  if (now - lastActivitySaved > 10000) {
+    lastActivitySaved = now;
+    if (authToken) {
+      localStorage.setItem("crm_last_activity", now.toString());
+    }
+  }
+}
+
+function checkInactivityTimeout() {
+  if (!authToken) return false;
+  const last = parseInt(localStorage.getItem("crm_last_activity") || "0", 10);
+  if (last > 0 && (Date.now() - last > INACTIVITY_TIMEOUT_MS)) {
+    handleInactivityLogout();
+    return true;
+  }
+  return false;
+}
+
+function handleInactivityLogout() {
+  authToken = null;
+  currentUser = null;
+  localStorage.removeItem("crm_token");
+  localStorage.removeItem("crm_last_activity");
+  alert("⚠️ Xavfsizlik: Tizimda 3 soat davomida hech qanday amal bajarilmadi!\n\nXavfsizlik yuzasidan tizimga qayta kirishingiz lozim.");
+  window.location.reload();
+}
+
+// Barcha harakatlarni tinglash
+['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'].forEach(evt => {
+  window.addEventListener(evt, recordUserActivity, { passive: true });
+});
+
+// Har 30 soniyada fonda tekshirib borish
+setInterval(checkInactivityTimeout, 30000);
+
 async function initApp() {
   if (authToken) {
+    if (checkInactivityTimeout()) {
+      return;
+    }
     try {
       const res = await api("/api/auth/me");
       currentUser = res.user;
+      localStorage.setItem("crm_last_activity", Date.now().toString());
       renderApp();
       return;
     } catch (e) {
       authToken = null;
       localStorage.removeItem("crm_token");
+      localStorage.removeItem("crm_last_activity");
     }
   }
   showLoginModal();
@@ -323,6 +371,7 @@ function logout() {
   authToken = null;
   currentUser = null;
   localStorage.removeItem("crm_token");
+  localStorage.removeItem("crm_last_activity");
   window.location.reload();
 }
 
@@ -480,6 +529,7 @@ async function handleVerifyOtp(e) {
 
     authToken = res.access_token;
     localStorage.setItem("crm_token", authToken);
+    localStorage.setItem("crm_last_activity", Date.now().toString());
     currentUser = res.user;
     localStorage.removeItem("otp_cooldown_until");
     otpSecondsLeft = 0;
@@ -978,12 +1028,15 @@ async function loadCardHistory() {
     tbody.innerHTML = "";
 
     if (!res.data || res.data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-sub);">Hozircha so'rovlar mavjud emas</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-sub);">Hozircha so'rovlar mavjud emas</td></tr>`;
       return;
     }
 
     res.data.forEach(item => {
       const statusBadge = formatStatusBadge(item.status);
+      const actionBtn = item.status === "PENDING"
+        ? `<button type="button" class="btn-reject-topup" onclick="handleRejectMyCardTopup(${item.id}, ${item.transaction_number})" title="So'rovni rad etish (bekor qilish)">❌ Rad etish</button>`
+        : `<span style="color: var(--text-sub); font-size: 0.8rem;">—</span>`;
 
       tbody.innerHTML += `
         <tr>
@@ -994,10 +1047,24 @@ async function loadCardHistory() {
           <td style="color: var(--accent-success);">${formatNumberSpaces(item.surcharge_amount)} so'm</td>
           <td>${statusBadge}</td>
           <td style="font-size: 0.8rem; color: var(--text-sub);">${formatTashkentDateTime(item.created_at)}</td>
+          <td>${actionBtn}</td>
         </tr>
       `;
     });
   } catch (e) {}
+}
+
+async function handleRejectMyCardTopup(topupId, txNum) {
+  if (!confirm(`Haqiqatan ham #${txNum} sonli karta to'ldirish so'rovini rad etmoqchimisiz?`)) {
+    return;
+  }
+  try {
+    const res = await api(`/api/cards/${topupId}/reject`, "POST");
+    showToast(res.message || "So'rov rad etildi!", "success");
+    loadCardHistory();
+  } catch (err) {
+    showToast(err.message || "Xatolik yuz berdi", "danger");
+  }
 }
 
 // ==========================================
@@ -3160,6 +3227,12 @@ function openUsdRateModal() {
 function closeUsdRateModal() {
   const modal = document.getElementById("usd-rate-modal");
   if (modal) modal.style.display = "none";
+}
+
+function handleUsdRateOverlayClick(e) {
+  if (e.target && e.target.id === "usd-rate-modal") {
+    closeUsdRateModal();
+  }
 }
 
 async function handleUsdRateSubmit(e) {

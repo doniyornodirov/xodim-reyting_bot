@@ -3085,15 +3085,18 @@ button:active,
     margin: 0 auto;
   }
 
-  /* Kirish (Login) modali mobilda doimo markazda turishi shart */
-  #login-modal.modal-overlay {
+  /* Kirish (Login) va Dollar kursi modallari mobilda doimo markazda turishi shart */
+  #login-modal.modal-overlay,
+  #usd-rate-modal.modal-overlay {
     align-items: center !important;
     justify-content: center !important;
     padding: 1rem !important;
     min-height: 100dvh !important;
   }
 
-  #login-modal .modal-content {
+  #login-modal .modal-content,
+  #usd-rate-modal .modal-content,
+  .usd-rate-modal-box {
     margin: auto !important;
     border-radius: var(--radius-xl) !important;
     max-width: 390px !important;
@@ -3595,4 +3598,84 @@ body.theme-light .chart-metric-btn.active {
   .analytics-kpi-grid {
     grid-template-columns: 1fr !important;
   }
+}
+
+/* ========================================================= */
+/* DOLLAR KURSI MODALI RESPONSIVLIK VA MARKAZLASHUV STANDARTI */
+/* ========================================================= */
+#usd-rate-modal.modal-overlay {
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  z-index: 1050 !important;
+}
+
+#usd-rate-modal .modal-content,
+.usd-rate-modal-box {
+  margin: auto !important;
+  max-width: 420px !important;
+  width: min(92vw, 420px) !important;
+  padding: 1.5rem !important;
+  position: relative !important;
+}
+
+@media (max-width: 640px) {
+  #usd-rate-modal.modal-overlay {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0.75rem !important;
+  }
+
+  #usd-rate-modal .modal-content,
+  .usd-rate-modal-box {
+    width: 94vw !important;
+    max-width: 390px !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: var(--radius-lg) !important;
+  }
+
+  #usd-rate-input {
+    font-size: clamp(1.15rem, 4.5vw, 1.35rem) !important;
+    text-align: center !important;
+  }
+}
+
+/* ========================================================= */
+/* KARTA TO'LDIRISH SO'ROVINI RAD ETISH TUGMASI (XODIM UCHUN) */
+/* ========================================================= */
+.btn-reject-topup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  transition: all 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+}
+
+.btn-reject-topup:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+}
+
+body.theme-light .btn-reject-topup {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+body.theme-light .btn-reject-topup:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
 }

@@ -246,6 +246,38 @@ async def notify_card_topup_in_group(topup_data: dict) -> int | None:
     logger.error(f"Guruhga so'rov yuborilmadi. Iltimos, botni guruhga qo'shing va admin huquqini bering! ({TELEGRAM_GROUP_ID})")
     return None
 
+async def update_group_card_topup_status(message_id: int, topup_id: int, new_status: str, actor_name: str, reason_text: str = "") -> bool:
+    """Guruhdagi karta to'ldirish xabarini yangilash (Xodim yoki Admin rad etganda)"""
+    if not bot or not TELEGRAM_GROUP_ID or not message_id:
+        return False
+
+    status_text = "Tasdiqlandi ✅" if new_status == "APPROVED" else "Rad etildi ❌"
+    keyboard = get_topup_keyboard(topup_id, new_status)
+
+    target_chat_ids = []
+    try:
+        target_chat_ids.append(int(TELEGRAM_GROUP_ID))
+    except Exception:
+        pass
+    raw_str = str(TELEGRAM_GROUP_ID).strip()
+    if raw_str.startswith("-") and not raw_str.startswith("-100"):
+        try:
+            target_chat_ids.append(int("-100" + raw_str[1:]))
+        except Exception:
+            pass
+
+    for cid in target_chat_ids:
+        try:
+            await bot.edit_message_reply_markup(
+                chat_id=cid,
+                message_id=message_id,
+                reply_markup=keyboard
+            )
+            return True
+        except Exception as e:
+            logger.warning(f"Telegram guruh xabarini yangilashda ogohlantirish ({cid}): {e}")
+    return False
+
 async def send_cashier_receipt_to_telegram(employee_tg_id: int, receipt_data: dict) -> bool:
     """Xodimga kassa topshirilganligi chekini shaxsiy telegramiga yuborish"""
     if not bot or not employee_tg_id:

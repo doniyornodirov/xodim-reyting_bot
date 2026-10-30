@@ -95,6 +95,27 @@ def run_tests():
     assert approve_card.get("success") is True
     print(f"   ✅ Karta so'rovi Bosh Rahbar tomonidan tasdiqlandi!")
 
+    # Tasdiqlangan kartani xodim rad eta olmasligini tekshirish
+    reject_approved_err = request(f"/api/cards/{topup_id}/reject", "POST", token=emp_token)
+    assert reject_approved_err.get("status") == 400, "Tasdiqlangan so'rovni rad etish xato bermadi!"
+
+    # Yangi karta so'rovi yuborib, uni xodim o'zi rad etishi (Button "Rad etish")
+    card_res_2 = request("/api/cards/topup", "POST", {
+        "card_number": "9860 1111 2222 3333",
+        "card_holder": "Test Bekor Qilish",
+        "amount": 50000
+    }, token=emp_token)
+    assert card_res_2.get("success") is True
+    topup_id_2 = card_res_2["data"]["id"]
+
+    reject_res = request(f"/api/cards/{topup_id_2}/reject", "POST", token=emp_token)
+    assert reject_res.get("success") is True, f"Xodim rad eta olmadi: {reject_res}"
+    print(f"   ✅ Xodim o'zi yuborgan karta so'rovini (#{card_res_2['data']['transaction_number']}) 'Rad etish' tugmasi bilan muvaffaqiyatli bekor qildi!")
+
+    # Qaytadan rad etishga urinish 400 qaytarishi kerak
+    reject_again = request(f"/api/cards/{topup_id_2}/reject", "POST", token=emp_token)
+    assert reject_again.get("status") == 400, "Allaqachon rad etilgan so'rov yana rad etildi!"
+
     print("\n💵 [4/7] Test: Xodim tomonidan berilgan summa yuborish (raqam va harfli izoh) va Rahbar tasdiqlashi...")
     given_res = request("/api/given/submit", "POST", {
         "amount": 200000,

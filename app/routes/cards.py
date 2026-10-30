@@ -182,4 +182,66 @@ async def update_topup_status(
         """, (topup_id, req.status, user["full_name"], f"Web panel orqali status {status_label} holatiga o'zgartirildi"))
         await conn.commit()
 
+    if topup["telegram_message_id"]:
+        import asyncio
+        from app.bot import update_group_card_topup_status
+        asyncio.create_task(update_group_card_topup_status(
+            message_id=topup["telegram_message_id"],
+            topup_id=topup_id,
+            new_status=req.status,
+            actor_name=user["full_name"]
+        ))
+
     return {"success": True, "message": f"Karta so'rovi muvaffaqiyatli {status_label} holatiga o'tkazildi!"}
+
+@router.post("/{topup_id}/reject")
+async def reject_card_topup(
+    topup_id: int, 
+    user: dict = Depends(get_current_user)
+):
+    """Xodim o'zi yuborgan karta to'ldirish so'rovini rad etishi (bekor qilishi)"""
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ?", (topup_id,))
+        topup = await cursor.fetchone()
+        if not topup:
+            raise HTTPException(status_code=404, detail="So'rov topilmadi!")
+
+        # Faqat o'z so'rovini yoki Bosh Rahbar rad eta oladi
+        if user["role"] != "ADMIN" and topup["employee_id"] != user["id"]:
+            raise HTTPException(status_code=403, detail="Siz faqat o'zingiz yuborgan karta so'rovini rad eta olasiz!")
+
+        if topup["status"] == "REJECTED":
+            raise HTTPException(status_code=400, detail="Ushbu so'rov allaqachon rad etilgan!")
+
+        if topup["status"] == "APPROVED":
+            raise HTTPException(status_code=400, detail="Tasdiqlangan karta so'rovini rad etib bo'lmaydi!")
+
+        approved_label = f"Rad etildi (Xodim: {user['full_name']})"
+        await conn.execute("""
+            UPDATE card_topups 
+            SET status = 'REJECTED', approved_by_name = ? 
+            WHERE id = ?
+        """, (approved_label, topup_id))
+
+        await conn.execute("""
+            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
+            VALUES ('CARD_TOPUP', ?, 'REJECT', ?, ?)
+        """, (topup_id, user["full_name"], f"Xodim #{topup['transaction_number']} sonli karta so'rovini rad etdi"))
+        await conn.commit()
+
+    if topup["telegram_message_id"]:
+        import asyncio
+        from app.bot import update_group_card_topup_status
+        asyncio.create_task(update_group_card_topup_status(
+            message_id=topup["telegram_message_id"],
+            topup_id=topup_id,
+            new_status="REJECTED",
+            actor_name=user["full_name"],
+            reason_text="Xodim bekor qildi"
+        ))
+
+    return {
+        "success": True, 
+        "message": f"#{topup['transaction_number']} sonli karta so'rovi muvaffaqiyatli rad etildi!"
+    }
