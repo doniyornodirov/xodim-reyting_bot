@@ -426,7 +426,7 @@ async function handleLoginStep1(e) {
   const tgIdClean = tgIdRaw.replace(/\D/g, "");
 
   if (!tgIdClean || !password.trim()) {
-    const msg = "Telegram ID va parolni kiriting!";
+    const msg = "Login va parolni kiriting!";
     if (alertEl) { alertEl.innerText = msg; alertEl.style.display = "block"; }
     showToast(msg, "danger");
     return;
