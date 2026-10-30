@@ -8,6 +8,14 @@
       "destination": "https://xodim-reyting-bot.onrender.com/api/:match*"
     },
     {
+      "source": "/sw.js",
+      "destination": "/static/sw.js"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "/static/manifest.json"
+    },
+    {
       "source": "/static/:match*",
       "destination": "/static/:match*"
     },
@@ -21,6 +29,50 @@
     }
   ],
   "headers": [
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/static/sw.js",
+      "headers": [
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        }
+      ]
+    },
+    {
+      "source": "/static/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        }
+      ]
+    },
     {
       "source": "/static/css/(.*)",
       "headers": [

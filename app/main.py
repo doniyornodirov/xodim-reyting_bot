@@ -85,9 +85,28 @@ app.include_router(settings.router)
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
+@app.get("/manifest.json")
+async def manifest():
+    manifest_file = STATIC_DIR / "manifest.json"
+    if manifest_file.exists():
+        return FileResponse(manifest_file, media_type="application/manifest+json")
+    return {"error": "manifest.json topilmadi"}
+
+@app.get("/sw.js")
+async def service_worker():
+    sw_file = STATIC_DIR / "sw.js"
+    if sw_file.exists():
+        return FileResponse(
+            sw_file,
+            media_type="application/javascript",
+            headers={"Service-Worker-Allowed": "/"}
+        )
+    return {"error": "sw.js topilmadi"}
+
 @app.get("/")
 async def root():
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
     return {"message": "Xodim-Reyting CRM API ishlamoqda. static/index.html topilmadi."}
+
