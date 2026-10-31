@@ -428,8 +428,12 @@ if (document.readyState === "loading") {
   prewarmBackend();
 }
 
+let isLoginStep1InProgress = false;
+
 async function handleLoginStep1(e) {
   if (e) e.preventDefault();
+  if (isLoginStep1InProgress) return;
+  isLoginStep1InProgress = true;
   const alertEl = document.getElementById("login-error-alert");
   const submitBtn = document.getElementById("btn-login-submit");
   if (alertEl) {
@@ -444,6 +448,7 @@ async function handleLoginStep1(e) {
   const tgIdClean = tgIdRaw.replace(/\D/g, "");
 
   if (!tgIdClean || !password.trim()) {
+    isLoginStep1InProgress = false;
     const msg = "Login va parolni kiriting!";
     if (alertEl) { alertEl.innerText = msg; alertEl.style.display = "block"; }
     showToast(msg, "danger");
@@ -452,6 +457,7 @@ async function handleLoginStep1(e) {
 
   const left = getCooldownSecondsLeft();
   if (left > 0) {
+    isLoginStep1InProgress = false;
     const msg = `1 minutda faqat 1 marta urinish mumkin! Qayta urinish ${left} soniyadan keyin.`;
     if (alertEl) { alertEl.innerText = msg; alertEl.style.display = "block"; }
     showToast(msg, "warning");
@@ -505,6 +511,7 @@ async function handleLoginStep1(e) {
       startOtpCountdown(getCooldownSecondsLeft() || 60);
     }
   } finally {
+    isLoginStep1InProgress = false;
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.innerText = "Kirish ➡️";
@@ -545,18 +552,30 @@ function handleRetryLogin() {
   showLoginModal();
 }
 
+let isVerifyOtpInProgress = false;
+
 // Login Step 2: Verify OTP
 async function handleVerifyOtp(e) {
   if (e) e.preventDefault();
+  if (isVerifyOtpInProgress) return;
+  isVerifyOtpInProgress = true;
+
   const alertEl = document.getElementById("otp-error-alert");
+  const submitBtn = document.getElementById("btn-verify-submit");
   if (alertEl) alertEl.style.display = "none";
 
   const otp = document.getElementById("otp-code-input")?.value.trim() || "";
   if (!otp || otp.length !== 6) {
+    isVerifyOtpInProgress = false;
     const msg = "6 xonali tasdiqlash kodini to'liq kiriting!";
     if (alertEl) { alertEl.innerText = msg; alertEl.style.display = "block"; }
     showToast(msg, "danger");
     return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = "⏳ Tekshirilmoqda...";
   }
 
   try {
@@ -580,6 +599,12 @@ async function handleVerifyOtp(e) {
     if (alertEl) {
       alertEl.innerText = err.message || "Kodni tekshirishda xatolik!";
       alertEl.style.display = "block";
+    }
+  } finally {
+    isVerifyOtpInProgress = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Tasdiqlash va Kirish 🔓";
     }
   }
 }
