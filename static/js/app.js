@@ -463,24 +463,11 @@ async function handleLoginStep1(e) {
     submitBtn.innerText = "⏳ Tekshirilmoqda...";
   }
 
-  // Agar server ancha vaqt kirmaganlik tufayli uyquda (sleep) bo'lsa, xabardor qilish
-  const wakeTimer = setTimeout(() => {
-    if (alertEl && submitBtn && submitBtn.disabled) {
-      alertEl.style.background = "rgba(245, 158, 11, 0.15)";
-      alertEl.style.borderColor = "rgba(245, 158, 11, 0.4)";
-      alertEl.style.color = "#fcd34d";
-      alertEl.innerText = "⏳ Server uyg'onmoqda (ancha vaqt kirmaganingiz sababli), iltimos 10-15 soniya kuting...";
-      alertEl.style.display = "block";
-    }
-  }, 3200);
-
   try {
     const res = await api("/api/auth/login", "POST", {
       telegram_id: parseInt(tgIdClean, 10),
       password: password.trim()
     });
-
-    clearTimeout(wakeTimer);
     pendingTelegramId = parseInt(tgIdClean, 10);
 
     // Step 2 ga o'tish (OTP Kod kiritish oynasi)
@@ -501,7 +488,6 @@ async function handleLoginStep1(e) {
       otpInput.focus();
     }
   } catch (err) {
-    clearTimeout(wakeTimer);
     const errText = err.message || "Kirishda xatolik yuz berdi!";
     if (alertEl) {
       alertEl.style.background = "rgba(239, 68, 68, 0.15)";
