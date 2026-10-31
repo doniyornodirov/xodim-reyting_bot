@@ -201,35 +201,36 @@ async def send_otp_to_telegram(telegram_id: int, otp_code: str) -> bool:
         f"⚠️ Ushbu kod <b>1 daqiqa</b> amal qiladi. Kodni hech kimga bermang!"
     )
 
-    # 1. Aiogram orqali yuborish (2.5 soniya kutish)
+    # 1. To'g'ridan-to'g'ri Telegram HTTP API orqali (eng tezkor va ishonchli, eski soket muammosidan xoli)
+    import aiohttp
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        timeout = aiohttp.ClientTimeout(total=3.0)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(url, json={
+                "chat_id": telegram_id,
+                "text": text,
+                "parse_mode": "HTML"
+            }) as resp:
+                data = await resp.json()
+                if data.get("ok"):
+                    logger.info(f"OTP kod Telegram HTTP API orqali bir zumda yuborildi: {telegram_id}")
+                    return True
+                else:
+                    logger.warning(f"Telegram HTTP API javobi: {data}")
+    except Exception as e:
+        logger.warning(f"Telegram HTTP API orqali yuborishda xatolik ({e}), aiogram zaxirasiga o'tilmoqda...")
+
+    # 2. Aiogram zaxira kanali
     if bot:
         try:
             await asyncio.wait_for(
                 bot.send_message(chat_id=telegram_id, text=text, parse_mode="HTML"),
-                timeout=2.5
+                timeout=3.0
             )
             return True
         except Exception as e:
-            logger.warning(f"Aiogram orqali yuborishda ogohlantirish ({e}), tezkor HTTP API ga o'tilmoqda...")
-
-    # 2. To'g'ridan-to'g'ri Telegram HTTP API orqali (100% kafolatlangan zaxira)
-    import httpx
-    try:
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            resp = await client.post(url, json={
-                "chat_id": telegram_id,
-                "text": text,
-                "parse_mode": "HTML"
-            })
-            data = resp.json()
-            if data.get("ok"):
-                logger.info(f"OTP kod Telegram HTTP API orqali muvaffaqiyatli yuborildi: {telegram_id}")
-                return True
-            else:
-                logger.error(f"Telegram HTTP API xatolik qaytardi: {data}")
-    except Exception as e:
-        logger.error(f"Telegram HTTP API orqali yuborishda xatolik: {e}")
+            logger.error(f"Aiogram zaxira orqali ham yuborib bo'lmadi: {e}")
 
     return False
 
