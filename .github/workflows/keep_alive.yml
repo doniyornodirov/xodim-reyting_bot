@@ -1,0 +1,16 @@
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Render.com bepul tarifi 15 daqiqa harakatsizlikda uyquga ketadi.
+    # Har 12 daqiqada avtomatik ping yuborib, serverni doimiy uyg'oq (24/7) ushlab turamiz.
+    - cron: '*/12 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render Backend
+        run: |
+          curl -s -f --max-time 45 https://xodim-reyting-bot.onrender.com/health || echo "Ping yuborildi"

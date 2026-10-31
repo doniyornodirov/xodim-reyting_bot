@@ -201,22 +201,22 @@ async def send_otp_to_telegram(telegram_id: int, otp_code: str) -> bool:
         f"⚠️ Ushbu kod <b>1 daqiqa</b> amal qiladi. Kodni hech kimga bermang!"
     )
 
-    # 1. Aiogram orqali yuborish
+    # 1. Aiogram orqali yuborish (2.5 soniya kutish)
     if bot:
         try:
             await asyncio.wait_for(
                 bot.send_message(chat_id=telegram_id, text=text, parse_mode="HTML"),
-                timeout=5.0
+                timeout=2.5
             )
             return True
         except Exception as e:
-            logger.warning(f"Aiogram orqali yuborishda ogohlantirish: {e}")
+            logger.warning(f"Aiogram orqali yuborishda ogohlantirish ({e}), tezkor HTTP API ga o'tilmoqda...")
 
     # 2. To'g'ridan-to'g'ri Telegram HTTP API orqali (100% kafolatlangan zaxira)
     import httpx
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=4.0) as client:
             resp = await client.post(url, json={
                 "chat_id": telegram_id,
                 "text": text,

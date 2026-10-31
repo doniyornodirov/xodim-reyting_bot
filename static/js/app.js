@@ -416,10 +416,28 @@ function updateRetryButtonUI() {
   }
 }
 
+// Serverni oldindan uyg'otib qo'yish (Cold-start va uyqudan uyg'onish kechikishining oldini olish)
+function prewarmBackend() {
+  try {
+    fetch("/api/health").catch(() => {});
+  } catch(e) {}
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", prewarmBackend);
+} else {
+  prewarmBackend();
+}
+
 async function handleLoginStep1(e) {
   if (e) e.preventDefault();
   const alertEl = document.getElementById("login-error-alert");
-  if (alertEl) alertEl.style.display = "none";
+  const submitBtn = document.getElementById("btn-login-submit");
+  if (alertEl) {
+    alertEl.style.display = "none";
+    alertEl.style.background = "rgba(239, 68, 68, 0.15)";
+    alertEl.style.borderColor = "rgba(239, 68, 68, 0.4)";
+    alertEl.style.color = "#fca5a5";
+  }
 
   const tgIdRaw = document.getElementById("login-telegram-id")?.value || "";
   const password = document.getElementById("login-password")?.value || "";
@@ -440,12 +458,29 @@ async function handleLoginStep1(e) {
     return;
   }
 
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = "⏳ Tekshirilmoqda...";
+  }
+
+  // Agar server ancha vaqt kirmaganlik tufayli uyquda (sleep) bo'lsa, xabardor qilish
+  const wakeTimer = setTimeout(() => {
+    if (alertEl && submitBtn && submitBtn.disabled) {
+      alertEl.style.background = "rgba(245, 158, 11, 0.15)";
+      alertEl.style.borderColor = "rgba(245, 158, 11, 0.4)";
+      alertEl.style.color = "#fcd34d";
+      alertEl.innerText = "⏳ Server uyg'onmoqda (ancha vaqt kirmaganingiz sababli), iltimos 10-15 soniya kuting...";
+      alertEl.style.display = "block";
+    }
+  }, 3200);
+
   try {
     const res = await api("/api/auth/login", "POST", {
       telegram_id: parseInt(tgIdClean, 10),
       password: password.trim()
     });
 
+    clearTimeout(wakeTimer);
     pendingTelegramId = parseInt(tgIdClean, 10);
 
     // Step 2 ga o'tish (OTP Kod kiritish oynasi)
@@ -466,8 +501,12 @@ async function handleLoginStep1(e) {
       otpInput.focus();
     }
   } catch (err) {
+    clearTimeout(wakeTimer);
     const errText = err.message || "Kirishda xatolik yuz berdi!";
     if (alertEl) {
+      alertEl.style.background = "rgba(239, 68, 68, 0.15)";
+      alertEl.style.borderColor = "rgba(239, 68, 68, 0.4)";
+      alertEl.style.color = "#fca5a5";
       alertEl.innerText = errText;
       alertEl.style.display = "block";
     }
@@ -478,6 +517,11 @@ async function handleLoginStep1(e) {
       const tgDisplay = document.getElementById("otp-tg-id-display");
       if (tgDisplay) tgDisplay.innerText = tgIdClean;
       startOtpCountdown(getCooldownSecondsLeft() || 60);
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Kirish ➡️";
     }
   }
 }
