@@ -14,3 +14,4 @@ jobs:
       - name: Ping Render Backend
         run: |
           curl -s -f --max-time 45 https://xodim-reyting-bot.onrender.com/health || echo "Ping yuborildi"
+

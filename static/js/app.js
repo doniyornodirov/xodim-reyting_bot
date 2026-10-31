@@ -2987,15 +2987,39 @@ async function loadAdminAudit() {
 async function triggerManualRetentionCleanup() {
   if (!confirm("90 kundan eski barcha tarix ma'lumotlarini tozalashni tasdiqlaysizmi?")) return;
   try {
-    const res = await api("/api/admin/retention/run-cleanup", { method: "POST" });
+    const res = await api("/api/admin/retention/run-cleanup", "POST");
     if (res.success) {
       showToast(res.message, "success");
       await loadAdminAudit();
     } else {
-      showToast(res.detail || "Tozalashda xatolik yuz berdi", "error");
+      showToast(res.detail || "Tozalashda xatolik yuz berdi", "danger");
     }
   } catch (e) {
-    showToast("Server bilan bog'lanishda xatolik!", "error");
+    showToast("Server bilan bog'lanishda xatolik!", "danger");
+  }
+}
+
+async function handleClearAllHistory() {
+  const confirmed = confirm(
+    "⚠️ DIQQAT: Barcha test operatsiyalari (karta so'rovlari, berilgan summalar, kunlik hisobotlar, kassa topshirishlar, sim-kartalar va audit tarixi) to'liq tozalanadi va xodimlar qarzlari 0 ga tenglashtiriladi!\n\nHaqiqatan ham barcha tarixni tozalashni tasdiqlaysizmi?"
+  );
+  if (!confirmed) return;
+
+  try {
+    const res = await api("/api/admin/clear-history", "POST");
+    if (res.success) {
+      showToast(res.message || "Barcha tarix muvaffaqiyatli tozalandi!", "success");
+      await loadAdminAudit();
+      if (typeof loadAdminTopups === "function") loadAdminTopups();
+      if (typeof loadAdminReports === "function") loadAdminReports();
+      if (typeof loadAdminUsers === "function") loadAdminUsers();
+      if (typeof loadAdminCashierHandovers === "function") loadAdminCashierHandovers();
+      if (typeof loadSimDistributionsHistory === "function") loadSimDistributionsHistory();
+    } else {
+      showToast(res.detail || "Xatolik yuz berdi", "danger");
+    }
+  } catch (err) {
+    showToast(err.message || "Tarixni tozalashda xatolik yuz berdi", "danger");
   }
 }
 

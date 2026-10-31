@@ -477,3 +477,45 @@ async def trigger_data_retention_cleanup(admin: dict = Depends(require_role(["AD
         "data": res
     }
 
+
+@router.post("/clear-history")
+async def admin_clear_history(admin: dict = Depends(require_role(["ADMIN"]))):
+    """Barcha amaliyotlar tarixini tozalash va nollashtirish (faqat Bosh Rahbar uchun)"""
+    async with aiosqlite.connect(DB_PATH) as conn:
+        tables_to_clear = [
+            "card_topups",
+            "given_amounts",
+            "daily_reports",
+            "cashier_handovers",
+            "cashier_history",
+            "otp_codes",
+            "audit_logs",
+            "sim_cards",
+            "sim_distributions"
+        ]
+        results = {}
+        for table in tables_to_clear:
+            cur = await conn.execute(f"DELETE FROM {table}")
+            results[table] = cur.rowcount
+
+        cur = await conn.execute("UPDATE users SET debt_amount = 0.0")
+        results["users_debt_reset"] = cur.rowcount
+
+        try:
+            await conn.execute("DELETE FROM sqlite_sequence WHERE name NOT IN ('users', 'system_settings')")
+        except Exception:
+            pass
+
+        await conn.execute("""
+            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
+            VALUES ('SYSTEM', 0, 'CLEAR_HISTORY', ?, 'Barcha test amaliyotlari va operatsiyalar tarixi tozalab nollashtirildi')
+        """, (admin["full_name"],))
+
+        await conn.commit()
+
+        return {
+            "success": True,
+            "message": "Barcha operatsiyalar tarixi muvaffaqiyatli tozalandi va nollashtirildi!",
+            "details": results
+        }
+
