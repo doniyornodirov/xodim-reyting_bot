@@ -650,12 +650,37 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeSidebarMenu();
 });
 
+function updateDebtBadges() {
+  const debtBadge = document.getElementById("nav-user-debt");
+  const sidebarDebt = document.getElementById("sidebar-user-debt");
+  const hasDebt = currentUser && currentUser.role !== "ADMIN" && currentUser.debt_amount && Number(currentUser.debt_amount) > 0;
+  const debtText = hasDebt ? `Qarz: ${formatNumberSpaces(currentUser.debt_amount)} so'm` : "";
+
+  if (debtBadge) {
+    if (hasDebt) {
+      debtBadge.style.display = "inline-flex";
+      debtBadge.innerText = debtText;
+    } else {
+      debtBadge.style.display = "none";
+      debtBadge.innerText = "";
+    }
+  }
+  if (sidebarDebt) {
+    if (hasDebt) {
+      sidebarDebt.style.display = "inline-flex";
+      sidebarDebt.innerText = debtText;
+    } else {
+      sidebarDebt.style.display = "none";
+      sidebarDebt.innerText = "";
+    }
+  }
+}
+
 function updateSidebarContent() {
   if (!currentUser) return;
 
   const nameEl = document.getElementById("sidebar-user-name");
   const roleEl = document.getElementById("sidebar-user-role");
-  const debtEl = document.getElementById("sidebar-user-debt");
   const usdRateEl = document.getElementById("sidebar-usd-rate-text");
 
   if (usdRateEl && currentUsdRate) {
@@ -682,14 +707,7 @@ function updateSidebarContent() {
     }
   }
 
-  if (debtEl) {
-    if (currentUser.role !== "ADMIN" && currentUser.debt_amount !== undefined) {
-      debtEl.style.display = "inline-flex";
-      debtEl.innerText = `Qarz: ${formatNumberSpaces(currentUser.debt_amount)} so'm`;
-    } else {
-      debtEl.style.display = "none";
-    }
-  }
+  updateDebtBadges();
 
   const navContainer = document.getElementById("sidebar-nav-list");
   if (!navContainer) return;
@@ -818,8 +836,7 @@ function renderApp() {
   } else if (currentUser.role === "CASHIER") {
     roleBadge.className = "badge badge-cashier";
     roleBadge.innerText = "💼 Kassir";
-    debtBadge.style.display = "inline-flex";
-    debtBadge.innerText = `Qarz: ${formatNumberSpaces(currentUser.debt_amount)} so'm`;
+    updateDebtBadges();
     if (usdRateBadge) {
       usdRateBadge.style.cursor = "default";
       usdRateBadge.title = "Joriy dollar kursi";
@@ -848,8 +865,7 @@ function renderApp() {
     // EMPLOYEE (Oddiy xodim)
     roleBadge.className = "badge badge-employee";
     roleBadge.innerText = "👤 Xodim";
-    debtBadge.style.display = "inline-flex";
-    debtBadge.innerText = `Qarz: ${formatNumberSpaces(currentUser.debt_amount)} so'm`;
+    updateDebtBadges();
     if (usdRateBadge) {
       usdRateBadge.style.cursor = "default";
       usdRateBadge.title = "Joriy dollar kursi";
@@ -1211,17 +1227,35 @@ async function loadDailyReportPrefill() {
     const initialDebt = res.debt_snapshot || 0;
     const existingDebtPaid = (res.existing_report && res.existing_report.debt_paid) ? res.existing_report.debt_paid : 0;
     const remainingDebt = Math.max(0, initialDebt - existingDebtPaid);
-    document.getElementById("rep-debt-snapshot").value = formatNumberSpaces(remainingDebt);
     document.getElementById("rep-given-amount").value = formatNumberSpaces(res.given_amount);
 
+    // Xodimning qarzdorlik ma'lumotini sinxronlash va nishonlarni yangilash
+    if (currentUser && currentUser.role !== "ADMIN") {
+      currentUser.debt_amount = initialDebt;
+      updateDebtBadges();
+    }
+
+    const snapGroup = document.getElementById("rep-group-debt-snapshot");
+    const paidGroup = document.getElementById("rep-group-debt-paid");
     const debtPaidInput = document.getElementById("rep-debt-paid");
-    if (initialDebt <= 0) {
-      debtPaidInput.value = "0";
-      debtPaidInput.disabled = true;
-      debtPaidInput.placeholder = "Qarzdorlik yo'q";
+    const debtSnapInput = document.getElementById("rep-debt-snapshot");
+
+    if (initialDebt > 0) {
+      if (snapGroup) snapGroup.style.display = "";
+      if (paidGroup) paidGroup.style.display = "";
+      if (debtSnapInput) debtSnapInput.value = formatNumberSpaces(remainingDebt);
+      if (debtPaidInput) {
+        debtPaidInput.disabled = false;
+        debtPaidInput.placeholder = "0";
+      }
     } else {
-      debtPaidInput.disabled = false;
-      debtPaidInput.placeholder = "0";
+      if (snapGroup) snapGroup.style.display = "none";
+      if (paidGroup) paidGroup.style.display = "none";
+      if (debtSnapInput) debtSnapInput.value = "0";
+      if (debtPaidInput) {
+        debtPaidInput.value = "0";
+        debtPaidInput.disabled = true;
+      }
     }
 
     const banner = document.getElementById("rep-pending-alert");
@@ -1247,7 +1281,11 @@ async function loadDailyReportPrefill() {
       // Mavjud qiymatlarni forma maydonlariga joylash
       document.getElementById("rep-paynet").value = formatNumberSpaces(res.existing_report.paynet);
       document.getElementById("rep-leviy").value = formatNumberSpaces(res.existing_report.leviy);
-      document.getElementById("rep-debt-paid").value = formatNumberSpaces(res.existing_report.debt_paid);
+      if (initialDebt > 0) {
+        document.getElementById("rep-debt-paid").value = formatNumberSpaces(res.existing_report.debt_paid);
+      } else {
+        document.getElementById("rep-debt-paid").value = "0";
+      }
       document.getElementById("rep-sim-cards").value = res.existing_report.sim_cards_count;
       document.getElementById("rep-kunlik").value = formatNumberSpaces(res.existing_report.kunlik);
       document.getElementById("rep-terminal").value = formatNumberSpaces(res.existing_report.terminal);
@@ -1286,17 +1324,26 @@ function calculateLiveReportFormula() {
   const card = prefillData.card_amount || 0;
   const leviy = parseFormattedNumber(document.getElementById("rep-leviy").value);
   const initialDebt = prefillData.debt_snapshot || 0;
-  let debtPaid = parseFormattedNumber(document.getElementById("rep-debt-paid").value);
+  let debtPaid = 0;
 
-  // Agar qarz uchun to'lov mavjud qarzdorlikdan oshib ketsa, uni chegara qilish
-  if (initialDebt > 0 && debtPaid > initialDebt) {
-    debtPaid = initialDebt;
-    document.getElementById("rep-debt-paid").value = formatNumberSpaces(debtPaid);
+  if (initialDebt > 0) {
+    debtPaid = parseFormattedNumber(document.getElementById("rep-debt-paid")?.value || "0");
+    // Agar qarz uchun to'lov mavjud qarzdorlikdan oshib ketsa, uni chegara qilish
+    if (debtPaid > initialDebt) {
+      debtPaid = initialDebt;
+      const paidEl = document.getElementById("rep-debt-paid");
+      if (paidEl) paidEl.value = formatNumberSpaces(debtPaid);
+    }
+    const remainingDebt = Math.max(0, initialDebt - debtPaid);
+    const snapEl = document.getElementById("rep-debt-snapshot");
+    if (snapEl) snapEl.value = formatNumberSpaces(remainingDebt);
+  } else {
+    debtPaid = 0;
+    const snapEl = document.getElementById("rep-debt-snapshot");
+    if (snapEl) snapEl.value = "0";
+    const paidEl = document.getElementById("rep-debt-paid");
+    if (paidEl) paidEl.value = "0";
   }
-
-  // Qarzdorlikdan qarz uchun to'lov ayrilib boriladi
-  const remainingDebt = Math.max(0, initialDebt - debtPaid);
-  document.getElementById("rep-debt-snapshot").value = formatNumberSpaces(remainingDebt);
 
   const kunlik = parseFormattedNumber(document.getElementById("rep-kunlik").value);
   const terminal = parseFormattedNumber(document.getElementById("rep-terminal").value);
@@ -1321,7 +1368,8 @@ async function handleReportSubmit(e) {
 
   const paynet = parseFormattedNumber(document.getElementById("rep-paynet").value);
   const leviy = parseFormattedNumber(document.getElementById("rep-leviy").value);
-  const debtPaid = parseFormattedNumber(document.getElementById("rep-debt-paid").value);
+  const initialDebt = prefillData.debt_snapshot || 0;
+  const debtPaid = (initialDebt > 0) ? parseFormattedNumber(document.getElementById("rep-debt-paid").value) : 0;
   const simCards = parseInt(document.getElementById("rep-sim-cards").value) || 0;
   const kunlik = parseFormattedNumber(document.getElementById("rep-kunlik").value);
   const terminal = parseFormattedNumber(document.getElementById("rep-terminal").value);
