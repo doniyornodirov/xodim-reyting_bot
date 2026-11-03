@@ -1246,7 +1246,7 @@ async function loadDailyReportPrefill() {
       if (debtSnapInput) debtSnapInput.value = formatNumberSpaces(remainingDebt);
       if (debtPaidInput) {
         debtPaidInput.disabled = false;
-        debtPaidInput.placeholder = "0";
+        debtPaidInput.placeholder = "0 (kamida 50 000)";
       }
     } else {
       if (snapGroup) snapGroup.style.display = "none";
@@ -1370,6 +1370,17 @@ async function handleReportSubmit(e) {
   const leviy = parseFormattedNumber(document.getElementById("rep-leviy").value);
   const initialDebt = prefillData.debt_snapshot || 0;
   const debtPaid = (initialDebt > 0) ? parseFormattedNumber(document.getElementById("rep-debt-paid").value) : 0;
+
+  if (initialDebt > 0 && debtPaid > 0) {
+    const minAllowed = Math.min(50000, initialDebt);
+    if (debtPaid < minAllowed) {
+      showToast(`Qarz uchun to'lov eng kamida ${formatNumberSpaces(minAllowed)} so'm bo'lishi kerak!`, "danger");
+      const paidInput = document.getElementById("rep-debt-paid");
+      if (paidInput) paidInput.focus();
+      return;
+    }
+  }
+
   const simCards = parseInt(document.getElementById("rep-sim-cards").value) || 0;
   const kunlik = parseFormattedNumber(document.getElementById("rep-kunlik").value);
   const terminal = parseFormattedNumber(document.getElementById("rep-terminal").value);

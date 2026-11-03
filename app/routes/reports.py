@@ -122,6 +122,13 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(get_c
                 detail=f"Qarz uchun kiritilgan summa ({req.debt_paid:,.0f}) mavjud qarzdorlikdan ({debt_snapshot:,.0f}) ko'p bo'lishi mumkin emas!"
             )
 
+        min_allowed = min(50000, debt_snapshot)
+        if 0 < req.debt_paid < min_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Qarz uchun to'lov eng kamida {min_allowed:,.0f} so'm bo'lishi kerak!"
+            )
+
         # Hisob-kitoblar:
         # Qarzdorlik kirimga qo'shilmaydi! Faqat qarz uchun to'lov kiritilsa kirimga qo'shiladi va qarzdorlikdan ayrilib boriladi.
         total_inflow = round(req.paynet + card_amount + req.leviy + req.debt_paid, 2)
