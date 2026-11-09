@@ -14,7 +14,7 @@ for secret_path in [
     if secret_path.exists() and secret_path.is_file():
         load_dotenv(secret_path, override=True)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8932019841:AAFCkLdoBhzmkGJy3L0MY4-esw0_aToQiZY").strip()
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 BOT_USERNAME = os.getenv("BOT_USERNAME", "xodimreyting_bot").strip().lstrip("@")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID", "-5381348358").strip()
 RAHBAR_ID = os.getenv("RAHBAR_ID", "8686341550").strip()

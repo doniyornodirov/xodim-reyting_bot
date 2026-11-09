@@ -63,7 +63,7 @@ Railway — Docker asosida ishlovchi, server xatoliklarida o'z-o'zini avtomatik 
 3. Railway loyihadagi [`Dockerfile`](file:///c:/Users/Doniyor/Xodim-reyting/Dockerfile) va [`railway.json`](file:///c:/Users/Doniyor/Xodim-reyting/railway.json) ni avtomatik taniydi.
 4. Loyihaning **"Variables"** bo'limiga quyidagi muhit o'zgaruvchilarini kiriting:
    ```env
-   BOT_TOKEN=8932019841:AAFCkLdoBhzmkGJy3L0MY4-esw0_aToQiZY
+   BOT_TOKEN=your_telegram_bot_token_here
    TELEGRAM_GROUP_ID=-1005381348358
    RAHBAR_ID=8686341550
    JWT_SECRET=super_kriptografik_maxfiy_jwt_kalit_2026

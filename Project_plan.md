@@ -23,7 +23,7 @@ Paynet shaxobchasi va sim-karta ulanishlaridagi kundalik amaliyotlarni (karta to
 
 ### B. Ma'lumotlar Xavfsizligi va Integratsiya Parametrlari (GEMINI.md asosida):
 1. **Rasmiy Telegram Konfiguratsiyasi**:
-   - **Bot Tokeni**: `8932019841:AAFCkLdoBhzmkGJy3L0MY4-esw0_aToQiZY`
+   - **Bot Tokeni**: Maxfiy kalit (Faqat xavfsiz `.env` muhitida saqlanadi)
    - **Bosh Rahbar Telegram ID**: `8686341550` (Tizimga birlamchi Administrator huquqi bilan biriktirilgan)
    - **Telegram Guruh ID**: `-5381348358` (Karta to'ldirish so'rovlari va bildirishnomalar yuboriladigan rasmiy guruh)
 2. **2FA / OTP (Ikki bosqichli autentifikatsiya)**:
@@ -440,7 +440,7 @@ Loyiha davomida foydalanuvchi tomonidan berilgan barcha fikr-mulohazalar (feedba
 | **5** | **Kassir (`Cashier`) Vazifasi** | `cashier` so'zining noaniqligi va uning vazifasi. | `cashier` — bu o'zbek tilida `Kassir`. U bugungi kunga biriktirilgan xodim bo'lib, o'z amaliyotlaridan tashqari qo'shimcha "Kassadan pul qabul qilish" oynasi orqali boshqa xodimlardan naqd pulni qabul qiladi. |
 | **6** | **To'liq O'zbek Tili Standarti** | Inglizcha atamalar (`ADMIN`, `CASHIER`, `EMPLOYEE`, `APPROVED`, `REJECTED`, `PENDING`) mavjud edi. | Barcha atamalar va bildirishnomalar sof o'zbek tiliga o'tkazildi: `Bosh Rahbar`, `Kassir`, `Xodim`, `Tasdiqlandi ✅`, `Rad etildi ❌`, `Kutilmoqda ⏳`. |
 | **7** | **Hisobot O'chganda Qiymatlarni Qaytarish (Rollback)** | Qayta topshirilganda oraliq summalar hisobdan adashmasligi kerak edi. | Agar tasdiqlanmagan (`Kutilmoqda`) hisobot ustidan yangisi yuborilsa, eski hisobotdagi "Qarz uchun" kabi barcha hisoblar bekor bo'lib, qarz dastlabki holiga qaytadi va yangi hisobot toza qabul qilinadi. |
-| **8** | **Haqiqiy Telegram Integratsiyasi** | Standart test tokenlari mavjud edi. | Berilgan rasmiy bot tokeni (`8932019841:...`), Rahbar ID (`8686341550`) va Guruh ID (`-5381348358`) to'liq ulandi va ishga tushirildi. |
+| **8** | **Haqiqiy Telegram Integratsiyasi** | Standart test tokenlari mavjud edi. | Berilgan rasmiy bot, Rahbar ID (`8686341550`) va Guruh ID (`-5381348358`) to'liq ulandi va ishga tushirildi. |
 | **9** | **Sim-karta Tarqatish va Seriya Qidiruvi** | Sim-kartalar soni faqat hisobotda ko'rsatilgan, seriyalari va kimga berilganligi tizimda yuritilmagan. | Kassir va Rahbar uchun 18 xonali raqamli seriyalarni diapazon ("...dan ...gacha") ko'rinishida xodimga tarqatish moduli qo'shildi. Rahbar uchun seriya raqami yozilganda xodim, sana va tarqatuvchini bir zumda topib beruvchi qidiruv paneli joriy qilindi. |
 | **10** | **Toshkent Vaqti (UTC+5) Standarti** | Ma'lumotlar bazasidagi UTC vaqtlar sababli operatsiyalar vaqti 5 soat orqada ko'rinayotgan edi. | Barcha sanalar va vaqtlar Toshkent vaqti (+5 soat) bo'yicha hisoblanadigan qilib `DD.MM.YYYY HH:mm` formatiga o'tkazildi. |
 | **11** | **Xodim Qo'shish va Qarz Belgilashni Ajratish** | Xodim qo'shish formasida qarz kiritish aralashib ketgan va qarz sababi kiritilmas edi. | Yangi xodim qo'shish (faqat Telegram ID, F.I.SH) va Qarz belgilash (xodim tanlash, qarz summasi va sababi) 2 ta mustaqil modulga ajratildi. Qarzdorlik 0 so'm holatida ham to'g'ri ko'rsatilishi ta'minlandi. |
