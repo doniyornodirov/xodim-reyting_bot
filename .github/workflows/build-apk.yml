@@ -7,6 +7,9 @@ on:
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Debug APK
@@ -32,7 +35,7 @@ jobs:
       - name: Build Debug APK
         working-directory: ./android
         run: |
-          gradle assembleDebug --stacktrace
+          gradle assembleDebug --stacktrace --info
 
       - name: Prepare APK for Release
         run: |
