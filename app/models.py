@@ -63,6 +63,8 @@ class SetEmployeeWorkplaceRequest(BaseModel):
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Kenglik (Latitude)")
     longitude: float = Field(..., ge=-180.0, le=180.0, description="Uzunlik (Longitude)")
     radius_meters: int = Field(default=50, ge=5, le=5000, description="Geofence radiusi (metrlarda)")
+    work_start_time: str = Field(default="09:00", description="Ish boshlanish vaqti (HH:MM)")
+    work_end_time: str = Field(default="19:00", description="Ish tugash vaqti (HH:MM)")
 
 class WorkplaceLocationUpdate(BaseModel):
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Kenglik (Latitude)")

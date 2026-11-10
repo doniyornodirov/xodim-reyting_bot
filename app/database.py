@@ -124,7 +124,9 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN workplace_name TEXT DEFAULT 'Ish joyi'",
             "ALTER TABLE users ADD COLUMN workplace_latitude REAL",
             "ALTER TABLE users ADD COLUMN workplace_longitude REAL",
-            "ALTER TABLE users ADD COLUMN workplace_radius_meters INTEGER DEFAULT 50"
+            "ALTER TABLE users ADD COLUMN workplace_radius_meters INTEGER DEFAULT 50",
+            "ALTER TABLE users ADD COLUMN work_start_time TEXT DEFAULT '09:00'",
+            "ALTER TABLE users ADD COLUMN work_end_time TEXT DEFAULT '19:00'"
         ]:
             try:
                 await conn.execute(col_sql)

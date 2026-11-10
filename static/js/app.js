@@ -3540,8 +3540,8 @@ async function loadAdminLocationTab(showToastNotice = false) {
 
     adminEmployeesLocationCache.forEach(emp => {
       if (emp.is_workplace_configured) configured++;
-      if (emp.is_inside === true) inside++;
-      else if (emp.is_inside === false) outside++;
+      if (emp.is_within_hours && emp.is_inside === true) inside++;
+      else if (emp.is_within_hours && emp.is_inside === false) outside++;
     });
 
     const totalEl = document.getElementById("geo-stat-total");
@@ -3560,7 +3560,7 @@ async function loadAdminLocationTab(showToastNotice = false) {
     tbody.innerHTML = "";
 
     if (adminEmployeesLocationCache.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
       return;
     }
 
@@ -3570,12 +3570,20 @@ async function loadAdminLocationTab(showToastNotice = false) {
       const wpCoords = isConfigured ? `<code>${emp.workplace_latitude.toFixed(5)}, ${emp.workplace_longitude.toFixed(5)}</code>` : `<span style="opacity: 0.5;">-</span>`;
       const wpRadius = isConfigured ? `<span class="badge" style="font-size: 0.75rem;">${emp.workplace_radius_meters} m</span>` : `<span style="opacity: 0.5;">-</span>`;
 
+      const workStart = emp.work_start_time || '09:00';
+      const workEnd = emp.work_end_time || '19:00';
+      const isWithin = emp.is_within_hours !== false;
+      const hoursBadge = `<span class="badge" style="background: ${isWithin ? 'rgba(99, 102, 241, 0.15)' : 'rgba(100, 116, 139, 0.15)'}; color: ${isWithin ? '#a5b4fc' : '#94a3b8'}; font-size: 0.75rem; white-space: nowrap;">⏰ ${workStart} - ${workEnd} ${isWithin ? '🟢' : '🌙'}</span>`;
+
       let distCell = "";
       let statusBadge = "";
 
       if (!isConfigured) {
         distCell = `<span style="opacity: 0.5;">-</span>`;
         statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 0.75rem;">⚪ Belgilanmagan</span>`;
+      } else if (!isWithin) {
+        distCell = `<span style="opacity: 0.65; font-size: 0.75rem; color: #94a3b8;">🌙 Ish vaqti emas</span>`;
+        statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; font-size: 0.75rem;">🌙 Dam olish vaqti</span>`;
       } else if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
         const distM = Math.round(emp.last_distance_meters);
         const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
@@ -3615,6 +3623,7 @@ async function loadAdminLocationTab(showToastNotice = false) {
           <td><code>${emp.telegram_id}</code></td>
           <td><span class="badge ${emp.role === 'CASHIER' ? 'badge-cashier' : 'badge-employee'}">${formatRoleName(emp.role)}</span></td>
           <td>${wpName}</td>
+          <td>${hoursBadge}</td>
           <td>${wpCoords}</td>
           <td>${wpRadius}</td>
           <td>${distCell}</td>
@@ -3623,7 +3632,7 @@ async function loadAdminLocationTab(showToastNotice = false) {
           <td>
             <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
               <button type="button" class="btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="openSetEmployeeLocationModal(${emp.id})">
-                ${isConfigured ? '✏️ Kordinata' : '📍 Kordinata kiritish'}
+                ${isConfigured ? '✏️ Sozlash' : '📍 Kordinata & Vaqt'}
               </button>
               ${mapBtn}
               ${wpMapBtn}
@@ -3655,6 +3664,8 @@ function openSetEmployeeLocationModal(userId) {
   document.getElementById("modal-emp-wp-lat").value = emp.workplace_latitude ?? "";
   document.getElementById("modal-emp-wp-lon").value = emp.workplace_longitude ?? "";
   document.getElementById("modal-emp-wp-radius").value = emp.workplace_radius_meters || 50;
+  document.getElementById("modal-emp-work-start").value = emp.work_start_time || "09:00";
+  document.getElementById("modal-emp-work-end").value = emp.work_end_time || "19:00";
 
   modal.style.display = "flex";
 }
@@ -3677,6 +3688,8 @@ async function handleSetEmployeeLocationSubmit(e) {
   const lat = parseFloat(document.getElementById("modal-emp-wp-lat")?.value);
   const lon = parseFloat(document.getElementById("modal-emp-wp-lon")?.value);
   const radius = parseInt(document.getElementById("modal-emp-wp-radius")?.value || "50", 10);
+  const workStart = document.getElementById("modal-emp-work-start")?.value || "09:00";
+  const workEnd = document.getElementById("modal-emp-work-end")?.value || "19:00";
 
   if (isNaN(lat) || isNaN(lon)) {
     showToast("Kenglik va uzunlik to'g'ri kiritilishi shart!", "danger");
@@ -3689,10 +3702,12 @@ async function handleSetEmployeeLocationSubmit(e) {
       workplace_name: name,
       latitude: lat,
       longitude: lon,
-      radius_meters: radius
+      radius_meters: radius,
+      work_start_time: workStart,
+      work_end_time: workEnd
     });
 
-    showToast(res.message || "Xodim uchun kordinata saqlandi!", "success");
+    showToast(res.message || "Xodim uchun kordinata va ish vaqti saqlandi!", "success");
     closeSetEmployeeLocationModal();
     await loadAdminLocationTab(false);
   } catch (err) {
@@ -3772,6 +3787,17 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
     badge.innerHTML = "<span>📍</span> Ish joyi belgilanmagan";
     badge.title = "Rahbar hali sizga ish joyi koordinatasini biriktirmagan";
+    return;
+  }
+
+  // Agar hozir xodimning ish soatlari bo'lmasa:
+  if (myAssignedWorkplace && myAssignedWorkplace.is_within_hours === false) {
+    badge.style.background = "rgba(100, 116, 139, 0.2)";
+    badge.style.color = "#cbd5e1";
+    badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
+    const hours = (myAssignedWorkplace.work_start_time || '09:00') + ' - ' + (myAssignedWorkplace.work_end_time || '19:00');
+    badge.innerHTML = `<span>🌙</span> Dam olish (${hours})`;
+    badge.title = `Ish vaqti emas (${hours}). Geolokatsiya kuzatuvi to'xtatilgan.`;
     return;
   }
 
@@ -3866,12 +3892,18 @@ async function startAutoLocationTracking() {
       lastPingedCoords = { latitude: lat, longitude: lon };
       try {
         const pingRes = await api("/api/location/ping", "POST", { latitude: lat, longitude: lon });
-        if (pingRes && pingRes.success && pingRes.is_configured) {
-          updateNavbarLocationBadge(
-            Math.round(pingRes.distance_meters),
-            pingRes.is_inside,
-            true
-          );
+        if (pingRes && pingRes.success) {
+          if (pingRes.is_within_hours === false) {
+            if (myAssignedWorkplace) myAssignedWorkplace.is_within_hours = false;
+            updateNavbarLocationBadge(null, false, true);
+          } else if (pingRes.is_configured) {
+            if (myAssignedWorkplace) myAssignedWorkplace.is_within_hours = true;
+            updateNavbarLocationBadge(
+              Math.round(pingRes.distance_meters),
+              pingRes.is_inside,
+              true
+            );
+          }
         }
       } catch (err) {
         console.warn("Lokatsiya serverga yuborilmadi:", err.message);

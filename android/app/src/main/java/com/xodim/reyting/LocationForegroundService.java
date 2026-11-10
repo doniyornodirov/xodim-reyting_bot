@@ -232,15 +232,22 @@ public class LocationForegroundService extends Service {
                                 sb.append(line);
                             }
                             JSONObject res = new JSONObject(sb.toString());
-                            boolean inside = res.optBoolean("inside_workplace", false);
-                            double distance = res.optDouble("distance_meters", 0.0);
+                            boolean isWithinHours = res.optBoolean("is_within_hours", true);
                             String wpName = res.optString("workplace_name", "Ish joyi");
+                            final String notifText;
 
-                            AppPreferences.updateLastPing(LocationForegroundService.this, latitude, longitude, distance, inside, wpName);
-
-                            final String notifText = inside
-                                    ? "📍 " + wpName + ": Ish joyida ✅ (" + Math.round(distance) + " m)"
-                                    : "⚠️ " + wpName + ": Tashqarida (" + Math.round(distance) + " m)";
+                            if (!isWithinHours) {
+                                String sTime = res.optString("work_start_time", "09:00");
+                                String eTime = res.optString("work_end_time", "19:00");
+                                notifText = "🌙 " + wpName + ": Dam olish vaqti (" + sTime + " - " + eTime + ")";
+                            } else {
+                                boolean inside = res.optBoolean("is_inside", false);
+                                double distance = res.optDouble("distance_meters", 0.0);
+                                AppPreferences.updateLastPing(LocationForegroundService.this, latitude, longitude, distance, inside, wpName);
+                                notifText = inside
+                                        ? "📍 " + wpName + ": Ish joyida ✅ (" + Math.round(distance) + " m)"
+                                        : "⚠️ " + wpName + ": Tashqarida (" + Math.round(distance) + " m)";
+                            }
 
                             handler.post(new Runnable() {
                                 @Override

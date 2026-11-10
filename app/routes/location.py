@@ -1,5 +1,5 @@
 import math
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 import aiosqlite
 
@@ -8,6 +8,8 @@ from app.dependencies import get_current_user, require_role
 from app.models import LocationPingRequest, SetEmployeeWorkplaceRequest
 
 router = APIRouter(prefix="/api/location", tags=["Location & Geofencing"])
+
+UZB_TZ = timezone(timedelta(hours=5))
 
 def calculate_haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
@@ -25,13 +27,35 @@ def calculate_haversine_meters(lat1: float, lon1: float, lat2: float, lon2: floa
     c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
     return round(R * c, 1)
 
+def get_current_tashkent_hm() -> str:
+    """O'zbekiston (Toshkent, UTC+5) bo'yicha joriy HH:MM vaqt"""
+    return datetime.now(UZB_TZ).strftime("%H:%M")
+
+def is_time_within_interval(current_hm: str, start_hm: str, end_hm: str) -> bool:
+    """
+    Berilgan joriy vaqt (HH:MM) xodimning ish boshlanish va tugash soatlari oralig'ida ekanligini tekshiradi.
+    Kunduzgi smena (masalan: 09:00 - 19:00) va tungi smena (masalan: 20:00 - 06:00) ni to'liq qo'llab-quvvatlaydi.
+    """
+    if not start_hm or not end_hm:
+        return True
+    s = start_hm.strip()[:5]
+    e = end_hm.strip()[:5]
+    c = current_hm.strip()[:5]
+
+    if s <= e:
+        return s <= c <= e
+    else:
+        # Tungi smena
+        return c >= s or c <= e
+
 @router.get("/my-workplace")
 async def get_my_workplace(user: dict = Depends(get_current_user)):
-    """Xodimning o'ziga biriktirilgan ish joyi kordinatalarini olish"""
+    """Xodimning o'ziga biriktirilgan ish joyi va belgilangan ish soatlarini olish"""
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cur = await conn.execute("""
-            SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters
+            SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
+                   work_start_time, work_end_time
             FROM users WHERE id = ?
         """, (user["id"],))
         row = await cur.fetchone()
@@ -42,6 +66,10 @@ async def get_my_workplace(user: dict = Depends(get_current_user)):
         w_lat = row["workplace_latitude"]
         w_lon = row["workplace_longitude"]
         is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
+        start_time = row["work_start_time"] or "09:00"
+        end_time = row["work_end_time"] or "19:00"
+        current_hm = get_current_tashkent_hm()
+        is_within_hours = is_time_within_interval(current_hm, start_time, end_time)
 
         return {
             "success": True,
@@ -49,7 +77,11 @@ async def get_my_workplace(user: dict = Depends(get_current_user)):
             "workplace_name": row["workplace_name"] or "Ish joyi",
             "latitude": w_lat,
             "longitude": w_lon,
-            "radius_meters": row["workplace_radius_meters"] or 50
+            "radius_meters": row["workplace_radius_meters"] or 50,
+            "work_start_time": start_time,
+            "work_end_time": end_time,
+            "is_within_hours": is_within_hours,
+            "current_time": current_hm
         }
 
 @router.post("/ping")
@@ -59,8 +91,8 @@ async def ping_employee_location(
 ):
     """
     Xodim qurilmasidan avtomatik davriy lokatsiya yuborish.
-    Rahbar kuzatilmaydi (faqat xodimlar).
-    Xodimdan hech qanday qo'lda kiritish talab qilinmaydi.
+    Faqat belgilangan ish vaqti oralig'ida kuzatiladi.
+    Ish vaqtidan tashqarida xodimning shaxsiy daxlsizligi saqlanadi va kordinata yozilmaydi.
     """
     if user["role"] == "ADMIN":
         return {"success": True, "message": "Rahbar kuzatilmaydi"}
@@ -69,13 +101,33 @@ async def ping_employee_location(
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cur = await conn.execute("""
-            SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters
+            SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
+                   work_start_time, work_end_time
             FROM users WHERE id = ?
         """, (user_id,))
         row = await cur.fetchone()
 
         if not row:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Xodim topilmadi")
+
+        start_time = row["work_start_time"] or "09:00"
+        end_time = row["work_end_time"] or "19:00"
+        current_hm = get_current_tashkent_hm()
+        is_within_hours = is_time_within_interval(current_hm, start_time, end_time)
+
+        # Agar hozir ish vaqti bo'lmasa, kordinatani saqlamaymiz va "Dam olish vaqti" qaytaramiz
+        if not is_within_hours:
+            return {
+                "success": True,
+                "is_within_hours": False,
+                "work_start_time": start_time,
+                "work_end_time": end_time,
+                "current_time": current_hm,
+                "status_text": "Ish vaqti emas 🌙 (Dam olish)",
+                "distance_meters": None,
+                "is_inside": None,
+                "workplace_name": row["workplace_name"] or "Ish joyi"
+            }
 
         w_lat = row["workplace_latitude"]
         w_lon = row["workplace_longitude"]
@@ -112,6 +164,10 @@ async def ping_employee_location(
 
         return {
             "success": True,
+            "is_within_hours": True,
+            "work_start_time": start_time,
+            "work_end_time": end_time,
+            "current_time": current_hm,
             "distance_meters": distance_meters,
             "radius_meters": w_radius,
             "is_inside": is_inside,
@@ -126,8 +182,7 @@ async def set_employee_workplace(
     admin: dict = Depends(require_role(["ADMIN"]))
 ):
     """
-    Bosh Rahbar tomonidan muayyan xodim uchun alohida ish joyi lokatsiyasini belgilash.
-    Har bir xodim uchun alohida kordinata va radius bo'lishi mumkin.
+    Bosh Rahbar tomonidan muayyan xodim uchun alohida ish joyi lokatsiyasi va ISH VAQTI (soatlari)ni belgilash.
     """
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
@@ -145,6 +200,8 @@ async def set_employee_workplace(
         wp_lat = round(payload.latitude, 7)
         wp_lon = round(payload.longitude, 7)
         wp_radius = int(payload.radius_meters)
+        start_time = (payload.work_start_time or "09:00").strip()[:5]
+        end_time = (payload.work_end_time or "19:00").strip()[:5]
 
         # Agar xodim allaqachon lokatsiya yuborgan bo'lsa, yangi ish joyigacha masofasini darhol qayta hisoblash
         new_distance = None
@@ -162,13 +219,15 @@ async def set_employee_workplace(
                 workplace_latitude = ?,
                 workplace_longitude = ?,
                 workplace_radius_meters = ?,
+                work_start_time = ?,
+                work_end_time = ?,
                 last_distance_meters = ?
             WHERE id = ?
-        """, (wp_name, wp_lat, wp_lon, wp_radius, new_distance, payload.user_id))
+        """, (wp_name, wp_lat, wp_lon, wp_radius, start_time, end_time, new_distance, payload.user_id))
 
         audit_details = (
-            f"Xodim '{target_user['full_name']}' uchun alohida ish joyi belgilandi: {wp_name} "
-            f"({wp_lat:.6f}, {wp_lon:.6f}), radius: {wp_radius} metr"
+            f"Xodim '{target_user['full_name']}' uchun ish joyi ({wp_name}, {wp_lat:.6f}, {wp_lon:.6f}, "
+            f"radius: {wp_radius}m) va ish vaqti ({start_time} - {end_time}) belgilandi"
         )
         await conn.execute("""
             INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
@@ -179,12 +238,14 @@ async def set_employee_workplace(
 
         return {
             "success": True,
-            "message": f"Xodim '{target_user['full_name']}' uchun ish joyi ({wp_name}) muvaffaqiyatli saqlandi! Radius: {wp_radius} metr",
+            "message": f"Xodim '{target_user['full_name']}' uchun ish joyi va ish vaqti ({start_time} - {end_time}) muvaffaqiyatli saqlandi!",
             "employee_id": payload.user_id,
             "workplace_name": wp_name,
             "latitude": wp_lat,
             "longitude": wp_lon,
             "radius_meters": wp_radius,
+            "work_start_time": start_time,
+            "work_end_time": end_time,
             "distance_meters": new_distance
         }
 
@@ -208,6 +269,8 @@ async def clear_employee_workplace(
                 workplace_latitude = NULL,
                 workplace_longitude = NULL,
                 workplace_radius_meters = 50,
+                work_start_time = '09:00',
+                work_end_time = '19:00',
                 last_distance_meters = NULL
             WHERE id = ?
         """, (user_id,))
@@ -228,7 +291,7 @@ async def clear_employee_workplace(
 @router.get("/employees")
 async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"]))):
     """
-    Barcha xodimlarning alohida biriktirilgan ish joylari va ularning jonli joylashuvi.
+    Barcha xodimlarning alohida biriktirilgan ish joylari, ish vaqti soatlari va ularning jonli holati.
     Faqat Bosh Rahbar ko'ra oladi.
     """
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -237,6 +300,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
         cur = await conn.execute("""
             SELECT id, telegram_id, full_name, role, is_active,
                    workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
+                   work_start_time, work_end_time,
                    last_latitude, last_longitude, last_distance_meters, last_location_updated_at
             FROM users
             WHERE is_active = 1 AND role != 'ADMIN'
@@ -248,11 +312,16 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
         """)
         rows = await cur.fetchall()
 
+        current_hm = get_current_tashkent_hm()
         employees = []
         for r in rows:
             w_lat = r["workplace_latitude"]
             w_lon = r["workplace_longitude"]
             is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
+
+            start_time = r["work_start_time"] or "09:00"
+            end_time = r["work_end_time"] or "19:00"
+            is_within_hours = is_time_within_interval(current_hm, start_time, end_time)
 
             dist = r["last_distance_meters"]
             radius = r["workplace_radius_meters"] or 50
@@ -268,6 +337,10 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                 "workplace_longitude": w_lon,
                 "workplace_radius_meters": radius,
                 "is_workplace_configured": is_configured,
+                "work_start_time": start_time,
+                "work_end_time": end_time,
+                "is_within_hours": is_within_hours,
+                "current_server_time": current_hm,
                 "last_latitude": r["last_latitude"],
                 "last_longitude": r["last_longitude"],
                 "last_distance_meters": dist,
@@ -277,5 +350,6 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
 
         return {
             "success": True,
+            "current_server_time": current_hm,
             "employees": employees
         }
