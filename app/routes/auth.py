@@ -41,8 +41,8 @@ async def login(req: LoginRequest):
                 )
 
             # Kompaniya holatini tekshirish
-            owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
-            is_super_admin = (int(user["telegram_id"]) == owner_id_val or user["role"] == "SUPER_ADMIN")
+            dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
+            is_super_admin = (int(user["telegram_id"]) == dev_id_val or user["role"] == "DEVELOPER")
             if not is_super_admin:
                 comp_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
                 cur_c = await conn.execute("SELECT * FROM companies WHERE id = ?", (comp_id,))
@@ -182,11 +182,16 @@ async def verify_otp(req: VerifyOtpRequest):
         })
 
         # Kompaniya nomini olish
-        comp_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
-        cur_c = await conn.execute("SELECT name, plan FROM companies WHERE id = ?", (comp_id,))
-        comp = await cur_c.fetchone()
-        comp_name = comp["name"] if comp else "Bosh Tashkilot"
-        comp_plan = comp["plan"] if comp else "STANDARD"
+        if user["role"] == "DEVELOPER":
+            comp_id = 0
+            comp_name = "SaaS Platforma"
+            comp_plan = "PLATFORM"
+        else:
+            comp_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
+            cur_c = await conn.execute("SELECT name, plan FROM companies WHERE id = ?", (comp_id,))
+            comp = await cur_c.fetchone()
+            comp_name = comp["name"] if comp else "Bosh Tashkilot"
+            comp_plan = comp["plan"] if comp else "STANDARD"
 
         dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
         is_super_admin = (int(user["telegram_id"]) == dev_id_val or user["role"] == "DEVELOPER")

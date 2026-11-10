@@ -395,10 +395,19 @@ async function initApp() {
       const res = await api("/api/auth/me");
       currentUser = res.user;
       localStorage.setItem("crm_last_activity", Date.now().toString());
+      try {
+        try {
       renderApp();
+    } catch (renderErr) {
+      console.error("renderApp xatosi:", renderErr);
+    }
+      } catch (renderErr) {
+        console.error("renderApp xatosi:", renderErr);
+      }
       syncWithAndroidBridge();
       return;
     } catch (e) {
+      console.warn("Auth token yaroqsiz:", e);
       authToken = null;
       localStorage.removeItem("crm_token");
       localStorage.removeItem("crm_last_activity");
@@ -628,7 +637,11 @@ async function handleVerifyOtp(e) {
     clearInterval(otpCountdownTimer);
     document.getElementById("login-modal").style.display = "none";
     showToast("Tizimga muvaffaqiyatli kirdingiz!", "success");
-    renderApp();
+    try {
+      renderApp();
+    } catch (renderErr) {
+      console.error("renderApp xatosi:", renderErr);
+    }
     syncWithAndroidBridge();
   } catch (err) {
     if (alertEl) {
@@ -936,12 +949,20 @@ function renderApp() {
   document.querySelectorAll(".admin-pane").forEach(p => p.style.display = "none");
   document.querySelectorAll(".employee-pane").forEach(p => p.style.display = "none");
 
-  // Dollar kursini barcha foydalanuvchilar uchun yangilash
-  loadUsdRate();
+  const navCompBadge = document.getElementById("nav-company-badge");
+  const navCompName = document.getElementById("nav-company-name");
+  const sidebarCompBadge = document.getElementById("sidebar-company-badge");
+  const sidebarCompName = document.getElementById("sidebar-company-name");
+
   const usdRateBadge = document.getElementById("usd-rate-badge");
   const rahbarCashierToggle = document.getElementById("btn-rahbar-cashier-toggle");
 
   const isDev = (currentUser.role === "DEVELOPER");
+
+  // Dollar kursini faqat oddiy foydalanuvchilar va rahbar uchun yuklash
+  if (!isDev) {
+    loadUsdRate();
+  }
 
   // Dasturchi Admin xodim ham, rahbar ham emas — alohida SaaS Platforma boshqaruvchisi!
   if (isDev) {
