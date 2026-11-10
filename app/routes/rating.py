@@ -12,6 +12,7 @@ async def get_leaderboard(period: str = "monthly", user: dict = Depends(get_curr
     - Berilgan va tasdiqlangan hisobot summasining har 1 000 000 so'miga = 1 ball
     - Har 1 dona sim kartaga = 1 ball
     """
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
 
@@ -30,10 +31,10 @@ async def get_leaderboard(period: str = "monthly", user: dict = Depends(get_curr
         FROM users u
         LEFT JOIN daily_reports dr 
             ON dr.employee_id = u.id AND dr.status = 'APPROVED' {date_filter}
-        WHERE u.is_active = 1 AND u.role != 'ADMIN'
+        WHERE u.is_active = 1 AND u.role != 'ADMIN' AND u.company_id = ?
         GROUP BY u.id
         """
-        cursor = await conn.execute(query)
+        cursor = await conn.execute(query, (comp_id,))
         rows = await cursor.fetchall()
 
         leaderboard = []

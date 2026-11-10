@@ -10,18 +10,19 @@ router = APIRouter(prefix="/api/cashier", tags=["Cashier"])
 @router.get("/employees")
 async def get_active_employees(user: dict = Depends(require_role(["CASHIER", "ADMIN"]))):
     today_str = get_tashkent_today_str()
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role 
             FROM users 
-            WHERE is_active = 1 AND role != 'ADMIN'
+            WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
               AND id NOT IN (
                   SELECT employee_id FROM cashier_handovers 
-                  WHERE handover_date = ?
+                  WHERE handover_date = ? AND company_id = ?
               )
             ORDER BY full_name ASC
-        """, (today_str,))
+        """, (comp_id, today_str, comp_id))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
@@ -38,6 +39,7 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
     from app.security import get_tashkent_now
 
     today_str = get_tashkent_today_str()
+    comp_id = user.get("company_id") or 1
 
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
@@ -59,7 +61,7 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
         if total_amount <= 0:
             raise HTTPException(status_code=400, detail="Qabul qilinayotgan summa 0 dan katta bo'lishi shart!")
 
-        cursor = await conn.execute("SELECT full_name, telegram_id, role FROM users WHERE id = ?", (req.employee_id,))
+        cursor = await conn.execute("SELECT full_name, telegram_id, role FROM users WHERE id = ? AND company_id = ?", (req.employee_id, comp_id))
         emp = await cursor.fetchone()
         if not emp:
             raise HTTPException(status_code=404, detail="Xodim topilmadi!")
@@ -68,16 +70,16 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
 
         # Bugun allaqachon topshirganini tekshirish
         cursor = await conn.execute(
-            "SELECT id FROM cashier_handovers WHERE employee_id = ? AND handover_date = ?",
-            (req.employee_id, today_str)
+            "SELECT id FROM cashier_handovers WHERE employee_id = ? AND handover_date = ? AND company_id = ?",
+            (req.employee_id, today_str, comp_id)
         )
         if await cursor.fetchone():
             raise HTTPException(status_code=400, detail=f"{emp['full_name']} bugungi kassa summasini allaqachon topshirgan!")
 
         cursor = await conn.execute("""
-            INSERT INTO cashier_handovers (cashier_id, employee_id, handover_date, amount, amount_uzs, amount_usd, usd_rate)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (user["id"], req.employee_id, today_str, total_amount, amount_uzs, amount_usd, usd_rate))
+            INSERT INTO cashier_handovers (company_id, cashier_id, employee_id, handover_date, amount, amount_uzs, amount_usd, usd_rate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (comp_id, user["id"], req.employee_id, today_str, total_amount, amount_uzs, amount_usd, usd_rate))
         handover_id = cursor.lastrowid
 
         parts = []
@@ -90,9 +92,9 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
         log_text = f"Kassir {user['full_name']} xodim {emp['full_name']}dan kassa qabul qildi: {details_breakdown} (Jami ekvivalent: {total_amount:,.0f} so'm)".replace(",", " ")
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('CASHIER_HANDOVER', ?, 'RECORD', ?, ?)
-        """, (handover_id, user["full_name"], log_text))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'CASHIER_HANDOVER', ?, 'RECORD', ?, ?)
+        """, (comp_id, handover_id, user["full_name"], log_text))
         await conn.commit()
 
         # Telegram orqali xodimga rasmiy chek jo'natish
@@ -129,6 +131,7 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
 @router.get("/my-handovers")
 async def get_my_handovers(user: dict = Depends(require_role(["CASHIER", "ADMIN"]))):
     today_str = get_tashkent_today_str()
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
@@ -136,15 +139,16 @@ async def get_my_handovers(user: dict = Depends(require_role(["CASHIER", "ADMIN"
             FROM cashier_handovers ch
             JOIN users u ON ch.employee_id = u.id
             JOIN users cash ON ch.cashier_id = cash.id
-            WHERE ch.handover_date = ?
+            WHERE ch.handover_date = ? AND ch.company_id = ?
             ORDER BY ch.id DESC
-        """, (today_str,))
+        """, (today_str, comp_id))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
 @router.get("/comparison")
 async def get_comparison(date: str = None, user: dict = Depends(require_role(["ADMIN"]))):
     target_date = date or get_tashkent_today_str()
+    comp_id = user.get("company_id") or 1
 
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
@@ -162,7 +166,7 @@ async def get_comparison(date: str = None, user: dict = Depends(require_role(["A
             ch_agg.cashier_names
         FROM users u
         LEFT JOIN daily_reports dr 
-            ON dr.employee_id = u.id AND dr.report_date = ?
+            ON dr.employee_id = u.id AND dr.report_date = ? AND dr.company_id = ?
         LEFT JOIN (
             SELECT 
                 employee_id, 
@@ -172,13 +176,13 @@ async def get_comparison(date: str = None, user: dict = Depends(require_role(["A
                 GROUP_CONCAT(DISTINCT cashier_user.full_name) as cashier_names
             FROM cashier_handovers ch
             JOIN users cashier_user ON ch.cashier_id = cashier_user.id
-            WHERE ch.handover_date = ?
+            WHERE ch.handover_date = ? AND ch.company_id = ?
             GROUP BY employee_id
         ) ch_agg ON ch_agg.employee_id = u.id
-        WHERE u.is_active = 1 AND u.role != 'ADMIN'
+        WHERE u.is_active = 1 AND u.role != 'ADMIN' AND u.company_id = ?
         ORDER BY u.full_name ASC
         """
-        cursor = await conn.execute(query, (target_date, target_date))
+        cursor = await conn.execute(query, (target_date, comp_id, target_date, comp_id, comp_id))
         rows = await cursor.fetchall()
 
         results = []
@@ -205,6 +209,7 @@ async def get_comparison(date: str = None, user: dict = Depends(require_role(["A
 
 @router.get("/all-handovers")
 async def get_all_handovers(user: dict = Depends(require_role(["ADMIN"]))):
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
@@ -212,8 +217,9 @@ async def get_all_handovers(user: dict = Depends(require_role(["ADMIN"]))):
             FROM cashier_handovers ch
             JOIN users u ON ch.employee_id = u.id
             JOIN users cash ON ch.cashier_id = cash.id
+            WHERE ch.company_id = ?
             ORDER BY ch.handover_date DESC, ch.id DESC LIMIT 100
-        """)
+        """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 

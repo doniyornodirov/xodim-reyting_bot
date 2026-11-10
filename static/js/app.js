@@ -855,6 +855,7 @@ function updateSidebarContent() {
         { id: "sims", icon: "📲", title: "Sim-karta boshqaruvi", isAdmin: true },
         { id: "rating", icon: "🏆", title: "Reyting & KPI", isAdmin: true },
         { id: "audit", icon: "🛡️", title: "Audit loglar", isAdmin: true },
+        ...(currentUser.is_super_admin ? [{ id: "saas", icon: "🏢", title: "Firmalar (SaaS)", isAdmin: true }] : []),
         { id: "rahbar-cashier-toggle", icon: "💼", title: "Kassir rejimiga o'tish", isAction: true, action: "toggleRahbarCashierMode" }
       ];
     }
@@ -929,9 +930,25 @@ function renderApp() {
   const usdRateBadge = document.getElementById("usd-rate-badge");
   const rahbarCashierToggle = document.getElementById("btn-rahbar-cashier-toggle");
 
+  // Kompaniya nomini navbar va sidebarga o'rnatish
+  const compName = currentUser.company_name || "Bosh Tashkilot";
+  const navCompBadge = document.getElementById("nav-company-badge");
+  const navCompName = document.getElementById("nav-company-name");
+  const sidebarCompBadge = document.getElementById("sidebar-company-badge");
+  const sidebarCompName = document.getElementById("sidebar-company-name");
+  if (navCompName) navCompName.innerText = compName;
+  if (sidebarCompName) sidebarCompName.innerText = compName;
+  if (navCompBadge) navCompBadge.style.display = "inline-flex";
+  if (sidebarCompBadge) sidebarCompBadge.style.display = "inline-flex";
+
+  const saasTabBtn = document.getElementById("tab-btn-admin-saas");
+  if (saasTabBtn) {
+    saasTabBtn.style.display = currentUser.is_super_admin ? "inline-flex" : "none";
+  }
+
   if (currentUser.role === "ADMIN") {
     roleBadge.className = "badge badge-admin";
-    roleBadge.innerText = "👑 Bosh Rahbar";
+    roleBadge.innerText = currentUser.is_super_admin ? "👑 Super Admin" : "👑 Firma Rahbari";
     debtBadge.style.display = "none";
     if (usdRateBadge) {
       usdRateBadge.style.cursor = "pointer";
@@ -1131,6 +1148,7 @@ function switchAdminTab(tabName) {
   else if (tabName === "sims") loadAdminSimsTab();
   else if (tabName === "rating") loadLeaderboard("monthly", "admin");
   else if (tabName === "audit") loadAdminAudit();
+  else if (tabName === "saas") loadSaasCompanies();
 }
 
 // Xodim va Kassir tablarini almashtirish
@@ -4125,6 +4143,303 @@ document.addEventListener("visibilitychange", () => {
     navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 10000 });
   }
 });
+
+// ==========================================
+// SAAS MULTI-TENANT MANAGEMENT (Super Admin)
+// ==========================================
+
+async function loadSaasCompanies() {
+  if (!currentUser || !currentUser.is_super_admin) return;
+
+  const tbody = document.getElementById("saas-companies-tbody");
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 2rem;">Ma'lumotlar yuklanmoqda...</td></tr>`;
+  }
+
+  try {
+    const res = await apiRequest("/api/saas/companies");
+    if (!res.success || !res.data) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ef4444; padding: 2rem;">Yuklashda xatolik yuz berdi.</td></tr>`;
+      return;
+    }
+
+    const companies = res.data;
+
+    // Statistikalar
+    const totalCompanies = companies.length;
+    const activeCompanies = companies.filter(c => c.is_active).length;
+    const totalUsers = companies.reduce((sum, c) => sum + (c.employees_count || 0), 0);
+    const totalReports = companies.reduce((sum, c) => sum + (c.reports_count || 0), 0);
+
+    const statTotalEl = document.getElementById("saas-stat-total-companies");
+    const statActiveEl = document.getElementById("saas-stat-active-companies");
+    const statUsersEl = document.getElementById("saas-stat-total-users");
+    const statReportsEl = document.getElementById("saas-stat-total-reports");
+
+    if (statTotalEl) statTotalEl.innerText = totalCompanies;
+    if (statActiveEl) statActiveEl.innerText = activeCompanies;
+    if (statUsersEl) statUsersEl.innerText = totalUsers;
+    if (statReportsEl) statReportsEl.innerText = totalReports;
+
+    if (!tbody) return;
+    if (companies.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 2rem;">Hozircha firmalar mavjud emas.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = companies.map(c => {
+      const isMain = (c.id === 1);
+      const statusBadge = c.is_active 
+        ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 Faol</span>`
+        : `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">🔴 To'xtatilgan</span>`;
+
+      let expiryText = "";
+      if (c.plan === "UNLIMITED") {
+        expiryText = `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">Cheksiz (Unlimited)</span>`;
+      } else if (c.days_left !== null && c.days_left !== undefined) {
+        if (c.days_left <= 0) {
+          expiryText = `<b style="color: #ef4444;">Tugagan ⚠️</b>`;
+        } else if (c.days_left <= 5) {
+          expiryText = `<b style="color: #f59e0b;">${c.days_left} kun qoldi ⏳</b>`;
+        } else {
+          expiryText = `<span style="color: #34d399;">${c.days_left} kun qoldi</span>`;
+        }
+      } else {
+        expiryText = "-";
+      }
+
+      const planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3);">${c.plan}</span>`;
+
+      // Amallar tugmalari
+      let actionsHtml = `<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">`;
+      if (!isMain && c.plan !== "UNLIMITED") {
+        actionsHtml += `
+          <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem;" onclick="extendCompanySubscription(${c.id}, 30)">
+            +30 kun
+          </button>
+        `;
+      }
+      if (!isMain) {
+        if (c.is_active) {
+          actionsHtml += `
+            <button type="button" class="btn btn-danger" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="toggleCompanyActive(${c.id}, true)">
+              Bloklash
+            </button>
+          `;
+        } else {
+          actionsHtml += `
+            <button type="button" class="btn btn-success" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="toggleCompanyActive(${c.id}, false)">
+              Faollashtirish
+            </button>
+          `;
+        }
+      } else {
+        actionsHtml += `<span style="font-size: 0.75rem; color: #94a3b8;">Asosiy (Daxlsiz)</span>`;
+      }
+      actionsHtml += `</div>`;
+
+      return `
+        <tr>
+          <td><b>#${c.id}</b></td>
+          <td>
+            <b style="color: #fff; display: block;">${escapeHtml(c.name)}</b>
+            <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
+          </td>
+          <td>
+            <div style="font-weight: 600; color: #cbd5e1;">${escapeHtml(c.owner_name)}</div>
+            <code style="font-size: 0.75rem; color: #818cf8;">TG: ${c.owner_telegram_id || '-'}</code>
+          </td>
+          <td>
+            <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
+          </td>
+          <td>${planBadge}</td>
+          <td>
+            <div>${expiryText}</div>
+            ${c.subscription_expires_at ? `<span style="font-size: 0.7rem; color: #94a3b8;">${formatDateOnly(c.subscription_expires_at)}</span>` : ''}
+          </td>
+          <td>
+            <b style="color: #818cf8;">${c.employees_count || 0} ta</b>
+            ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #fbbf24; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
+          </td>
+          <td><b>${c.reports_count || 0} ta</b></td>
+          <td>${statusBadge}</td>
+          <td>${actionsHtml}</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (e) {
+    console.error("loadSaasCompanies xatosi:", e);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ef4444; padding: 2rem;">Server bilan aloqada xatolik yuz berdi.</td></tr>`;
+    }
+  }
+}
+
+async function handleCreateCompanySubmit(event) {
+  event.preventDefault();
+  const nameInput = document.getElementById("saas-new-name");
+  const ownerNameInput = document.getElementById("saas-new-owner-name");
+  const ownerTgInput = document.getElementById("saas-new-owner-tg");
+  const passwordInput = document.getElementById("saas-new-password");
+  const groupIdInput = document.getElementById("saas-new-group-id");
+  const daysSelect = document.getElementById("saas-new-subscription-days");
+  const planSelect = document.getElementById("saas-new-plan");
+
+  const name = nameInput?.value.trim();
+  const ownerName = ownerNameInput?.value.trim();
+  const ownerTg = parseInt(ownerTgInput?.value);
+  const initialPassword = passwordInput?.value.trim() || null;
+  const groupId = groupIdInput?.value.trim() || null;
+  const days = parseInt(daysSelect?.value || "30");
+  const plan = planSelect?.value || "STANDARD";
+
+  if (!name || !ownerName || !ownerTg) {
+    showToast("Iltimos, barcha majburiy maydonlarni to'ldiring!", "error");
+    return;
+  }
+
+  try {
+    const res = await apiRequest("/api/saas/companies/create", "POST", {
+      name: name,
+      owner_name: ownerName,
+      owner_telegram_id: ownerTg,
+      initial_password: initialPassword,
+      telegram_group_id: groupId,
+      subscription_days: days,
+      plan: plan
+    });
+
+    if (res.success) {
+      showToast(res.message || "Firma muvaffaqiyatli ro'yxatdan o'tkazildi!", "success");
+      document.getElementById("saas-create-company-form")?.reset();
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server bilan aloqa xatosi!", "error");
+  }
+}
+
+async function toggleCompanyActive(companyId, currentIsActive) {
+  const actionText = currentIsActive ? "to'xtatish (bloklash)" : "faollashtirish";
+  if (!confirm(`Haqiqatan ham #${companyId} firmadagi xizmatni ${actionText}ni xohlaysizmi?`)) {
+    return;
+  }
+
+  try {
+    const res = await apiRequest(`/api/saas/companies/${companyId}/toggle-active`, "POST");
+    if (res.success) {
+      showToast(res.message, "success");
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server xatosi!", "error");
+  }
+}
+
+async function extendCompanySubscription(companyId, days = 30) {
+  if (!confirm(`Firma obunasini +${days} kunga uzaytirishni tasdiqlaysizmi?`)) {
+    return;
+  }
+
+  try {
+    const res = await apiRequest(`/api/saas/companies/${companyId}/extend`, "POST", { days: days });
+    if (res.success) {
+      showToast(res.message, "success");
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server xatosi!", "error");
+  }
+}
+
+// ==========================================
+// KOMPANIYA SOZLAMALARI MODALI (Tenant Admin)
+// ==========================================
+
+async function openCompanySettingsModal() {
+  const modal = document.getElementById("company-settings-modal");
+  if (!modal) return;
+
+  try {
+    const res = await apiRequest("/api/saas/my-company");
+    if (res.success && res.data) {
+      const comp = res.data;
+      const nameEl = document.getElementById("company-modal-name");
+      const planEl = document.getElementById("company-modal-plan");
+      const daysLeftEl = document.getElementById("company-modal-days-left");
+      const expiresEl = document.getElementById("company-modal-expires");
+      const groupInput = document.getElementById("company-modal-group-input");
+      const saveBtn = document.getElementById("btn-company-save-settings");
+
+      if (nameEl) nameEl.innerText = comp.name;
+      if (planEl) planEl.innerText = comp.plan;
+      if (daysLeftEl) {
+        if (comp.plan === "UNLIMITED") {
+          daysLeftEl.innerText = "Cheksiz (UNLIMITED) ♾️";
+          daysLeftEl.style.color = "#818cf8";
+        } else if (comp.days_left <= 0) {
+          daysLeftEl.innerText = "Muddati tugagan 🔴";
+          daysLeftEl.style.color = "#ef4444";
+        } else {
+          daysLeftEl.innerText = `${comp.days_left} kun qoldi ⏳`;
+          daysLeftEl.style.color = "#34d399";
+        }
+      }
+      if (expiresEl) {
+        expiresEl.innerText = comp.subscription_expires_at ? formatDateOnly(comp.subscription_expires_at) : "Cheksiz";
+      }
+      if (groupInput) {
+        groupInput.value = comp.telegram_group_id || "";
+        groupInput.readOnly = (currentUser.role !== "ADMIN");
+      }
+      if (saveBtn) {
+        saveBtn.style.display = (currentUser.role === "ADMIN") ? "inline-flex" : "none";
+      }
+
+      modal.style.display = "flex";
+    }
+  } catch (e) {
+    showToast("Kompaniya ma'lumotlarini yuklashda xatolik!", "error");
+  }
+}
+
+function closeCompanySettingsModal() {
+  const modal = document.getElementById("company-settings-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function handleCompanyModalOverlayClick(event) {
+  if (event.target && event.target.id === "company-settings-modal") {
+    closeCompanySettingsModal();
+  }
+}
+
+async function handleCompanySettingsSubmit(event) {
+  event.preventDefault();
+  const groupInput = document.getElementById("company-modal-group-input");
+  const groupId = groupInput ? groupInput.value.trim() : "";
+
+  try {
+    const res = await apiRequest("/api/saas/my-company/settings", "POST", {
+      telegram_group_id: groupId
+    });
+    if (res.success) {
+      showToast(res.message || "Sozlamalar muvaffaqiyatli saqlandi!", "success");
+      closeCompanySettingsModal();
+    } else {
+      showToast(res.detail || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server xatosi!", "error");
+  }
+}
 
 // Window load init
 window.addEventListener("DOMContentLoaded", () => {

@@ -42,11 +42,12 @@ async def update_usd_rate(
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
         """, (str(new_rate),))
 
+        comp_id = admin.get("company_id") or 1
         audit_details = f"Dollar kursi yangilandi: 1$ = {formatted_rate} so'm"
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('SYSTEM', 1, 'UPDATE_USD_RATE', ?, ?)
-        """, (admin["full_name"], audit_details))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'SYSTEM', 1, 'UPDATE_USD_RATE', ?, ?)
+        """, (comp_id, admin["full_name"], audit_details))
 
         await conn.commit()
 

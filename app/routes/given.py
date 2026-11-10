@@ -32,17 +32,18 @@ async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(requi
         raise HTTPException(status_code=400, detail="Summa musbat bo'lishi shart!")
     validated_comment = validate_comment(req.comment)
 
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         cursor = await conn.execute("""
-            INSERT INTO given_amounts (employee_id, amount, comment, status)
-            VALUES (?, ?, ?, 'PENDING')
-        """, (user["id"], amount, validated_comment))
+            INSERT INTO given_amounts (company_id, employee_id, amount, comment, status)
+            VALUES (?, ?, ?, ?, 'PENDING')
+        """, (comp_id, user["id"], amount, validated_comment))
         given_id = cursor.lastrowid
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('GIVEN_AMOUNT', ?, 'CREATE', ?, ?)
-        """, (given_id, user["full_name"], f"Berilgan summa: {amount:,} so'm, Izoh: {validated_comment}"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'GIVEN_AMOUNT', ?, 'CREATE', ?, ?)
+        """, (comp_id, given_id, user["full_name"], f"Berilgan summa: {amount:,} so'm, Izoh: {validated_comment}"))
         await conn.commit()
 
     return {
@@ -58,26 +59,29 @@ async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(requi
 
 @router.get("/my-history")
 async def get_my_given_history(user: dict = Depends(get_current_user)):
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
             SELECT * FROM given_amounts 
-            WHERE employee_id = ? 
+            WHERE employee_id = ? AND company_id = ?
             ORDER BY id DESC LIMIT 50
-        """, (user["id"],))
+        """, (user["id"], comp_id))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
 @router.get("/all")
 async def get_all_given_amounts(user: dict = Depends(require_role(["ADMIN"]))):
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
             SELECT g.*, u.full_name as employee_name 
             FROM given_amounts g
             JOIN users u ON g.employee_id = u.id
+            WHERE g.company_id = ?
             ORDER BY g.id DESC LIMIT 100
-        """)
+        """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
@@ -90,9 +94,10 @@ async def update_given_status(
     if req.status not in ["APPROVED", "REJECTED"]:
         raise HTTPException(status_code=400, detail="Status 'APPROVED' yoki 'REJECTED' bo'lishi shart!")
 
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM given_amounts WHERE id = ?", (given_id,))
+        cursor = await conn.execute("SELECT * FROM given_amounts WHERE id = ? AND company_id = ?", (given_id, comp_id))
         record = await cursor.fetchone()
         if not record:
             raise HTTPException(status_code=404, detail="So'rov topilmadi!")
@@ -101,13 +106,13 @@ async def update_given_status(
         await conn.execute("""
             UPDATE given_amounts 
             SET status = ?, approved_by_id = ? 
-            WHERE id = ?
-        """, (req.status, user["id"], given_id))
+            WHERE id = ? AND company_id = ?
+        """, (req.status, user["id"], given_id, comp_id))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('GIVEN_AMOUNT', ?, ?, ?, ?)
-        """, (given_id, req.status, user["full_name"], f"Berilgan summa statusi {status_label} holatiga o'zgartirildi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'GIVEN_AMOUNT', ?, ?, ?, ?)
+        """, (comp_id, given_id, req.status, user["full_name"], f"Berilgan summa statusi {status_label} holatiga o'zgartirildi"))
         await conn.commit()
 
     return {"success": True, "message": f"So'rov muvaffaqiyatli {status_label} holatiga o'tkazildi!"}

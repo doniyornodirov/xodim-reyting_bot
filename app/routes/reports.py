@@ -84,6 +84,7 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
         )
     today_str = get_tashkent_today_str()
     comment = validate_comment(req.comment)
+    comp_id = user.get("company_id") or 1
 
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
@@ -91,8 +92,8 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
         # Avvalgi hisobotni tekshirish
         cursor = await conn.execute("""
             SELECT * FROM daily_reports 
-            WHERE employee_id = ? AND report_date = ?
-        """, (user["id"], today_str))
+            WHERE employee_id = ? AND report_date = ? AND company_id = ?
+        """, (user["id"], today_str, comp_id))
         existing = await cursor.fetchone()
 
         if existing and existing["status"] == "APPROVED":
@@ -105,20 +106,22 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
         cursor = await conn.execute("""
             SELECT COALESCE(SUM(surcharge_amount), 0) FROM card_topups
             WHERE employee_id = ? AND status = 'APPROVED' 
+            AND company_id = ?
             AND DATE(created_at, '+5 hours') = ?
-        """, (user["id"], today_str))
+        """, (user["id"], comp_id, today_str))
         card_amount = (await cursor.fetchone())[0]
 
         # Bugungi tasdiqlangan berilgan summa
         cursor = await conn.execute("""
             SELECT COALESCE(SUM(amount), 0) FROM given_amounts
             WHERE employee_id = ? AND status = 'APPROVED'
+            AND company_id = ?
             AND DATE(created_at, '+5 hours') = ?
-        """, (user["id"], today_str))
+        """, (user["id"], comp_id, today_str))
         given_amount = (await cursor.fetchone())[0]
 
         # Hozirgi qarzdorlik
-        cursor = await conn.execute("SELECT debt_amount FROM users WHERE id = ?", (user["id"],))
+        cursor = await conn.execute("SELECT debt_amount FROM users WHERE id = ? AND company_id = ?", (user["id"], comp_id))
         debt_snapshot = (await cursor.fetchone())[0]
 
         if req.debt_paid > debt_snapshot:
@@ -149,25 +152,25 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
                     given_amount = ?, skidka = ?, xarajat = ?, total_inflow = ?,
                     total_outflow = ?, net_amount = ?, comment = ?, status = 'PENDING',
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
+                WHERE id = ? AND company_id = ?
             """, (
                 req.paynet, card_amount, req.leviy, debt_snapshot,
                 req.debt_paid, req.sim_cards_count, req.kunlik, req.terminal,
                 given_amount, req.skidka, req.xarajat, total_inflow,
-                total_outflow, net_amount, comment, existing["id"]
+                total_outflow, net_amount, comment, existing["id"], comp_id
             ))
             report_id = existing["id"]
             action_desc = "Qayta topshirildi (Eskisi yangilandi va qiymatlar qayta hisoblandi)"
         else:
             cursor = await conn.execute("""
                 INSERT INTO daily_reports (
-                    employee_id, report_date, paynet, card_amount, leviy,
+                    company_id, employee_id, report_date, paynet, card_amount, leviy,
                     debt_snapshot, debt_paid, sim_cards_count, kunlik, terminal,
                     given_amount, skidka, xarajat, total_inflow, total_outflow,
                     net_amount, comment, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
             """, (
-                user["id"], today_str, req.paynet, card_amount, req.leviy,
+                comp_id, user["id"], today_str, req.paynet, card_amount, req.leviy,
                 debt_snapshot, req.debt_paid, req.sim_cards_count, req.kunlik, req.terminal,
                 given_amount, req.skidka, req.xarajat, total_inflow, total_outflow,
                 net_amount, comment
@@ -176,9 +179,9 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             action_desc = "Yangi topshirildi"
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('DAILY_REPORT', ?, 'SUBMIT', ?, ?)
-        """, (report_id, user["full_name"], f"{action_desc}: Sana {today_str}, Umumiy summa: {net_amount:,} so'm"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'DAILY_REPORT', ?, 'SUBMIT', ?, ?)
+        """, (comp_id, report_id, user["full_name"], f"{action_desc}: Sana {today_str}, Umumiy summa: {net_amount:,} so'm"))
         await conn.commit()
 
     # Xodimning shaxsiy Telegramiga (lichkasiga) hisobot tafsilotlarini yuborish
@@ -226,13 +229,14 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
 
 @router.get("/my-history")
 async def get_my_reports(user: dict = Depends(get_current_user)):
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
             SELECT * FROM daily_reports 
-            WHERE employee_id = ? 
+            WHERE employee_id = ? AND company_id = ?
             ORDER BY report_date DESC LIMIT 30
-        """, (user["id"],))
+        """, (user["id"], comp_id))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
@@ -244,15 +248,16 @@ async def get_all_reports(
     status: Optional[str] = Query(None, description="Status bo'yicha saralash"),
     user: dict = Depends(require_role(["ADMIN"]))
 ):
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         sql = """
             SELECT r.*, u.full_name as employee_name, u.telegram_id
             FROM daily_reports r
             JOIN users u ON r.employee_id = u.id
-            WHERE 1=1
+            WHERE r.company_id = ?
         """
-        params = []
+        params = [comp_id]
         if start_date and start_date.strip() and end_date and end_date.strip():
             sql += " AND r.report_date BETWEEN ? AND ?"
             params.extend([start_date.strip(), end_date.strip()])
@@ -285,9 +290,10 @@ async def update_report_status(
     if req.status not in ["APPROVED", "REJECTED"]:
         raise HTTPException(status_code=400, detail="Status 'APPROVED' yoki 'REJECTED' bo'lishi shart!")
 
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM daily_reports WHERE id = ?", (report_id,))
+        cursor = await conn.execute("SELECT * FROM daily_reports WHERE id = ? AND company_id = ?", (report_id, comp_id))
         report = await cursor.fetchone()
         if not report:
             raise HTTPException(status_code=404, detail="Hisobot topilmadi!")
@@ -304,8 +310,8 @@ async def update_report_status(
                 await conn.execute("""
                     UPDATE users 
                     SET debt_amount = MAX(0, debt_amount - ?)
-                    WHERE id = ?
-                """, (debt_paid, emp_id))
+                    WHERE id = ? AND company_id = ?
+                """, (debt_paid, emp_id, comp_id))
 
             # 2. Xodimning qo'lidagi sim-kartalaridan sim_sold donasini 'SOLD' (Sotilgan) holatiga o'tkazish
             if sim_sold > 0:
@@ -314,11 +320,11 @@ async def update_report_status(
                     SET status = 'SOLD', sold_at = CURRENT_TIMESTAMP
                     WHERE id IN (
                         SELECT id FROM sim_cards 
-                        WHERE employee_id = ? AND status = 'GIVEN'
+                        WHERE employee_id = ? AND status = 'GIVEN' AND company_id = ?
                         ORDER BY id ASC
                         LIMIT ?
                     )
-                """, (emp_id, sim_sold))
+                """, (emp_id, comp_id, sim_sold))
 
         # Agar oldin tasdiqlangan bo'lib, endi rad etilayotgan bo'lsa:
         elif old_status == "APPROVED" and req.status == "REJECTED":
@@ -327,8 +333,8 @@ async def update_report_status(
                 await conn.execute("""
                     UPDATE users 
                     SET debt_amount = debt_amount + ?
-                    WHERE id = ?
-                """, (debt_paid, emp_id))
+                    WHERE id = ? AND company_id = ?
+                """, (debt_paid, emp_id, comp_id))
 
             # 2. Sotilgan deb belgilangan sim-kartalarni yana 'GIVEN' holatiga qaytarish
             if sim_sold > 0:
@@ -337,26 +343,26 @@ async def update_report_status(
                     SET status = 'GIVEN', sold_at = NULL
                     WHERE id IN (
                         SELECT id FROM sim_cards 
-                        WHERE employee_id = ? AND status = 'SOLD'
+                        WHERE employee_id = ? AND status = 'SOLD' AND company_id = ?
                         ORDER BY id DESC
                         LIMIT ?
                     )
-                """, (emp_id, sim_sold))
+                """, (emp_id, comp_id, sim_sold))
 
         status_label = "Tasdiqlandi" if req.status == "APPROVED" else "Rad etildi"
         await conn.execute("""
             UPDATE daily_reports 
             SET status = ?, reviewed_by = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (req.status, user["id"], report_id))
+            WHERE id = ? AND company_id = ?
+        """, (req.status, user["id"], report_id, comp_id))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('DAILY_REPORT', ?, ?, ?, ?)
-        """, (report_id, req.status, user["full_name"], f"Hisobot statusi {status_label} holatiga o'zgartirildi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'DAILY_REPORT', ?, ?, ?, ?)
+        """, (comp_id, report_id, req.status, user["full_name"], f"Hisobot statusi {status_label} holatiga o'zgartirildi"))
 
         # Xodimning telegram ID sini olish
-        cursor = await conn.execute("SELECT telegram_id FROM users WHERE id = ?", (emp_id,))
+        cursor = await conn.execute("SELECT telegram_id FROM users WHERE id = ? AND company_id = ?", (emp_id, comp_id))
         emp_user = await cursor.fetchone()
         emp_tg_id = emp_user[0] if emp_user else None
 

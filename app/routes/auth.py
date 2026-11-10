@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 import aiosqlite
-from app.config import DB_PATH, OTP_EXPIRATION_SECONDS, DEBUG, BOT_USERNAME
+from app.config import DB_PATH, OTP_EXPIRATION_SECONDS, DEBUG, BOT_USERNAME, RAHBAR_ID
 from app.models import LoginRequest, VerifyOtpRequest
 from app.security import verify_password, generate_otp, create_access_token
 from app.bot import send_otp_to_telegram
@@ -39,6 +39,35 @@ async def login(req: LoginRequest):
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Parol noto'g'ri kiritildi!"
                 )
+
+            # Kompaniya holatini tekshirish
+            owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
+            is_super_admin = (int(user["telegram_id"]) == owner_id_val or user["role"] == "SUPER_ADMIN")
+            if not is_super_admin:
+                comp_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
+                cur_c = await conn.execute("SELECT * FROM companies WHERE id = ?", (comp_id,))
+                comp = await cur_c.fetchone()
+                if comp:
+                    if not comp["is_active"]:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Kompaniyangiz tizimdan vaqtinchalik to'xtatilgan (Bloklangan). Super Admin bilan bog'laning!"
+                        )
+                    if comp["plan"] != "UNLIMITED" and comp["subscription_expires_at"]:
+                        try:
+                            clean_exp = str(comp["subscription_expires_at"]).replace("Z", "+00:00")
+                            exp_dt = datetime.fromisoformat(clean_exp)
+                            if exp_dt.tzinfo is None:
+                                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                            if datetime.now(timezone.utc) > exp_dt:
+                                raise HTTPException(
+                                    status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="Kompaniyangiz obuna muddati tugagan! Foydalanishni davom ettirish uchun platforma ma'muriyati bilan bog'laning."
+                                )
+                        except HTTPException:
+                            raise
+                        except Exception:
+                            pass
 
             # 1 minutda faqat 1 marta urinish mumkinligini tekshirish (Rate limit)
             now = datetime.now(timezone.utc)
@@ -152,17 +181,31 @@ async def verify_otp(req: VerifyOtpRequest):
             "full_name": user["full_name"]
         })
 
+        # Kompaniya nomini olish
+        comp_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
+        cur_c = await conn.execute("SELECT name, plan FROM companies WHERE id = ?", (comp_id,))
+        comp = await cur_c.fetchone()
+        comp_name = comp["name"] if comp else "Bosh Tashkilot"
+        comp_plan = comp["plan"] if comp else "STANDARD"
+
+        owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
+        is_super_admin = (int(user["telegram_id"]) == owner_id_val or user["role"] == "SUPER_ADMIN")
+
         return {
             "success": True,
             "access_token": token,
             "token_type": "bearer",
             "user": {
                 "id": user["id"],
+                "company_id": comp_id,
+                "company_name": comp_name,
+                "company_plan": comp_plan,
                 "telegram_id": user["telegram_id"],
                 "full_name": user["full_name"],
                 "role": user["role"],
                 "debt_amount": user["debt_amount"],
-                "shift_status": user["shift_status"] if ("shift_status" in user.keys() and user["shift_status"]) else "WORKING"
+                "shift_status": user["shift_status"] if ("shift_status" in user.keys() and user["shift_status"]) else "WORKING",
+                "is_super_admin": is_super_admin
             }
         }
 
@@ -172,10 +215,14 @@ async def get_me(user: dict = Depends(get_current_user)):
         "success": True,
         "user": {
             "id": user["id"],
+            "company_id": user.get("company_id", 1),
+            "company_name": user.get("company_name", "Bosh Tashkilot"),
+            "company_plan": user.get("company_plan", "STANDARD"),
             "telegram_id": user["telegram_id"],
             "full_name": user["full_name"],
             "role": user["role"],
             "debt_amount": user["debt_amount"],
-            "shift_status": user.get("shift_status") or "WORKING"
+            "shift_status": user.get("shift_status") or "WORKING",
+            "is_super_admin": user.get("is_super_admin", False)
         }
     }

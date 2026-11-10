@@ -16,12 +16,13 @@ async def get_sim_employees(
     """Sim-karta tarqatish uchun faol xodimlar ro'yxati"""
     if current_user["role"] not in ["ADMIN", "CASHIER"]:
         raise HTTPException(status_code=403, detail="Ruxsat berilmagan.")
+    comp_id = current_user.get("company_id") or 1
     cursor = await db.execute("""
         SELECT id, telegram_id, full_name, role 
         FROM users 
-        WHERE is_active = 1 AND role != 'ADMIN'
+        WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
         ORDER BY full_name ASC
-    """)
+    """, (comp_id,))
     rows = await cursor.fetchall()
     return {"success": True, "data": [dict(r) for r in rows]}
 
@@ -72,8 +73,10 @@ async def distribute_sim_cards(
     if total_count > 1000:
         raise HTTPException(status_code=400, detail="Bitta amaliyotda ko'pi bilan 1000 ta sim-karta tarqatish mumkin.")
 
+    comp_id = current_user.get("company_id") or 1
+
     # 2. Xodimni tekshirish
-    cursor = await db.execute("SELECT id, full_name, telegram_id, role, is_active, shift_status FROM users WHERE id = ?", (payload.employee_id,))
+    cursor = await db.execute("SELECT id, full_name, telegram_id, role, is_active, shift_status FROM users WHERE id = ? AND company_id = ?", (payload.employee_id, comp_id))
     employee = await cursor.fetchone()
     if not employee:
         raise HTTPException(status_code=404, detail="Tanlangan xodim topilmadi.")
@@ -89,24 +92,24 @@ async def distribute_sim_cards(
 
     # 4. Oldin kiritilgan seriyalarni tekshirish
     placeholders = ",".join("?" for _ in serials_to_insert[:50])
-    cur = await db.execute(f"SELECT serial_number FROM sim_cards WHERE serial_number IN ({placeholders}) LIMIT 1", serials_to_insert[:50])
+    cur = await db.execute(f"SELECT serial_number FROM sim_cards WHERE serial_number IN ({placeholders}) AND company_id = ? LIMIT 1", (*serials_to_insert[:50], comp_id))
     existing = await cur.fetchone()
     if existing:
         raise HTTPException(status_code=400, detail=f"Sim-karta seriyasi bazada allaqachon mavjud: {existing['serial_number']}")
 
     # 5. Ommaviy saqlash (Batch insert)
-    records = [(serial, op_type, payload.employee_id, current_user["id"], "GIVEN") for serial in serials_to_insert]
+    records = [(comp_id, serial, op_type, payload.employee_id, current_user["id"], "GIVEN") for serial in serials_to_insert]
     try:
         await db.executemany("""
-            INSERT INTO sim_cards (serial_number, operator_type, employee_id, distributed_by_id, status)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO sim_cards (company_id, serial_number, operator_type, employee_id, distributed_by_id, status)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, records)
 
         # Partiya tarixini saqlash (1 ta qator: dan - gacha)
         await db.execute("""
-            INSERT INTO sim_distributions (operator_type, start_serial, end_serial, total_count, employee_id, distributed_by_id, status)
-            VALUES (?, ?, ?, ?, ?, ?, 'GIVEN')
-        """, (op_type, start_str, end_str, total_count, payload.employee_id, current_user["id"]))
+            INSERT INTO sim_distributions (company_id, operator_type, start_serial, end_serial, total_count, employee_id, distributed_by_id, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'GIVEN')
+        """, (comp_id, op_type, start_str, end_str, total_count, payload.employee_id, current_user["id"]))
 
         # Audit log yozish
         audit_details = (
@@ -114,9 +117,9 @@ async def distribute_sim_cards(
             f"Qabul qiluvchi: {employee['full_name']} (ID: {payload.employee_id})"
         )
         await db.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('sim_cards', ?, 'DISTRIBUTE', ?, ?)
-        """, (payload.employee_id, current_user["full_name"], audit_details))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'sim_cards', ?, 'DISTRIBUTE', ?, ?)
+        """, (comp_id, payload.employee_id, current_user["full_name"], audit_details))
 
         await db.commit()
 
@@ -170,6 +173,8 @@ async def search_sim_card(
     if len(clean_serial) < 3:
         raise HTTPException(status_code=400, detail="Qidirish uchun kamida 3 ta belgi kiriting.")
 
+    comp_id = current_user.get("company_id") or 1
+
     cursor = await db.execute("""
         SELECT 
             s.id,
@@ -186,10 +191,10 @@ async def search_sim_card(
         FROM sim_cards s
         JOIN users u ON s.employee_id = u.id
         JOIN users d ON s.distributed_by_id = d.id
-        WHERE s.serial_number LIKE ?
+        WHERE s.serial_number LIKE ? AND s.company_id = ?
         ORDER BY s.id DESC
         LIMIT 50
-    """, (f"%{clean_serial}%",))
+    """, (f"%{clean_serial}%", comp_id))
     rows = await cursor.fetchall()
 
     results = []
@@ -228,6 +233,8 @@ async def get_sim_cards_summary(
     if current_user["role"] not in ["ADMIN", "CASHIER"]:
         raise HTTPException(status_code=403, detail="Ruxsat berilmagan.")
 
+    comp_id = current_user.get("company_id") or 1
+
     # Xodimlar bo'yicha qoldiq va sotilganlar (tasdiqlangan hisobotlar va sim-kartalar bo'yicha)
     cur = await db.execute("""
         SELECT 
@@ -243,17 +250,18 @@ async def get_sim_cards_summary(
                 COUNT(id) as total_given,
                 SUM(CASE WHEN status = 'SOLD' THEN 1 ELSE 0 END) as sold_sims
             FROM sim_cards
+            WHERE company_id = ?
             GROUP BY employee_id
         ) sim ON u.id = sim.employee_id
         LEFT JOIN (
             SELECT employee_id, SUM(sim_cards_count) as total_sold
             FROM daily_reports
-            WHERE status = 'APPROVED'
+            WHERE status = 'APPROVED' AND company_id = ?
             GROUP BY employee_id
         ) rep ON u.id = rep.employee_id
-        WHERE u.role != 'ADMIN' AND u.is_active = 1
+        WHERE u.role != 'ADMIN' AND u.is_active = 1 AND u.company_id = ?
         ORDER BY in_stock DESC, u.full_name ASC
-    """)
+    """, (comp_id, comp_id, comp_id))
     balances = [dict(row) for row in await cur.fetchall()]
 
     # Oxirgi tarqatilgan partiyalar (dan - gacha)
@@ -271,9 +279,10 @@ async def get_sim_cards_summary(
         FROM sim_distributions d
         JOIN users u ON d.employee_id = u.id
         JOIN users b ON d.distributed_by_id = b.id
+        WHERE d.company_id = ?
         ORDER BY d.id DESC
         LIMIT 20
-    """)
+    """, (comp_id,))
     recent = [dict(row) for row in await cur2.fetchall()]
 
     # Zaxira (fallback): Agar sim_distributions bo'sh bo'lsa, sim_cards dan partiya qilib olish
@@ -292,10 +301,11 @@ async def get_sim_cards_summary(
             FROM sim_cards s
             JOIN users u ON s.employee_id = u.id
             JOIN users d ON s.distributed_by_id = d.id
+            WHERE s.company_id = ?
             GROUP BY s.operator_type, s.employee_id, s.distributed_by_id, s.distributed_at
             ORDER BY id DESC
             LIMIT 20
-        """)
+        """, (comp_id,))
         recent = [dict(row) for row in await cur_fallback.fetchall()]
 
     return {

@@ -14,11 +14,35 @@ async def init_db():
     """Baza sxemasini yaratish va boshlang'ich ma'lumotlarni kiritish"""
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+
+        # 0. Firmalar (Companies / Tenants) jadvali — SaaS arxitekturasi
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS companies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            telegram_group_id TEXT,
+            owner_telegram_id INTEGER,
+            plan TEXT DEFAULT 'STANDARD',
+            subscription_expires_at TIMESTAMP,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        # Boshlang'ich 1-kompaniya (Bosh Tashkilot) — mavjud barcha ma'lumotlar uchun
+        from app.config import TELEGRAM_GROUP_ID, RAHBAR_ID
+        owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
+        await conn.execute("""
+        INSERT OR IGNORE INTO companies (id, name, slug, telegram_group_id, owner_telegram_id, plan, is_active)
+        VALUES (1, 'Bosh Tashkilot', 'bosh-tashkilot', ?, ?, 'UNLIMITED', 1);
+        """, (TELEGRAM_GROUP_ID, owner_id_val))
         
         # 1. Foydalanuvchilar jadvali
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id),
             telegram_id INTEGER UNIQUE NOT NULL,
             full_name TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'EMPLOYEE',
@@ -287,7 +311,27 @@ async def init_db():
                         )
                     """, (emp_id, diff))
 
-        # RAHBAR_ID foydalanuvchisini ADMIN sifatida tekshirish va yaratish
+        # SaaS Multi-tenancy Migratsiyasi: Barcha jadvallarga company_id ustuni va indekslarini qo'shish
+        saas_tables = [
+            "users", "card_topups", "given_amounts", "daily_reports", 
+            "cashier_handovers", "sim_cards", "sim_distributions", 
+            "cashier_history", "audit_logs"
+        ]
+        for tbl in saas_tables:
+            try:
+                await conn.execute(f"ALTER TABLE {tbl} ADD COLUMN company_id INTEGER NOT NULL DEFAULT 1;")
+            except Exception:
+                pass
+            try:
+                await conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{tbl}_company_id ON {tbl}(company_id);")
+            except Exception:
+                pass
+            try:
+                await conn.execute(f"UPDATE {tbl} SET company_id = 1 WHERE company_id IS NULL OR company_id = 0;")
+            except Exception:
+                pass
+
+        # RAHBAR_ID foydalanuvchisini ADMIN va company_id = 1 sifatida tekshirish va yaratish
         from app.config import RAHBAR_ID
         if RAHBAR_ID and RAHBAR_ID.isdigit():
             rahbar_tg_id = int(RAHBAR_ID)
@@ -296,11 +340,11 @@ async def init_db():
             if not rahbar_user:
                 rahbar_pwd = hash_password(str(rahbar_tg_id))
                 await conn.execute("""
-                INSERT INTO users (telegram_id, full_name, role, password_hash, debt_amount, is_active)
-                VALUES (?, 'Bosh Rahbar', 'ADMIN', ?, 0, 1)
+                INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
+                VALUES (1, ?, 'Bosh Rahbar', 'ADMIN', ?, 0, 1)
                 """, (rahbar_tg_id, rahbar_pwd))
             else:
-                # Agar mavjud bo'lsa, rolini ADMIN deb yangilaymiz
-                await conn.execute("UPDATE users SET role = 'ADMIN', is_active = 1 WHERE id = ?", (rahbar_user["id"],))
+                # Agar mavjud bo'lsa, rolini ADMIN va company_id = 1 deb yangilaymiz
+                await conn.execute("UPDATE users SET role = 'ADMIN', company_id = 1, is_active = 1 WHERE id = ?", (rahbar_user["id"],))
 
         await conn.commit()

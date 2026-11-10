@@ -79,3 +79,20 @@ class WorkplaceLocationUpdate(BaseModel):
 class LocationPingRequest(BaseModel):
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Xodim kengligi")
     longitude: float = Field(..., ge=-180.0, le=180.0, description="Xodim uzunligi")
+
+class CreateCompanyRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100, description="Firma / Tashkilot nomi")
+    owner_telegram_id: int = Field(..., description="Firma Rahbarining Telegram ID si")
+    owner_name: str = Field(..., min_length=2, max_length=100, description="Firma Rahbarining to'liq ismi (F.I.SH)")
+    initial_password: Optional[str] = Field(None, description="Boshlang'ich parol (kiritilmasa Telegram ID bo'ladi)")
+    telegram_group_id: Optional[str] = Field(None, description="Firma xabarnomalari uchun alohida Telegram Guruh ID si")
+    subscription_days: int = Field(default=30, ge=1, le=3650, description="Obuna muddati (kunlarda)")
+    plan: str = Field(default="STANDARD", description="Tarif: STANDARD, PREMIUM, UNLIMITED")
+
+class ExtendSubscriptionRequest(BaseModel):
+    days: int = Field(..., ge=1, le=3650, description="Uzatiladigan kunlar soni")
+
+class UpdateCompanySettingsRequest(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=100, description="Firma nomi")
+    telegram_group_id: Optional[str] = Field(None, description="Telegram Guruh ID si")
+

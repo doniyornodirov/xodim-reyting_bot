@@ -234,9 +234,10 @@ async def send_otp_to_telegram(telegram_id: int, otp_code: str) -> bool:
 
     return False
 
-async def notify_card_topup_in_group(topup_data: dict) -> int | None:
-    """Guruhga karta to'ldirish so'rovini yuborish"""
-    if not bot or not TELEGRAM_GROUP_ID:
+async def notify_card_topup_in_group(topup_data: dict, group_id: str | None = None) -> int | None:
+    """Guruhga karta to'ldirish so'rovini yuborish (firma guruhiga yoki markaziy guruhga)"""
+    target_raw_group = str(group_id).strip() if group_id and str(group_id).strip() else str(TELEGRAM_GROUP_ID).strip()
+    if not bot or not target_raw_group:
         logger.info(f"[DEV TOPUP] Guruhga xabar: {topup_data}")
         return None
 
@@ -260,16 +261,15 @@ async def notify_card_topup_in_group(topup_data: dict) -> int | None:
 
     keyboard = get_topup_keyboard(topup_data["id"], "PENDING")
     
-    # Guruh IDlarini tekshirish (-5381348358 va -1005381348358)
+    # Guruh IDlarini tekshirish
     target_chat_ids = []
     try:
-        target_chat_ids.append(int(TELEGRAM_GROUP_ID))
+        target_chat_ids.append(int(target_raw_group))
     except Exception:
         pass
-    raw_str = str(TELEGRAM_GROUP_ID).strip()
-    if raw_str.startswith("-") and not raw_str.startswith("-100"):
+    if target_raw_group.startswith("-") and not target_raw_group.startswith("-100"):
         try:
-            target_chat_ids.append(int("-100" + raw_str[1:]))
+            target_chat_ids.append(int("-100" + target_raw_group[1:]))
         except Exception:
             pass
 
@@ -288,26 +288,27 @@ async def notify_card_topup_in_group(topup_data: dict) -> int | None:
         except Exception as e:
             logger.warning(f"Telegram guruhga ({cid}) yuborishda urinish natijasi: {e}")
 
-    logger.error(f"Guruhga so'rov yuborilmadi. Iltimos, botni guruhga qo'shing va admin huquqini bering! ({TELEGRAM_GROUP_ID})")
+    logger.error(f"Guruhga so'rov yuborilmadi. Iltimos, botni guruhga qo'shing va admin huquqini bering! ({target_raw_group})")
     return None
 
 async def update_group_card_topup_status(message_id: int, topup_id: int, new_status: str, actor_name: str, reason_text: str = "") -> bool:
     """Guruhdagi karta to'ldirish xabari matnini 'Rad etildi'ga yangilash va tugmalarni butunlay olib tashlash"""
-    if not BOT_TOKEN or not TELEGRAM_GROUP_ID or not message_id:
+    if not BOT_TOKEN or not message_id:
         return False
 
     import httpx
     from app.security import get_tashkent_now
 
-    # Bazadan so'rov ma'lumotlarini olish
+    # Bazadan so'rov ma'lumotlarini olish (kompaniyaning shaxsiy guruhi bilan)
     topup = None
     try:
         async with aiosqlite.connect(DB_PATH) as conn:
             conn.row_factory = aiosqlite.Row
             cur = await conn.execute("""
-                SELECT c.*, u.full_name as employee_name
+                SELECT c.*, u.full_name as employee_name, comp.telegram_group_id as company_group_id
                 FROM card_topups c
                 JOIN users u ON c.employee_id = u.id
+                LEFT JOIN companies comp ON c.company_id = comp.id
                 WHERE c.id = ?
             """, (topup_id,))
             topup = await cur.fetchone()
@@ -355,15 +356,16 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
         f"{status_line}"
     )
 
+    grp_id = topup.get("company_group_id") or TELEGRAM_GROUP_ID
+    target_raw_group = str(grp_id).strip()
     target_chat_ids = []
     try:
-        target_chat_ids.append(int(TELEGRAM_GROUP_ID))
+        target_chat_ids.append(int(target_raw_group))
     except Exception:
         pass
-    raw_str = str(TELEGRAM_GROUP_ID).strip()
-    if raw_str.startswith("-") and not raw_str.startswith("-100"):
+    if target_raw_group.startswith("-") and not target_raw_group.startswith("-100"):
         try:
-            target_chat_ids.append(int("-100" + raw_str[1:]))
+            target_chat_ids.append(int("-100" + target_raw_group[1:]))
         except Exception:
             pass
 

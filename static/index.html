@@ -113,6 +113,9 @@
         <button id="btn-rahbar-cashier-toggle" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" onclick="toggleRahbarCashierMode()">
           <span>💼</span> Kassir rejimi
         </button>
+        <span id="nav-company-badge" class="badge inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #a5b4fc;" title="Firma sozlamalari" onclick="openCompanySettingsModal()">
+          🏢 <span id="nav-company-name">Bosh Tashkilot</span>
+        </span>
         <span id="nav-user-name" class="text-xs font-semibold hidden md:inline-block">Mehmon</span>
         <span id="nav-user-role" class="badge badge-employee inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold">Xodim</span>
         <span id="nav-user-shift" class="badge inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold" style="display: none;">🟢 Ishda</span>
@@ -148,6 +151,9 @@
       <div class="sidebar-user-info">
         <div id="sidebar-user-name" style="font-weight: 700; color: #fff; font-size: 0.95rem;">Mehmon</div>
         <div style="display: flex; gap: 0.35rem; align-items: center; margin-top: 0.35rem; flex-wrap: wrap;">
+          <span id="sidebar-company-badge" class="badge" style="display: none; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #a5b4fc; font-size: 0.72rem; padding: 2px 7px; border-radius: 6px; cursor: pointer;" onclick="openCompanySettingsModal()">
+            🏢 <span id="sidebar-company-name">Bosh Tashkilot</span>
+          </span>
           <span id="sidebar-user-role" class="badge badge-employee">Xodim</span>
           <span id="sidebar-user-shift" class="badge" style="display: none;">🟢 Ishda</span>
           <span id="sidebar-user-debt" class="badge badge-debt" style="display: none;">Qarz: 0 so'm</span>
@@ -218,6 +224,9 @@
       </button>
       <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-audit" onclick="switchAdminTab('audit')">
         <span>🛡️</span> Audit loglar
+      </button>
+      <button class="tab-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition whitespace-nowrap" id="tab-btn-admin-saas" onclick="switchAdminTab('saas')" style="display: none; border-color: rgba(236, 72, 153, 0.4); color: #f472b6;">
+        <span>🏢</span> Firmalar (SaaS)
       </button>
     </nav>
 
@@ -893,6 +902,129 @@
               </tr>
             </thead>
             <tbody id="admin-audit-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Rahbar 9: SaaS Multi-Tenant Platforma Boshqaruvi (Faqat Super Admin) -->
+    <section class="tab-pane admin-pane" id="pane-admin-saas" style="display: none;">
+      <!-- Sarlavha va Umumiy Tushuntirish -->
+      <div class="card-box mb-4" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(99, 102, 241, 0.08)); border-left: 4px solid #ec4899;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 class="card-title" style="color: #f472b6; margin-bottom: 0.25rem;">🏢 Firmalar & Multi-Tenant SaaS Boshqaruvi</h2>
+            <p style="font-size: 0.85rem; color: #cbd5e1; margin: 0;">
+              Ushbu platforma orqali tizimni boshqa firmalarga ijaraga berishingiz, yangi firma va ularning rahbarlarini ro'yxatga olishingiz hamda obuna muddatlarini boshqarishingiz mumkin.
+            </p>
+          </div>
+          <button type="button" class="btn btn-secondary" onclick="loadSaasCompanies()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;">
+            🔄 Ro'yxatni yangilash
+          </button>
+        </div>
+      </div>
+
+      <!-- SaaS Statistika Kartochkalari (4 ta blok) -->
+      <div class="grid-4 mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card-box" style="padding: 1rem; border-top: 3px solid #ec4899;">
+          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Jami Tashkilotlar</div>
+          <div id="saas-stat-total-companies" style="font-size: 1.6rem; font-weight: 800; color: #f472b6; margin-top: 0.25rem;">0</div>
+        </div>
+        <div class="card-box" style="padding: 1rem; border-top: 3px solid #10b981;">
+          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Faol Firmalar</div>
+          <div id="saas-stat-active-companies" style="font-size: 1.6rem; font-weight: 800; color: #34d399; margin-top: 0.25rem;">0</div>
+        </div>
+        <div class="card-box" style="padding: 1rem; border-top: 3px solid #6366f1;">
+          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Jami Xodimlar (Barcha)</div>
+          <div id="saas-stat-total-users" style="font-size: 1.6rem; font-weight: 800; color: #818cf8; margin-top: 0.25rem;">0</div>
+        </div>
+        <div class="card-box" style="padding: 1rem; border-top: 3px solid #f59e0b;">
+          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Jami Topshirilgan Hisobotlar</div>
+          <div id="saas-stat-total-reports" style="font-size: 1.6rem; font-weight: 800; color: #fbbf24; margin-top: 0.25rem;">0</div>
+        </div>
+      </div>
+
+      <!-- Yangi Tashkilot Qo'shish Formasi -->
+      <div class="card-box mb-4" style="border: 1px solid rgba(236, 72, 153, 0.25);">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>➕</span> Yangi Firma (Ijarachi) Qo'shish
+        </h3>
+        <form id="saas-create-company-form" onsubmit="handleCreateCompanySubmit(event)">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Firma / Tashkilot nomi *</label>
+              <input type="text" id="saas-new-name" class="form-input" placeholder="Masalan: Omad Savdo MCHJ" required maxlength="100">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Firma Rahbari F.I.SH *</label>
+              <input type="text" id="saas-new-owner-name" class="form-input" placeholder="Masalan: Rustam Valiyev" required maxlength="100">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Rahbar Telegram ID si *</label>
+              <input type="number" id="saas-new-owner-tg" class="form-input" placeholder="Masalan: 123456789" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Boshlang'ich parol (ixtiyoriy)</label>
+              <input type="text" id="saas-new-password" class="form-input" placeholder="Kiritilmasa Telegram ID bo'ladi">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Telegram Guruh ID si (ixtiyoriy)</label>
+              <input type="text" id="saas-new-group-id" class="form-input" placeholder="Masalan: -100123456789">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Ijara obuna muddati *</label>
+              <select id="saas-new-subscription-days" class="form-input" style="height: 42px;">
+                <option value="30" selected>30 kun (1 oy)</option>
+                <option value="60">60 kun (2 oy)</option>
+                <option value="90">90 kun (3 oy)</option>
+                <option value="180">180 kun (6 oy)</option>
+                <option value="365">365 kun (1 yil)</option>
+                <option value="3650">Cheksiz (Unlimited)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Tarif rejasi *</label>
+              <select id="saas-new-plan" class="form-input" style="height: 42px;">
+                <option value="STANDARD" selected>STANDARD</option>
+                <option value="PREMIUM">PREMIUM</option>
+                <option value="UNLIMITED">UNLIMITED</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #ec4899, #8b5cf6); border: none; font-weight: 700; padding: 0.6rem 1.4rem;">
+              <span>🚀</span> Firmalarni ro'yxatdan o'tkazish
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Barcha Tashkilotlar Jadvali -->
+      <div class="card-box">
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>📋</span> Barcha Tashkilotlar va Ijarachilar Ro'yxati
+        </h3>
+        <div class="table-container table-scroll-5">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#ID</th>
+                <th>Firma nomi & Slug</th>
+                <th>Rahbar (Admin)</th>
+                <th>Telegram Guruh</th>
+                <th>Tarif</th>
+                <th>Obuna muddati</th>
+                <th>Xodimlar</th>
+                <th>Hisobotlar</th>
+                <th>Holati</th>
+                <th>Boshqaruv amallari</th>
+              </tr>
+            </thead>
+            <tbody id="saas-companies-tbody">
+              <tr>
+                <td colspan="10" style="text-align: center; color: #94a3b8; padding: 2rem;">Yuklanmoqda...</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -1607,6 +1739,59 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=350"></script>
+  <!-- ========================================== -->
+  <!-- FIRMA VA KOMPANIYA SOZLAMALARI MODALI      -->
+  <!-- ========================================== -->
+  <div class="modal-overlay" id="company-settings-modal" style="display: none;" onclick="handleCompanyModalOverlayClick(event)">
+    <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        <div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🏢</span> Tashkilot ma'lumotlari
+          </h3>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-sub);">
+            Siz biriktirilgan firma va uning sozlamalari
+          </p>
+        </div>
+        <button type="button" class="btn-logout" style="padding: 0.3rem 0.65rem; font-size: 0.85rem;" onclick="closeCompanySettingsModal()">✕</button>
+      </div>
+
+      <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Tashkilot nomi:</span>
+          <b id="company-modal-name" style="font-size: 0.95rem; color: #fff;">-</b>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Tarif rejasi:</span>
+          <span id="company-modal-plan" class="badge" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">STANDARD</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Ijara holati / Qolgan vaqt:</span>
+          <b id="company-modal-days-left" style="color: #34d399;">-</b>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Tugash sanasi:</span>
+          <span id="company-modal-expires" style="font-size: 0.85rem; color: #cbd5e1;">-</span>
+        </div>
+      </div>
+
+      <form id="company-settings-form" onsubmit="handleCompanySettingsSubmit(event)">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label">Telegram Xabarnoma Guruh ID si</label>
+          <input type="text" id="company-modal-group-input" class="form-input" placeholder="Masalan: -100123456789">
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.4;">
+            Karta to'ldirish so'rovlari va hisobotlar ushbu Telegram guruhiga kelib tushadi. Botni guruhingizga admin qilib qo'shishingiz lozim.
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeCompanySettingsModal()">Yopish</button>
+          <button type="submit" id="btn-company-save-settings" class="btn btn-primary" style="display: none;">💾 Saqlash</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=351"></script>
 </body>
 </html>

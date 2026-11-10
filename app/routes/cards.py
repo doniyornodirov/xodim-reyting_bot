@@ -50,6 +50,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
     # 3% ustamani 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)
     surcharge_amount = float(math.ceil((amount * 1.03) / 1000.0) * 1000)
 
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
 
@@ -61,12 +62,13 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
                 COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END), 0)
             FROM card_topups 
             WHERE REPLACE(card_number, ' ', '') = ? 
+              AND company_id = ?
               AND (
                   DATE(created_at, '+5 hours') = DATE('now', '+5 hours')
                   OR DATE(created_at) = DATE('now', '+5 hours')
                   OR DATE(created_at) = DATE('now')
               )
-        """, (clean_card,))
+        """, (clean_card, comp_id))
         row = await cursor.fetchone()
         repeat_count = row[0]
         approved_count = row[1]
@@ -74,28 +76,28 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         has_approved_today = (approved_count >= 1)
 
         # Tartib raqamini hisoblash (#123)
-        cursor = await conn.execute("SELECT MAX(transaction_number) FROM card_topups")
+        cursor = await conn.execute("SELECT MAX(transaction_number) FROM card_topups WHERE company_id = ?", (comp_id,))
         max_num = (await cursor.fetchone())[0] or 100
         new_tx_number = max_num + 1
 
         # Bazaga kiritish
         cursor = await conn.execute("""
             INSERT INTO card_topups (
-                transaction_number, employee_id, card_number, card_holder, 
+                company_id, transaction_number, employee_id, card_number, card_holder, 
                 amount, surcharge_amount, status
-            ) VALUES (?, ?, ?, ?, ?, ?, 'PENDING')
-        """, (new_tx_number, user["id"], formatted_card, validated_holder, amount, surcharge_amount))
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
+        """, (comp_id, new_tx_number, user["id"], formatted_card, validated_holder, amount, surcharge_amount))
         topup_id = cursor.lastrowid
         await conn.commit()
 
         # Audit log
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('CARD_TOPUP', ?, 'CREATE', ?, ?)
-        """, (topup_id, user["full_name"], f"Karta: {formatted_card}, Summa: {amount:,} so'm"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'CARD_TOPUP', ?, 'CREATE', ?, ?)
+        """, (comp_id, topup_id, user["full_name"], f"Karta: {formatted_card}, Summa: {amount:,} so'm"))
         await conn.commit()
 
-    # Telegram guruhga xabar yuborish
+    # Telegram guruhga xabar yuborish (firma guruhiga yoki umumiy guruhga)
     topup_data = {
         "id": topup_id,
         "transaction_number": new_tx_number,
@@ -107,7 +109,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         "is_repeat_today": is_repeat_today,
         "has_approved_today": has_approved_today
     }
-    msg_id = await notify_card_topup_in_group(topup_data)
+    msg_id = await notify_card_topup_in_group(topup_data, group_id=user.get("company_telegram_group_id"))
     if msg_id:
         async with aiosqlite.connect(DB_PATH) as conn:
             await conn.execute(
@@ -135,26 +137,29 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
 
 @router.get("/my-history")
 async def get_my_card_history(user: dict = Depends(get_current_user)):
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
             SELECT * FROM card_topups 
-            WHERE employee_id = ? 
+            WHERE employee_id = ? AND company_id = ?
             ORDER BY id DESC LIMIT 50
-        """, (user["id"],))
+        """, (user["id"], comp_id))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
 @router.get("/all")
 async def get_all_card_topups(user: dict = Depends(require_role(["ADMIN"]))):
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
             SELECT c.*, u.full_name as employee_name 
             FROM card_topups c
             JOIN users u ON c.employee_id = u.id
+            WHERE c.company_id = ?
             ORDER BY c.id DESC LIMIT 100
-        """)
+        """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
@@ -167,9 +172,10 @@ async def update_topup_status(
     if req.status not in ["APPROVED", "REJECTED"]:
         raise HTTPException(status_code=400, detail="Status 'APPROVED' yoki 'REJECTED' bo'lishi shart!")
 
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ?", (topup_id,))
+        cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ? AND company_id = ?", (topup_id, comp_id))
         topup = await cursor.fetchone()
         if not topup:
             raise HTTPException(status_code=404, detail="So'rov topilmadi!")
@@ -178,13 +184,13 @@ async def update_topup_status(
         await conn.execute("""
             UPDATE card_topups 
             SET status = ?, approved_by_name = ? 
-            WHERE id = ?
-        """, (req.status, user["full_name"], topup_id))
+            WHERE id = ? AND company_id = ?
+        """, (req.status, user["full_name"], topup_id, comp_id))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('CARD_TOPUP', ?, ?, ?, ?)
-        """, (topup_id, req.status, user["full_name"], f"Web panel orqali status {status_label} holatiga o'zgartirildi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'CARD_TOPUP', ?, ?, ?, ?)
+        """, (comp_id, topup_id, req.status, user["full_name"], f"Web panel orqali status {status_label} holatiga o'zgartirildi"))
         await conn.commit()
 
     if topup["telegram_message_id"]:
@@ -205,9 +211,10 @@ async def reject_card_topup(
     user: dict = Depends(get_current_user)
 ):
     """Xodim o'zi yuborgan karta to'ldirish so'rovini rad etishi (bekor qilishi)"""
+    comp_id = user.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ?", (topup_id,))
+        cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ? AND company_id = ?", (topup_id, comp_id))
         topup = await cursor.fetchone()
         if not topup:
             raise HTTPException(status_code=404, detail="So'rov topilmadi!")
@@ -226,13 +233,13 @@ async def reject_card_topup(
         await conn.execute("""
             UPDATE card_topups 
             SET status = 'REJECTED', approved_by_name = ? 
-            WHERE id = ?
-        """, (approved_label, topup_id))
+            WHERE id = ? AND company_id = ?
+        """, (approved_label, topup_id, comp_id))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('CARD_TOPUP', ?, 'REJECT', ?, ?)
-        """, (topup_id, user["full_name"], f"Xodim #{topup['transaction_number']} sonli karta so'rovini rad etdi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'CARD_TOPUP', ?, 'REJECT', ?, ?)
+        """, (comp_id, topup_id, user["full_name"], f"Xodim #{topup['transaction_number']} sonli karta so'rovini rad etdi"))
         await conn.commit()
 
     if topup["telegram_message_id"]:

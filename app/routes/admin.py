@@ -12,29 +12,32 @@ from app.security import hash_password
 router = APIRouter(prefix="/api/admin", tags=["Admin"], dependencies=[Depends(require_role(["ADMIN"]))])
 
 @router.get("/users")
-async def get_all_users():
+async def get_all_users(admin: dict = Depends(require_role(["ADMIN"]))):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+        comp_id = admin.get("company_id") or 1
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role, debt_amount, is_active, created_at,
                    last_latitude, last_longitude, last_distance_meters, last_location_updated_at,
-                   shift_status, work_start_time, work_end_time
+                   shift_status, work_start_time, work_end_time, company_id
             FROM users 
+            WHERE company_id = ?
             ORDER BY is_active DESC, role ASC, full_name ASC
-        """)
+        """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
 @router.get("/employees")
-async def get_admin_employees():
+async def get_admin_employees(admin: dict = Depends(require_role(["ADMIN"]))):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+        comp_id = admin.get("company_id") or 1
         cursor = await conn.execute("""
-            SELECT id, telegram_id, full_name, role 
+            SELECT id, telegram_id, full_name, role, company_id 
             FROM users 
-            WHERE is_active = 1 AND role != 'ADMIN'
+            WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
             ORDER BY full_name ASC
-        """)
+        """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
@@ -52,17 +55,18 @@ async def create_user(req: CreateUserRequest, admin: dict = Depends(require_role
         # Standart boshlang'ich parol — foydalanuvchining o'z Telegram IDsi
         pwd_hash = hash_password(str(req.telegram_id))
         role = req.role if req.role in ["EMPLOYEE", "CASHIER", "ADMIN"] else "EMPLOYEE"
+        comp_id = admin.get("company_id") or 1
 
         cursor = await conn.execute("""
-            INSERT INTO users (telegram_id, full_name, role, password_hash, debt_amount, is_active)
-            VALUES (?, ?, ?, ?, ?, 1)
-        """, (req.telegram_id, req.full_name.strip(), role, pwd_hash, req.initial_debt))
+            INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+        """, (comp_id, req.telegram_id, req.full_name.strip(), role, pwd_hash, req.initial_debt))
         user_id = cursor.lastrowid
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('USER', ?, 'CREATE', ?, ?)
-        """, (user_id, admin["full_name"], f"Yangi xodim qo'shildi: {req.full_name} (TG: {req.telegram_id})"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'USER', ?, 'CREATE', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], f"Yangi xodim qo'shildi: {req.full_name} (TG: {req.telegram_id})"))
         await conn.commit()
 
     return {
@@ -74,7 +78,8 @@ async def create_user(req: CreateUserRequest, admin: dict = Depends(require_role
 async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["ADMIN"]))):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        comp_id = admin.get("company_id") or 1
+        cursor = await conn.execute("SELECT * FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
         user = await cursor.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi!")
@@ -88,9 +93,9 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
         await conn.execute("UPDATE users SET is_active = ? WHERE id = ?", (new_status, user_id))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('USER', ?, 'STATUS_CHANGE', ?, ?)
-        """, (user_id, admin["full_name"], f"Xodim {user['full_name']} {status_name}"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'USER', ?, 'STATUS_CHANGE', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], f"Xodim {user['full_name']} {status_name}"))
         await conn.commit()
 
     return {"success": True, "message": f"Xodim {user['full_name']} muvaffaqiyatli {status_name}!"}
@@ -103,7 +108,8 @@ async def toggle_employee_shift(
 ):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        comp_id = admin.get("company_id") or 1
+        cursor = await conn.execute("SELECT * FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
         user = await cursor.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi!")
@@ -129,9 +135,9 @@ async def toggle_employee_shift(
         await conn.execute("UPDATE users SET shift_status = ? WHERE id = ?", (new_status, user_id))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('USER_SHIFT', ?, 'STATUS_CHANGE', ?, ?)
-        """, (user_id, admin["full_name"], f"Xodim '{user['full_name']}' ish statusi '{status_label}' ga o'zgartirildi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'USER_SHIFT', ?, 'STATUS_CHANGE', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], f"Xodim '{user['full_name']}' ish statusi '{status_label}' ga o'zgartirildi"))
         await conn.commit()
 
     return {
@@ -144,7 +150,8 @@ async def toggle_employee_shift(
 async def assign_debt(user_id: int, req: SetDebtRequest, admin: dict = Depends(require_role(["ADMIN"]))):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        comp_id = admin.get("company_id") or 1
+        cursor = await conn.execute("SELECT * FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
         user = await cursor.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="Xodim topilmadi!")
@@ -164,9 +171,9 @@ async def assign_debt(user_id: int, req: SetDebtRequest, admin: dict = Depends(r
             f"Sababi: {reason_text}. Yangi jami qarz: {new_total_debt:,.0f} so'm"
         )
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('USER_DEBT', ?, 'ASSIGN', ?, ?)
-        """, (user_id, admin["full_name"], audit_details))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'USER_DEBT', ?, 'ASSIGN', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], audit_details))
         await conn.commit()
 
     return {
@@ -184,7 +191,8 @@ async def update_password(user_id: int, req: UpdatePasswordRequest, admin: dict 
 
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT full_name FROM users WHERE id = ?", (user_id,))
+        comp_id = admin.get("company_id") or 1
+        cursor = await conn.execute("SELECT full_name FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
         user = await cursor.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="Xodim topilmadi!")
@@ -192,9 +200,9 @@ async def update_password(user_id: int, req: UpdatePasswordRequest, admin: dict 
         await conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (pwd_hash, user_id))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('USER_PASSWORD', ?, 'UPDATE', ?, ?)
-        """, (user_id, admin["full_name"], f"{user['full_name']} paroli Rahbar tomonidan yangilandi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'USER_PASSWORD', ?, 'UPDATE', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], f"{user['full_name']} paroli Rahbar tomonidan yangilandi"))
         await conn.commit()
 
     return {"success": True, "message": f"{user['full_name']} paroli muvaffaqiyatli yangilandi!"}
@@ -203,7 +211,8 @@ async def update_password(user_id: int, req: UpdatePasswordRequest, admin: dict 
 async def appoint_cashier(req: AppointCashierRequest, admin: dict = Depends(require_role(["ADMIN"]))):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (req.user_id,))
+        comp_id = admin.get("company_id") or 1
+        cursor = await conn.execute("SELECT * FROM users WHERE id = ? AND company_id = ?", (req.user_id, comp_id))
         target_user = await cursor.fetchone()
         if not target_user:
             raise HTTPException(status_code=404, detail="Tanlangan xodim topilmadi!")
@@ -220,44 +229,44 @@ async def appoint_cashier(req: AppointCashierRequest, admin: dict = Depends(requ
                 detail="Ishdan bo'shatilgan xodimni kassir etib tayinlab bo'lmaydi!"
             )
 
-        # 1. Hozirgi barcha kassirlarni aniqlash
-        cursor = await conn.execute("SELECT * FROM users WHERE role = 'CASHIER'")
+        # 1. Hozirgi barcha kassirlarni aniqlash (faqat shu kompaniya doirasida)
+        cursor = await conn.execute("SELECT * FROM users WHERE role = 'CASHIER' AND company_id = ?", (comp_id,))
         previous_cashiers = await cursor.fetchall()
 
         # Oldingi kassirlarni audit va cashier_history ga DISMISSED sifatida yozish
         for prev in previous_cashiers:
             if prev["id"] != target_user["id"]:
                 await conn.execute("""
-                    INSERT INTO cashier_history (user_id, action, assigned_by_id)
-                    VALUES (?, 'DISMISSED', ?)
-                """, (prev["id"], admin["id"]))
+                    INSERT INTO cashier_history (company_id, user_id, action, assigned_by_id)
+                    VALUES (?, ?, 'DISMISSED', ?)
+                """, (comp_id, prev["id"], admin["id"]))
                 await conn.execute("""
-                    INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-                    VALUES ('CASHIER', ?, 'DISMISS', ?, ?)
-                """, (prev["id"], admin["full_name"], f"{prev['full_name']} yangi kassir ({target_user['full_name']}) tayinlangani sababli avtomatik oddiy xodim holatiga o'tkazildi"))
+                    INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                    VALUES (?, 'CASHIER', ?, 'DISMISS', ?, ?)
+                """, (comp_id, prev["id"], admin["full_name"], f"{prev['full_name']} yangi kassir ({target_user['full_name']}) tayinlangani sababli avtomatik oddiy xodim holatiga o'tkazildi"))
 
-        # 2. Barcha eski kassirlarni qat'iy oddiy xodim (EMPLOYEE) holatiga o'tkazish
+        # 2. Shu kompaniyadagi barcha eski kassirlarni qat'iy oddiy xodim (EMPLOYEE) holatiga o'tkazish
         await conn.execute("""
             UPDATE users SET role = 'EMPLOYEE' 
-            WHERE role = 'CASHIER'
-        """)
+            WHERE role = 'CASHIER' AND company_id = ?
+        """, (comp_id,))
 
         # 3. Faqat yangi tanlangan xodimni CASHIER qilish (tizimda faqat 1 ta kassir)
         await conn.execute("""
             UPDATE users SET role = 'CASHIER' 
-            WHERE id = ?
-        """, (req.user_id,))
+            WHERE id = ? AND company_id = ?
+        """, (req.user_id, comp_id))
 
         # 4. Yangi tayinlovni tarixga va auditga yozish
         await conn.execute("""
-            INSERT INTO cashier_history (user_id, action, assigned_by_id)
-            VALUES (?, 'APPOINTED', ?)
-        """, (req.user_id, admin["id"]))
+            INSERT INTO cashier_history (company_id, user_id, action, assigned_by_id)
+            VALUES (?, ?, 'APPOINTED', ?)
+        """, (comp_id, req.user_id, admin["id"]))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('CASHIER', ?, 'APPOINT', ?, ?)
-        """, (req.user_id, admin["full_name"], f"{target_user['full_name']} yagona Kassir etib tayinlandi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'CASHIER', ?, 'APPOINT', ?, ?)
+        """, (comp_id, req.user_id, admin["full_name"], f"{target_user['full_name']} yagona Kassir etib tayinlandi"))
         await conn.commit()
 
         prev_names = [p["full_name"] for p in previous_cashiers if p["id"] != target_user["id"]]
@@ -273,21 +282,22 @@ async def dismiss_cashier(req: AppointCashierRequest, admin: dict = Depends(requ
     """Kassirni oddiy xodim roliga qaytarish"""
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-        cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (req.user_id,))
+        comp_id = admin.get("company_id") or 1
+        cursor = await conn.execute("SELECT * FROM users WHERE id = ? AND company_id = ?", (req.user_id, comp_id))
         target_user = await cursor.fetchone()
         if not target_user:
             raise HTTPException(status_code=404, detail="Tanlangan xodim topilmadi!")
 
-        await conn.execute("UPDATE users SET role = 'EMPLOYEE' WHERE id = ?", (req.user_id,))
+        await conn.execute("UPDATE users SET role = 'EMPLOYEE' WHERE id = ? AND company_id = ?", (req.user_id, comp_id))
         await conn.execute("""
-            INSERT INTO cashier_history (user_id, action, assigned_by_id)
-            VALUES (?, 'DISMISSED', ?)
-        """, (req.user_id, admin["id"]))
+            INSERT INTO cashier_history (company_id, user_id, action, assigned_by_id)
+            VALUES (?, ?, 'DISMISSED', ?)
+        """, (comp_id, req.user_id, admin["id"]))
 
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('CASHIER', ?, 'DISMISS', ?, ?)
-        """, (req.user_id, admin["full_name"], f"{target_user['full_name']} kassirlikdan bo'shatilib oddiy xodim holatiga qaytarildi"))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'CASHIER', ?, 'DISMISS', ?, ?)
+        """, (comp_id, req.user_id, admin["full_name"], f"{target_user['full_name']} kassirlikdan bo'shatilib oddiy xodim holatiga qaytarildi"))
         await conn.commit()
 
     return {
@@ -296,27 +306,31 @@ async def dismiss_cashier(req: AppointCashierRequest, admin: dict = Depends(requ
     }
 
 @router.get("/cashier/history")
-async def get_cashier_history():
+async def get_cashier_history(admin: dict = Depends(require_role(["ADMIN"]))):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+        comp_id = admin.get("company_id") or 1
         cursor = await conn.execute("""
-            SELECT ch.*, u.full_name as cashier_name, admin.full_name as admin_name
+            SELECT ch.*, u.full_name as cashier_name, a.full_name as admin_name
             FROM cashier_history ch
             JOIN users u ON ch.user_id = u.id
-            JOIN users admin ON ch.assigned_by_id = admin.id
+            JOIN users a ON ch.assigned_by_id = a.id
+            WHERE u.company_id = ?
             ORDER BY ch.id DESC LIMIT 50
-        """)
+        """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
 @router.get("/audit-logs")
-async def get_audit_logs():
+async def get_audit_logs(admin: dict = Depends(require_role(["ADMIN"]))):
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+        comp_id = admin.get("company_id") or 1
         cursor = await conn.execute("""
             SELECT * FROM audit_logs 
+            WHERE company_id = ?
             ORDER BY id DESC LIMIT 100
-        """)
+        """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
 
@@ -354,6 +368,7 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
 
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+        comp_id = admin.get("company_id") or 1
 
         # 1. Joriy davrdagi kunlik hisobotlar (tasdiqlangan)
         cur = await conn.execute("""
@@ -362,9 +377,9 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
                    COALESCE(SUM(net_amount), 0) as net_amount,
                    COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold
             FROM daily_reports
-            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ?
+            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
             GROUP BY report_date
-        """, (start_str, end_str))
+        """, (start_str, end_str, comp_id))
         rep_rows = await cur.fetchall()
         reports_by_date = {r["report_date"]: dict(r) for r in rep_rows}
 
@@ -374,9 +389,9 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
                    COALESCE(SUM(surcharge_amount), 0) as card_amount,
                    COUNT(*) as card_count
             FROM card_topups
-            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ?
+            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ? AND company_id = ?
             GROUP BY DATE(created_at, '+5 hours')
-        """, (start_str, end_str))
+        """, (start_str, end_str, comp_id))
         topup_rows = await cur.fetchall()
         topups_by_date = {r["topup_date"]: dict(r) for r in topup_rows}
 
@@ -386,8 +401,8 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
                    COALESCE(SUM(net_amount), 0) as prev_net,
                    COALESCE(SUM(sim_cards_count), 0) as prev_sims
             FROM daily_reports
-            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ?
-        """, (prev_start_str, prev_end_str))
+            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
+        """, (prev_start_str, prev_end_str, comp_id))
         prev_rep = await cur.fetchone()
         prev_submitted = prev_rep["prev_submitted"] if prev_rep else 0
         prev_net = prev_rep["prev_net"] if prev_rep else 0
@@ -397,8 +412,8 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
             SELECT COALESCE(SUM(surcharge_amount), 0) as prev_cards,
                    COUNT(*) as prev_card_count
             FROM card_topups
-            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ?
-        """, (prev_start_str, prev_end_str))
+            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ? AND company_id = ?
+        """, (prev_start_str, prev_end_str, comp_id))
         prev_top = await cur.fetchone()
         prev_cards = prev_top["prev_cards"] if prev_top else 0
 
@@ -406,19 +421,20 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
         cur = await conn.execute("""
             SELECT operator_type, COUNT(*) as count
             FROM sim_cards
-            WHERE status = 'SOLD'
+            WHERE status = 'SOLD' AND company_id = ?
             GROUP BY operator_type
             ORDER BY count DESC
-        """)
+        """, (comp_id,))
         op_rows = await cur.fetchall()
         operators = [dict(r) for r in op_rows]
         if not operators:
             cur = await conn.execute("""
                 SELECT operator_type, COUNT(*) as count
                 FROM sim_cards
+                WHERE company_id = ?
                 GROUP BY operator_type
                 ORDER BY count DESC
-            """)
+            """, (comp_id,))
             op_rows = await cur.fetchall()
             operators = [dict(r) for r in op_rows]
 
@@ -528,7 +544,8 @@ async def trigger_data_retention_cleanup(admin: dict = Depends(require_role(["AD
 
 @router.post("/clear-history")
 async def admin_clear_history(admin: dict = Depends(require_role(["ADMIN"]))):
-    """Barcha amaliyotlar tarixini tozalash va nollashtirish (faqat Bosh Rahbar uchun)"""
+    """Barcha amaliyotlar tarixini tozalash va nollashtirish (faqat shu firma doirasida)"""
+    comp_id = admin.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         tables_to_clear = [
             "card_topups",
@@ -536,34 +553,28 @@ async def admin_clear_history(admin: dict = Depends(require_role(["ADMIN"]))):
             "daily_reports",
             "cashier_handovers",
             "cashier_history",
-            "otp_codes",
             "audit_logs",
             "sim_cards",
             "sim_distributions"
         ]
         results = {}
         for table in tables_to_clear:
-            cur = await conn.execute(f"DELETE FROM {table}")
+            cur = await conn.execute(f"DELETE FROM {table} WHERE company_id = ?", (comp_id,))
             results[table] = cur.rowcount
 
-        cur = await conn.execute("UPDATE users SET debt_amount = 0.0")
+        cur = await conn.execute("UPDATE users SET debt_amount = 0.0 WHERE company_id = ?", (comp_id,))
         results["users_debt_reset"] = cur.rowcount
 
-        try:
-            await conn.execute("DELETE FROM sqlite_sequence WHERE name NOT IN ('users', 'system_settings')")
-        except Exception:
-            pass
-
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('SYSTEM', 0, 'CLEAR_HISTORY', ?, 'Barcha test amaliyotlari va operatsiyalar tarixi tozalab nollashtirildi')
-        """, (admin["full_name"],))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'SYSTEM', 0, 'CLEAR_HISTORY', ?, 'Firma amaliyotlari va operatsiyalar tarixi tozalab nollashtirildi')
+        """, (comp_id, admin["full_name"]))
 
         await conn.commit()
 
         return {
             "success": True,
-            "message": "Barcha operatsiyalar tarixi muvaffaqiyatli tozalandi va nollashtirildi!",
+            "message": "Firma operatsiyalari tarixi muvaffaqiyatli tozalandi va nollashtirildi!",
             "details": results
         }
 

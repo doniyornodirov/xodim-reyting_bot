@@ -211,10 +211,11 @@ async def set_employee_workplace(
     """
     Bosh Rahbar tomonidan muayyan xodim uchun alohida ish joyi lokatsiyasi va ISH VAQTI (soatlari)ni belgilash.
     """
+    comp_id = admin.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
 
-        cur = await conn.execute("SELECT id, full_name, role, last_latitude, last_longitude FROM users WHERE id = ?", (payload.user_id,))
+        cur = await conn.execute("SELECT id, full_name, role, last_latitude, last_longitude FROM users WHERE id = ? AND company_id = ?", (payload.user_id, comp_id))
         target_user = await cur.fetchone()
 
         if not target_user:
@@ -249,17 +250,17 @@ async def set_employee_workplace(
                 work_start_time = ?,
                 work_end_time = ?,
                 last_distance_meters = ?
-            WHERE id = ?
-        """, (wp_name, wp_lat, wp_lon, wp_radius, start_time, end_time, new_distance, payload.user_id))
+            WHERE id = ? AND company_id = ?
+        """, (wp_name, wp_lat, wp_lon, wp_radius, start_time, end_time, new_distance, payload.user_id, comp_id))
 
         audit_details = (
             f"Xodim '{target_user['full_name']}' uchun ish joyi ({wp_name}, {wp_lat:.6f}, {wp_lon:.6f}, "
             f"radius: {wp_radius}m) va ish vaqti ({start_time} - {end_time}) belgilandi"
         )
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('LOCATION', ?, 'SET_EMPLOYEE_WORKPLACE', ?, ?)
-        """, (payload.user_id, admin["full_name"], audit_details))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'LOCATION', ?, 'SET_EMPLOYEE_WORKPLACE', ?, ?)
+        """, (comp_id, payload.user_id, admin["full_name"], audit_details))
 
         await conn.commit()
 
@@ -282,10 +283,11 @@ async def clear_employee_workplace(
     admin: dict = Depends(require_role(["ADMIN"]))
 ):
     """Xodimga biriktirilgan ish joyi lokatsiyasini o'chirish / tozalash"""
+    comp_id = admin.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
 
-        cur = await conn.execute("SELECT id, full_name FROM users WHERE id = ?", (user_id,))
+        cur = await conn.execute("SELECT id, full_name FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
         target_user = await cur.fetchone()
         if not target_user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Xodim topilmadi")
@@ -299,14 +301,14 @@ async def clear_employee_workplace(
                 work_start_time = '09:00',
                 work_end_time = '19:00',
                 last_distance_meters = NULL
-            WHERE id = ?
-        """, (user_id,))
+            WHERE id = ? AND company_id = ?
+        """, (user_id, comp_id))
 
         audit_details = f"Xodim '{target_user['full_name']}' uchun belgilangan ish joyi lokatsiyasi tozalandi"
         await conn.execute("""
-            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-            VALUES ('LOCATION', ?, 'CLEAR_EMPLOYEE_WORKPLACE', ?, ?)
-        """, (user_id, admin["full_name"], audit_details))
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'LOCATION', ?, 'CLEAR_EMPLOYEE_WORKPLACE', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], audit_details))
 
         await conn.commit()
 
@@ -319,8 +321,9 @@ async def clear_employee_workplace(
 async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"]))):
     """
     Barcha xodimlarning alohida biriktirilgan ish joylari, ish vaqti soatlari va ularning jonli holati.
-    Faqat Bosh Rahbar ko'ra oladi.
+    Faqat Rahbar ko'ra oladi (o'z firmasi bo'yicha).
     """
+    comp_id = admin.get("company_id") or 1
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
 
@@ -330,13 +333,13 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                    work_start_time, work_end_time, shift_status,
                    last_latitude, last_longitude, last_distance_meters, last_location_updated_at
             FROM users
-            WHERE is_active = 1 AND role != 'ADMIN'
+            WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
             ORDER BY 
                 CASE WHEN workplace_latitude IS NULL THEN 1 ELSE 0 END,
                 CASE WHEN last_distance_meters IS NULL THEN 1 ELSE 0 END,
                 last_distance_meters ASC,
                 full_name ASC
-        """)
+        """, (comp_id,))
         rows = await cur.fetchall()
 
         current_hm = get_current_tashkent_hm()
