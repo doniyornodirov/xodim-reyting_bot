@@ -3740,39 +3740,6 @@ async function handleFillEmployeeCurrentLocationToModal() {
   }
 }
 
-function handleFillCurrentLocationToModal() {
-  if (!navigator.geolocation) {
-    showToast("Brauzerda GPS qo'llab-quvvatlanmaydi", "danger");
-    return;
-  }
-  const btn = document.getElementById("btn-modal-fill-gps");
-  const origText = btn ? btn.innerHTML : "";
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = "<span>⏳</span> GPS olinmoqda...";
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      document.getElementById("modal-emp-wp-lat").value = pos.coords.latitude.toFixed(6);
-      document.getElementById("modal-emp-wp-lon").value = pos.coords.longitude.toFixed(6);
-      showToast("Hozirgi koordinatangiz maydonga joylandi!", "success");
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = origText;
-      }
-    },
-    (err) => {
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = origText;
-      }
-      showToast("GPS xatosi: Brauzerda lokatsiyaga ruxsat bering!", "danger");
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-  );
-}
-
 async function handleClearEmployeeWorkplace(userId, fullName) {
   if (!confirm(`Haqiqatan ham '${fullName}' xodimining ish joyi koordinatasini tozalamoqchimisiz?`)) return;
   try {
