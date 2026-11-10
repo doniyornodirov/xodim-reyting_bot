@@ -1,5 +1,7 @@
 package com.xodim.reyting;
 
+import com.xodim.reyting.R;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;

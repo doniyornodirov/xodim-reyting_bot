@@ -1,5 +1,7 @@
 package com.xodim.reyting;
 
+import com.xodim.reyting.R;
+
 import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.Notification;
@@ -142,10 +144,10 @@ public class LocationForegroundService extends Service {
 
             // Har 30 soniya yoki 5 metr harakatda GPS yangilash
             if (hasGps) {
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30000, 5, locationListener);
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30000L, 5f, locationListener);
             }
             if (hasNetwork) {
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 30000, 5, locationListener);
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 30000L, 5f, locationListener);
             }
 
             // Dastlabki so'nggi ma'lum joylashuvni darhol tekshirish
