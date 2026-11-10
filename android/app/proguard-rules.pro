@@ -4,3 +4,4 @@
     @android.webkit.JavascriptInterface <methods>;
 }
 -keep class com.xodim.reyting.** { *; }
+

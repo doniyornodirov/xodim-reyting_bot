@@ -82,3 +82,4 @@ public class AppPreferences {
         return getPrefs(context).getString(KEY_WP_NAME, "Ish joyi");
     }
 }
+
