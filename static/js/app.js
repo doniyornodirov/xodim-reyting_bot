@@ -3644,15 +3644,19 @@ let adminEmployeesLocationCache = [];
 function formatLocationTimeAgo(isoString) {
   if (!isoString) return "";
   try {
-    const date = new Date(isoString);
+    const date = parseUtcDate(isoString);
+    if (!date || typeof date === "string") return "";
     const now = new Date();
-    const diffSec = Math.floor((now - date) / 1000);
-    if (diffSec < 60) return "Hozirgina";
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffSec < 45) return "Hozirgina";
     const diffMin = Math.floor(diffSec / 60);
     if (diffMin < 60) return `${diffMin} daqiqa oldin`;
     const diffHours = Math.floor(diffMin / 60);
     if (diffHours < 24) return `${diffHours} soat oldin`;
-    return date.toLocaleDateString("uz-UZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return "Kecha";
+    if (diffDays < 7) return `${diffDays} kun oldin`;
+    return formatTashkentDateTime(isoString);
   } catch (e) {
     return "";
   }
@@ -3752,7 +3756,10 @@ async function loadAdminLocationTab(showToastNotice = false) {
       }
 
       const timeAgo = formatLocationTimeAgo(emp.last_location_updated_at);
-      const timeCell = timeAgo ? `<span style="font-size: 0.75rem; color: var(--text-muted);">🕒 ${timeAgo}</span>` : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
+      const exactTime = formatTashkentDateTime(emp.last_location_updated_at, true);
+      const timeCell = timeAgo 
+        ? `<span style="font-size: 0.75rem; color: var(--text-muted); cursor: help;" title="Aniq Toshkent vaqti: ${exactTime}">🕒 ${timeAgo}</span>` 
+        : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
 
       // Xaritada ko'rish tugmasi (xodimning oxirgi jonli lokatsiyasi)
       const mapBtn = (emp.last_latitude && emp.last_longitude)

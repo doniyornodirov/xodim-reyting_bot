@@ -135,17 +135,19 @@ async def ping_employee_location(
             is_inside = distance_meters <= w_radius
 
         # Kordinata doimo yangilanadi (toki Rahbar xodim kordinatasini istalgan paytda bitta tugma bilan ola bilsin)
+        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         await conn.execute("""
             UPDATE users
             SET last_latitude = ?,
                 last_longitude = ?,
                 last_distance_meters = ?,
-                last_location_updated_at = CURRENT_TIMESTAMP
+                last_location_updated_at = ?
             WHERE id = ?
         """, (
             round(payload.latitude, 7),
             round(payload.longitude, 7),
             distance_meters,
+            now_utc,
             user_id
         ))
         await conn.commit()
@@ -353,6 +355,11 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
             radius = r["workplace_radius_meters"] or 50
             is_inside = (dist <= radius) if (dist is not None and is_configured) else None
 
+            raw_updated_at = r["last_location_updated_at"]
+            norm_updated_at = raw_updated_at
+            if norm_updated_at and not norm_updated_at.endswith("Z") and "+" not in norm_updated_at:
+                norm_updated_at = norm_updated_at.replace(" ", "T") + "Z"
+
             employees.append({
                 "id": r["id"],
                 "telegram_id": r["telegram_id"],
@@ -371,7 +378,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                 "last_latitude": r["last_latitude"],
                 "last_longitude": r["last_longitude"],
                 "last_distance_meters": dist,
-                "last_location_updated_at": r["last_location_updated_at"],
+                "last_location_updated_at": norm_updated_at,
                 "is_inside": is_inside
             })
 
