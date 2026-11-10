@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 import aiosqlite
-from app.config import DB_PATH, OTP_EXPIRATION_SECONDS, DEBUG, BOT_USERNAME, RAHBAR_ID
+from app.config import DB_PATH, OTP_EXPIRATION_SECONDS, DEBUG, BOT_USERNAME, RAHBAR_ID, DEVELOPER_ID
 from app.models import LoginRequest, VerifyOtpRequest
 from app.security import verify_password, generate_otp, create_access_token
 from app.bot import send_otp_to_telegram
@@ -188,8 +188,8 @@ async def verify_otp(req: VerifyOtpRequest):
         comp_name = comp["name"] if comp else "Bosh Tashkilot"
         comp_plan = comp["plan"] if comp else "STANDARD"
 
-        owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
-        is_super_admin = (int(user["telegram_id"]) == owner_id_val or user["role"] == "SUPER_ADMIN")
+        dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
+        is_super_admin = (int(user["telegram_id"]) == dev_id_val or user["role"] == "DEVELOPER")
 
         return {
             "success": True,

@@ -217,6 +217,7 @@ function copyToClipboard(text) {
 }
 
 function formatRoleName(role) {
+  if (role === "DEVELOPER") return "Dasturchi Admin";
   if (role === "ADMIN") return "Bosh Rahbar";
   if (role === "CASHIER") return "Kassir";
   if (role === "EMPLOYEE") return "Xodim";
@@ -808,7 +809,14 @@ function updateSidebarContent() {
   }
 
   if (nameEl) {
-    if (currentUser.role === "ADMIN" && (currentUser.full_name === "Bosh Rahbar" || !currentUser.full_name)) {
+    if (currentUser.role === "DEVELOPER") {
+      nameEl.innerText = "💻 Dasturchi Admin";
+      if (roleEl) {
+        roleEl.style.display = "inline-flex";
+        roleEl.className = "badge badge-developer";
+        roleEl.innerText = "Dasturchi";
+      }
+    } else if (currentUser.role === "ADMIN" && (currentUser.full_name === "Bosh Rahbar" || !currentUser.full_name)) {
       nameEl.innerText = isRahbarCashierMode ? "💼 Kassir (Rejim)" : "👑 Bosh Rahbar";
       if (roleEl) roleEl.style.display = "none";
     } else {
@@ -817,7 +825,7 @@ function updateSidebarContent() {
     }
   }
 
-  if (roleEl && currentUser.role !== "ADMIN") {
+  if (roleEl && currentUser.role !== "ADMIN" && currentUser.role !== "DEVELOPER") {
     if (currentUser.role === "CASHIER") {
       roleEl.className = "badge badge-cashier";
       roleEl.innerText = "💼 Kassir";
@@ -835,7 +843,15 @@ function updateSidebarContent() {
 
   let menuItems = [];
 
-  if (currentUser.role === "ADMIN") {
+  if (currentUser.role === "DEVELOPER") {
+    menuItems = [
+      { id: "saas", icon: "🏢", title: "Firmalar (SaaS)", isAdmin: true },
+      { id: "reports", icon: "📋", title: "Hisobotlar", isAdmin: true },
+      { id: "analytics", icon: "📈", title: "Savdo monitoringi", isAdmin: true },
+      { id: "users", icon: "👥", title: "Xodimlar & Qarz", isAdmin: true },
+      { id: "audit", icon: "🛡️", title: "Audit loglar", isAdmin: true }
+    ];
+  } else if (currentUser.role === "ADMIN") {
     if (isRahbarCashierMode) {
       menuItems = [
         { id: "cashier-intake", icon: "📥", title: "Kassa qabul qilish", isAdmin: false },
@@ -855,7 +871,6 @@ function updateSidebarContent() {
         { id: "sims", icon: "📲", title: "Sim-karta boshqaruvi", isAdmin: true },
         { id: "rating", icon: "🏆", title: "Reyting & KPI", isAdmin: true },
         { id: "audit", icon: "🛡️", title: "Audit loglar", isAdmin: true },
-        ...(currentUser.is_super_admin ? [{ id: "saas", icon: "🏢", title: "Firmalar (SaaS)", isAdmin: true }] : []),
         { id: "rahbar-cashier-toggle", icon: "💼", title: "Kassir rejimiga o'tish", isAction: true, action: "toggleRahbarCashierMode" }
       ];
     }
@@ -941,14 +956,38 @@ function renderApp() {
   if (navCompBadge) navCompBadge.style.display = "inline-flex";
   if (sidebarCompBadge) sidebarCompBadge.style.display = "inline-flex";
 
+  const isDevAdmin = (currentUser.role === "DEVELOPER" || currentUser.is_super_admin);
+
   const saasTabBtn = document.getElementById("tab-btn-admin-saas");
   if (saasTabBtn) {
-    saasTabBtn.style.display = currentUser.is_super_admin ? "inline-flex" : "none";
+    saasTabBtn.style.display = isDevAdmin ? "inline-flex" : "none";
   }
 
-  if (currentUser.role === "ADMIN") {
+  if (currentUser.role === "DEVELOPER") {
+    roleBadge.className = "badge badge-developer";
+    roleBadge.style.background = "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))";
+    roleBadge.style.borderColor = "#a855f7";
+    roleBadge.style.color = "#d8b4fe";
+    roleBadge.innerText = "💻 Dasturchi Admin";
+    debtBadge.style.display = "none";
+    if (usdRateBadge) {
+      usdRateBadge.style.cursor = "pointer";
+      usdRateBadge.title = "Dollar kursini belgilash uchun bosing";
+    }
+    if (rahbarCashierToggle) rahbarCashierToggle.style.display = "none";
+
+    isRahbarCashierMode = false;
+
+    // Admin panelini ko'rsatish
+    adminNav.style.display = "flex";
+    adminNav.style.flexWrap = "wrap";
+    employeeNav.style.display = "none";
+
+    // Dasturchi Admin uchun boshlang'ich oyna: Firmalar (SaaS)
+    switchAdminTab("saas");
+  } else if (currentUser.role === "ADMIN") {
     roleBadge.className = "badge badge-admin";
-    roleBadge.innerText = currentUser.is_super_admin ? "👑 Super Admin" : "👑 Firma Rahbari";
+    roleBadge.innerText = "👑 Bosh Rahbar";
     debtBadge.style.display = "none";
     if (usdRateBadge) {
       usdRateBadge.style.cursor = "pointer";
@@ -1035,8 +1074,8 @@ function renderApp() {
   // Yon menyuni ham foydalanuvchi ma'lumotlari bilan to'liq sinxronlash
   updateSidebarContent();
 
-  // Bosh Rahbar o'zi kuzatilmaydi! Faqat xodimlar avtomatik kuzatiladi
-  if (currentUser.role === "ADMIN") {
+  // Bosh Rahbar va Dasturchi Admin o'zi kuzatilmaydi! Faqat xodimlar avtomatik kuzatiladi
+  if (currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") {
     const locBadge = document.getElementById("nav-user-location");
     if (locBadge) locBadge.style.display = "none";
     stopAutoLocationTracking();
@@ -4145,11 +4184,11 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // ==========================================
-// SAAS MULTI-TENANT MANAGEMENT (Super Admin)
+// SAAS MULTI-TENANT MANAGEMENT (Dasturchi Admin)
 // ==========================================
 
 async function loadSaasCompanies() {
-  if (!currentUser || !currentUser.is_super_admin) return;
+  if (!currentUser || (!currentUser.is_super_admin && currentUser.role !== "DEVELOPER")) return;
 
   const tbody = document.getElementById("saas-companies-tbody");
   if (tbody) {
@@ -4157,7 +4196,7 @@ async function loadSaasCompanies() {
   }
 
   try {
-    const res = await apiRequest("/api/saas/companies");
+    const res = await api("/api/saas/companies");
     if (!res.success || !res.data) {
       if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ef4444; padding: 2rem;">Yuklashda xatolik yuz berdi.</td></tr>`;
       return;
@@ -4234,7 +4273,7 @@ async function loadSaasCompanies() {
           `;
         }
       } else {
-        actionsHtml += `<span style="font-size: 0.75rem; color: #94a3b8;">Asosiy (Daxlsiz)</span>`;
+        actionsHtml += `<span style="font-size: 0.75rem; color: #94a3b8;">Bosh Tashkilot (Daxlsiz)</span>`;
       }
       actionsHtml += `</div>`;
 
@@ -4271,7 +4310,7 @@ async function loadSaasCompanies() {
   } catch (e) {
     console.error("loadSaasCompanies xatosi:", e);
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ef4444; padding: 2rem;">Server bilan aloqada xatolik yuz berdi.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #ef4444; padding: 2rem;">${escapeHtml(e.message || "Server bilan aloqada xatolik yuz berdi.")}</td></tr>`;
     }
   }
 }
@@ -4300,7 +4339,7 @@ async function handleCreateCompanySubmit(event) {
   }
 
   try {
-    const res = await apiRequest("/api/saas/companies/create", "POST", {
+    const res = await api("/api/saas/companies/create", "POST", {
       name: name,
       owner_name: ownerName,
       owner_telegram_id: ownerTg,
@@ -4329,7 +4368,7 @@ async function toggleCompanyActive(companyId, currentIsActive) {
   }
 
   try {
-    const res = await apiRequest(`/api/saas/companies/${companyId}/toggle-active`, "POST");
+    const res = await api(`/api/saas/companies/${companyId}/toggle-active`, "POST");
     if (res.success) {
       showToast(res.message, "success");
       loadSaasCompanies();
@@ -4347,7 +4386,7 @@ async function extendCompanySubscription(companyId, days = 30) {
   }
 
   try {
-    const res = await apiRequest(`/api/saas/companies/${companyId}/extend`, "POST", { days: days });
+    const res = await api(`/api/saas/companies/${companyId}/extend`, "POST", { days: days });
     if (res.success) {
       showToast(res.message, "success");
       loadSaasCompanies();
@@ -4368,7 +4407,7 @@ async function openCompanySettingsModal() {
   if (!modal) return;
 
   try {
-    const res = await apiRequest("/api/saas/my-company");
+    const res = await api("/api/saas/my-company");
     if (res.success && res.data) {
       const comp = res.data;
       const nameEl = document.getElementById("company-modal-name");
@@ -4427,7 +4466,7 @@ async function handleCompanySettingsSubmit(event) {
   const groupId = groupInput ? groupInput.value.trim() : "";
 
   try {
-    const res = await apiRequest("/api/saas/my-company/settings", "POST", {
+    const res = await api("/api/saas/my-company/settings", "POST", {
       telegram_group_id: groupId
     });
     if (res.success) {

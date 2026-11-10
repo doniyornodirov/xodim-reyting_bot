@@ -332,7 +332,7 @@ async def init_db():
                 pass
 
         # RAHBAR_ID foydalanuvchisini ADMIN va company_id = 1 sifatida tekshirish va yaratish
-        from app.config import RAHBAR_ID
+        from app.config import RAHBAR_ID, DEVELOPER_ID
         if RAHBAR_ID and RAHBAR_ID.isdigit():
             rahbar_tg_id = int(RAHBAR_ID)
             cursor = await conn.execute("SELECT * FROM users WHERE telegram_id = ?", (rahbar_tg_id,))
@@ -346,5 +346,19 @@ async def init_db():
             else:
                 # Agar mavjud bo'lsa, rolini ADMIN va company_id = 1 deb yangilaymiz
                 await conn.execute("UPDATE users SET role = 'ADMIN', company_id = 1, is_active = 1 WHERE id = ?", (rahbar_user["id"],))
+
+        # DEVELOPER_ID (Dasturchi Admin: 8694797293) tekshirish va yaratish / yangilash
+        if DEVELOPER_ID and DEVELOPER_ID.isdigit():
+            dev_tg_id = int(DEVELOPER_ID)
+            cursor = await conn.execute("SELECT * FROM users WHERE telegram_id = ?", (dev_tg_id,))
+            dev_user = await cursor.fetchone()
+            if not dev_user:
+                dev_pwd = hash_password(str(dev_tg_id))
+                await conn.execute("""
+                INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
+                VALUES (1, ?, 'Dasturchi Admin', 'DEVELOPER', ?, 0, 1)
+                """, (dev_tg_id, dev_pwd))
+            else:
+                await conn.execute("UPDATE users SET role = 'DEVELOPER', is_active = 1 WHERE id = ?", (dev_user["id"],))
 
         await conn.commit()

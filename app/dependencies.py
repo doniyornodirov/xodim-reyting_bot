@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import aiosqlite
-from app.config import DB_PATH, RAHBAR_ID
+from app.config import DB_PATH, RAHBAR_ID, DEVELOPER_ID
 from app.security import decode_access_token
 
 security = HTTPBearer(auto_error=False)
@@ -38,9 +38,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                 detail="Sizning akkauntingiz faol emas yoki ishdan bo'shatilgansiz!"
             )
 
-        # Super Admin tekshiruvi (Platforma Egasi)
-        owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
-        is_super_admin = (int(user["telegram_id"]) == owner_id_val or user["role"] == "SUPER_ADMIN")
+        # Super Admin tekshiruvi (Faqat Dasturchi Admin: 8694797293)
+        dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
+        is_super_admin = (int(user["telegram_id"]) == dev_id_val or user["role"] == "DEVELOPER")
 
         # SaaS: Foydalanuvchi qaysi kompaniyaga tegishli ekanligini tekshirish
         company_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
@@ -94,6 +94,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 def require_role(allowed_roles: list[str]):
     async def role_checker(current_user: dict = Depends(get_current_user)):
+        # DEVELOPER har qanday admin boshqaruv amalini bajara oladi
+        if current_user.get("role") == "DEVELOPER" or current_user.get("is_super_admin"):
+            return current_user
         if current_user["role"] not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -103,17 +106,17 @@ def require_role(allowed_roles: list[str]):
     return role_checker
 
 async def require_super_admin(current_user: dict = Depends(get_current_user)):
-    """Faqat Platforma Egasi (Super Admin) ga ruxsat beruvchi himoya"""
-    if not current_user.get("is_super_admin"):
+    """Faqat Dasturchi Admin (Super Admin: 8694797293) ga ruxsat beruvchi himoya"""
+    if not current_user.get("is_super_admin") and current_user.get("role") != "DEVELOPER":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Ushbu amal faqat Platforma Bosh Rahbari (Super Admin) uchun ruxsat etilgan!"
+            detail="Ushbu amal faqat Dasturchi Admin (Super Admin) uchun ruxsat etilgan!"
         )
     return current_user
 
 async def require_active_shift(current_user: dict = Depends(get_current_user)):
-    # Bosh Rahbar har doim daxlsiz va amallarni bajara oladi
-    if current_user.get("role") == "ADMIN":
+    # Bosh Rahbar va Dasturchi Admin har doim daxlsiz va amallarni bajara oladi
+    if current_user.get("role") in ["ADMIN", "DEVELOPER"] or current_user.get("is_super_admin"):
         return current_user
 
     if current_user.get("shift_status") == "RESTING":
