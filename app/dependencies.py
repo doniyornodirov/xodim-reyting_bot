@@ -42,46 +42,54 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
         is_super_admin = (int(user["telegram_id"]) == dev_id_val or user["role"] == "DEVELOPER")
 
-        # SaaS: Foydalanuvchi qaysi kompaniyaga tegishli ekanligini tekshirish
-        company_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
-        cur_c = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
-        comp = await cur_c.fetchone()
-
-        if not comp:
-            company_id = 1
-            company_name = "Bosh Tashkilot"
-            company_plan = "UNLIMITED"
+        # Dasturchi Admin xodim ham, rahbar ham emas — alohida SaaS Platforma boshqaruvchisi
+        if user["role"] == "DEVELOPER":
+            company_id = 0
+            company_name = "SaaS Platforma"
+            company_plan = "PLATFORM"
             company_group_id = None
             company_expires_at = None
         else:
-            company_name = comp["name"]
-            company_plan = comp["plan"]
-            company_group_id = comp["telegram_group_id"]
-            company_expires_at = comp["subscription_expires_at"]
+            # SaaS: Foydalanuvchi qaysi kompaniyaga tegishli ekanligini tekshirish
+            company_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
+            cur_c = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
+            comp = await cur_c.fetchone()
 
-            # Super Admin har doim cheklovsiz tizimga kira oladi
-            if not is_super_admin:
-                if not comp["is_active"]:
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Kompaniyangiz tizimdan vaqtinchalik to'xtatilgan (Bloklangan). Super Admin bilan bog'laning!"
-                    )
-                if comp["plan"] != "UNLIMITED" and comp["subscription_expires_at"]:
-                    try:
-                        exp_str = str(comp["subscription_expires_at"]).replace("Z", "+00:00")
-                        exp_dt = datetime.fromisoformat(exp_str)
-                        if exp_dt.tzinfo is None:
-                            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
-                        now_utc = datetime.now(timezone.utc)
-                        if now_utc > exp_dt:
-                            raise HTTPException(
-                                status_code=status.HTTP_403_FORBIDDEN,
-                                detail="Kompaniyangizning foydalanish obuna muddati tugagan! Xizmatni davom ettirish uchun to'lov qiling va platforma ma'muriyati bilan bog'laning."
-                            )
-                    except HTTPException:
-                        raise
-                    except Exception:
-                        pass
+            if not comp:
+                company_id = 1
+                company_name = "Bosh Tashkilot"
+                company_plan = "UNLIMITED"
+                company_group_id = None
+                company_expires_at = None
+            else:
+                company_name = comp["name"]
+                company_plan = comp["plan"]
+                company_group_id = comp["telegram_group_id"]
+                company_expires_at = comp["subscription_expires_at"]
+
+                # Super Admin har doim cheklovsiz tizimga kira oladi
+                if not is_super_admin:
+                    if not comp["is_active"]:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Kompaniyangiz tizimdan vaqtinchalik to'xtatilgan (Bloklangan). Super Admin bilan bog'laning!"
+                        )
+                    if comp["plan"] != "UNLIMITED" and comp["subscription_expires_at"]:
+                        try:
+                            exp_str = str(comp["subscription_expires_at"]).replace("Z", "+00:00")
+                            exp_dt = datetime.fromisoformat(exp_str)
+                            if exp_dt.tzinfo is None:
+                                exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+                            now_utc = datetime.now(timezone.utc)
+                            if now_utc > exp_dt:
+                                raise HTTPException(
+                                    status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="Kompaniyangizning foydalanish obuna muddati tugagan! Xizmatni davom ettirish uchun to'lov qiling va platforma ma'muriyati bilan bog'laning."
+                                )
+                        except HTTPException:
+                            raise
+                        except Exception:
+                            pass
 
     user_dict = dict(user)
     user_dict["company_id"] = company_id
@@ -94,9 +102,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
 
 def require_role(allowed_roles: list[str]):
     async def role_checker(current_user: dict = Depends(get_current_user)):
-        # DEVELOPER har qanday admin boshqaruv amalini bajara oladi
-        if current_user.get("role") == "DEVELOPER" or current_user.get("is_super_admin"):
-            return current_user
+        # Dasturchi Admin xodim ham, rahbar ham emas — faqat ko'rsatilgan rollar kira oladi
         if current_user["role"] not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

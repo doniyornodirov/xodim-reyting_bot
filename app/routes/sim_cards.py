@@ -20,7 +20,7 @@ async def get_sim_employees(
     cursor = await db.execute("""
         SELECT id, telegram_id, full_name, role 
         FROM users 
-        WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
+        WHERE is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER') AND company_id = ?
         ORDER BY full_name ASC
     """, (comp_id,))
     rows = await cursor.fetchall()
@@ -259,7 +259,7 @@ async def get_sim_cards_summary(
             WHERE status = 'APPROVED' AND company_id = ?
             GROUP BY employee_id
         ) rep ON u.id = rep.employee_id
-        WHERE u.role != 'ADMIN' AND u.is_active = 1 AND u.company_id = ?
+        WHERE u.role NOT IN ('ADMIN', 'DEVELOPER') AND u.is_active = 1 AND u.company_id = ?
         ORDER BY in_stock DESC, u.full_name ASC
     """, (comp_id, comp_id, comp_id))
     balances = [dict(row) for row in await cur.fetchall()]

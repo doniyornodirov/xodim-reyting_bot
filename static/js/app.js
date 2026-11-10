@@ -716,7 +716,7 @@ function updateShiftStatusBadgesAndBanner() {
   const sidebarShiftBadge = document.getElementById("sidebar-user-shift");
   const banner = document.getElementById("employee-resting-banner");
 
-  if (!currentUser || currentUser.role === "ADMIN") {
+  if (!currentUser || currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") {
     if (navShiftBadge) navShiftBadge.style.display = "none";
     if (sidebarShiftBadge) sidebarShiftBadge.style.display = "none";
     if (banner) banner.style.display = "none";
@@ -845,11 +845,7 @@ function updateSidebarContent() {
 
   if (currentUser.role === "DEVELOPER") {
     menuItems = [
-      { id: "saas", icon: "🏢", title: "Firmalar (SaaS)", isAdmin: true },
-      { id: "reports", icon: "📋", title: "Hisobotlar", isAdmin: true },
-      { id: "analytics", icon: "📈", title: "Savdo monitoringi", isAdmin: true },
-      { id: "users", icon: "👥", title: "Xodimlar & Qarz", isAdmin: true },
-      { id: "audit", icon: "🛡️", title: "Audit loglar", isAdmin: true }
+      { id: "saas", icon: "🏢", title: "Firmalar (SaaS)", isAdmin: true }
     ];
   } else if (currentUser.role === "ADMIN") {
     if (isRahbarCashierMode) {
@@ -945,22 +941,20 @@ function renderApp() {
   const usdRateBadge = document.getElementById("usd-rate-badge");
   const rahbarCashierToggle = document.getElementById("btn-rahbar-cashier-toggle");
 
-  // Kompaniya nomini navbar va sidebarga o'rnatish
-  const compName = currentUser.company_name || "Bosh Tashkilot";
-  const navCompBadge = document.getElementById("nav-company-badge");
-  const navCompName = document.getElementById("nav-company-name");
-  const sidebarCompBadge = document.getElementById("sidebar-company-badge");
-  const sidebarCompName = document.getElementById("sidebar-company-name");
-  if (navCompName) navCompName.innerText = compName;
-  if (sidebarCompName) sidebarCompName.innerText = compName;
-  if (navCompBadge) navCompBadge.style.display = "inline-flex";
-  if (sidebarCompBadge) sidebarCompBadge.style.display = "inline-flex";
+  const isDev = (currentUser.role === "DEVELOPER");
 
-  const isDevAdmin = (currentUser.role === "DEVELOPER" || currentUser.is_super_admin);
-
-  const saasTabBtn = document.getElementById("tab-btn-admin-saas");
-  if (saasTabBtn) {
-    saasTabBtn.style.display = isDevAdmin ? "inline-flex" : "none";
+  // Dasturchi Admin xodim ham, rahbar ham emas — alohida SaaS Platforma boshqaruvchisi!
+  if (isDev) {
+    if (navCompBadge) navCompBadge.style.display = "none";
+    if (sidebarCompBadge) sidebarCompBadge.style.display = "none";
+    if (usdRateBadge) usdRateBadge.style.display = "none";
+    if (userNameEl) userNameEl.style.display = "none";
+  } else {
+    const compName = currentUser.company_name || "Bosh Tashkilot";
+    if (navCompName) navCompName.innerText = compName;
+    if (sidebarCompName) sidebarCompName.innerText = compName;
+    if (navCompBadge) navCompBadge.style.display = "inline-flex";
+    if (sidebarCompBadge) sidebarCompBadge.style.display = "inline-flex";
   }
 
   if (currentUser.role === "DEVELOPER") {
@@ -970,26 +964,27 @@ function renderApp() {
     roleBadge.style.color = "#d8b4fe";
     roleBadge.innerText = "💻 Dasturchi Admin";
     debtBadge.style.display = "none";
-    if (usdRateBadge) {
-      usdRateBadge.style.cursor = "pointer";
-      usdRateBadge.title = "Dollar kursini belgilash uchun bosing";
-    }
     if (rahbarCashierToggle) rahbarCashierToggle.style.display = "none";
 
     isRahbarCashierMode = false;
 
-    // Admin panelini ko'rsatish
+    // Dasturchi Admin uchun BARCHA boshqa admin tablarini YASHIRISH!
+    // Faqat bitta yagona "Firmalar (SaaS)" tabi ko'rinadi!
+    document.querySelectorAll("#nav-tabs-admin .tab-btn").forEach(btn => {
+      btn.style.display = (btn.id === "tab-btn-admin-saas") ? "inline-flex" : "none";
+    });
     adminNav.style.display = "flex";
     adminNav.style.flexWrap = "wrap";
     employeeNav.style.display = "none";
 
-    // Dasturchi Admin uchun boshlang'ich oyna: Firmalar (SaaS)
+    // Boshlang'ich va yagona oyna: Firmalar (SaaS)
     switchAdminTab("saas");
   } else if (currentUser.role === "ADMIN") {
     roleBadge.className = "badge badge-admin";
     roleBadge.innerText = "👑 Bosh Rahbar";
     debtBadge.style.display = "none";
     if (usdRateBadge) {
+      usdRateBadge.style.display = "inline-flex";
       usdRateBadge.style.cursor = "pointer";
       usdRateBadge.title = "Dollar kursini belgilash uchun bosing";
     }
@@ -1004,7 +999,10 @@ function renderApp() {
 
     isRahbarCashierMode = false;
 
-    // Faqat Rahbar menyusini ko'rsatish, Xodim menyusini butunlay yashirish!
+    // Bosh Rahbar uchun barcha operatsion tablarni ko'rsatish, lekin SaaS tabini MUTLAQO YASHIRISH!
+    document.querySelectorAll("#nav-tabs-admin .tab-btn").forEach(btn => {
+      btn.style.display = (btn.id === "tab-btn-admin-saas") ? "none" : "inline-flex";
+    });
     adminNav.style.display = "flex";
     adminNav.style.flexWrap = "nowrap";
     employeeNav.style.display = "none";

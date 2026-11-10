@@ -31,7 +31,7 @@ async def get_leaderboard(period: str = "monthly", user: dict = Depends(get_curr
         FROM users u
         LEFT JOIN daily_reports dr 
             ON dr.employee_id = u.id AND dr.status = 'APPROVED' {date_filter}
-        WHERE u.is_active = 1 AND u.role != 'ADMIN' AND u.company_id = ?
+        WHERE u.is_active = 1 AND u.role NOT IN ('ADMIN', 'DEVELOPER') AND u.company_id = ?
         GROUP BY u.id
         """
         cursor = await conn.execute(query, (comp_id,))

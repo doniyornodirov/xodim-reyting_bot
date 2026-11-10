@@ -16,7 +16,7 @@ async def get_active_employees(user: dict = Depends(require_role(["CASHIER", "AD
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role 
             FROM users 
-            WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
+            WHERE is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER') AND company_id = ?
               AND id NOT IN (
                   SELECT employee_id FROM cashier_handovers 
                   WHERE handover_date = ? AND company_id = ?
@@ -179,7 +179,7 @@ async def get_comparison(date: str = None, user: dict = Depends(require_role(["A
             WHERE ch.handover_date = ? AND ch.company_id = ?
             GROUP BY employee_id
         ) ch_agg ON ch_agg.employee_id = u.id
-        WHERE u.is_active = 1 AND u.role != 'ADMIN' AND u.company_id = ?
+        WHERE u.is_active = 1 AND u.role NOT IN ('ADMIN', 'DEVELOPER') AND u.company_id = ?
         ORDER BY u.full_name ASC
         """
         cursor = await conn.execute(query, (target_date, comp_id, target_date, comp_id, comp_id))

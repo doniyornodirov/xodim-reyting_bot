@@ -356,9 +356,9 @@ async def init_db():
                 dev_pwd = hash_password(str(dev_tg_id))
                 await conn.execute("""
                 INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
-                VALUES (1, ?, 'Dasturchi Admin', 'DEVELOPER', ?, 0, 1)
+                VALUES (0, ?, 'Dasturchi Admin', 'DEVELOPER', ?, 0, 1)
                 """, (dev_tg_id, dev_pwd))
             else:
-                await conn.execute("UPDATE users SET role = 'DEVELOPER', is_active = 1 WHERE id = ?", (dev_user["id"],))
+                await conn.execute("UPDATE users SET role = 'DEVELOPER', company_id = 0, is_active = 1 WHERE id = ?", (dev_user["id"],))
 
         await conn.commit()

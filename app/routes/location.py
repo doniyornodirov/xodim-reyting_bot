@@ -333,7 +333,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                    work_start_time, work_end_time, shift_status,
                    last_latitude, last_longitude, last_distance_meters, last_location_updated_at
             FROM users
-            WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
+            WHERE is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER') AND company_id = ?
             ORDER BY 
                 CASE WHEN workplace_latitude IS NULL THEN 1 ELSE 0 END,
                 CASE WHEN last_distance_meters IS NULL THEN 1 ELSE 0 END,

@@ -21,7 +21,7 @@ async def get_all_users(admin: dict = Depends(require_role(["ADMIN"]))):
                    last_latitude, last_longitude, last_distance_meters, last_location_updated_at,
                    shift_status, work_start_time, work_end_time, company_id
             FROM users 
-            WHERE company_id = ?
+            WHERE company_id = ? AND role != 'DEVELOPER'
             ORDER BY is_active DESC, role ASC, full_name ASC
         """, (comp_id,))
         rows = await cursor.fetchall()
@@ -35,7 +35,7 @@ async def get_admin_employees(admin: dict = Depends(require_role(["ADMIN"]))):
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role, company_id 
             FROM users 
-            WHERE is_active = 1 AND role != 'ADMIN' AND company_id = ?
+            WHERE is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER') AND company_id = ?
             ORDER BY full_name ASC
         """, (comp_id,))
         rows = await cursor.fetchall()
