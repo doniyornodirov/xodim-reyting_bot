@@ -1456,10 +1456,16 @@
           </div>
         </div>
 
-        <!-- Rahbar agar o'sha filialda turgan bo'lsa, qulay yordamchi tugma -->
-        <div style="margin-bottom: 1.25rem;">
-          <button type="button" class="btn-logout" id="btn-modal-fill-gps" onclick="handleFillCurrentLocationToModal()" style="width: 100%; font-size: 0.8rem; padding: 0.45rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; color: #a5b4fc; border-color: rgba(99, 102, 241, 0.4);">
-            <span>📍</span> Hozirgi joylashuvim koordinatasini to'ldirish
+        <!-- Avtomatik kordinata to'ldirish tugmalari -->
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem;">
+          <!-- 1. Xodimning ayni damdagi turgan joyini olish -->
+          <button type="button" class="btn-success" id="btn-modal-fill-emp-gps" onclick="handleFillEmployeeCurrentLocationToModal()" style="width: 100%; font-size: 0.82rem; padding: 0.55rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 600;">
+            <span>📍</span> Xodimning ayni damdagi turgan joyini olish
+          </button>
+
+          <!-- 2. Rahbarning o'z joylashuvini kiritish (agar filialda bo'lsa) -->
+          <button type="button" class="btn-logout" id="btn-modal-fill-gps" onclick="handleFillCurrentLocationToModal()" style="width: 100%; font-size: 0.78rem; padding: 0.45rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; color: #a5b4fc; border-color: rgba(99, 102, 241, 0.4);">
+            <span>🏢</span> Hozirgi joylashuvim (Rahbar) koordinatasini to'ldirish
           </button>
         </div>
 
@@ -1577,6 +1583,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=341"></script>
+  <script src="/static/js/app.js?v=342"></script>
 </body>
 </html>
