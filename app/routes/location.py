@@ -102,7 +102,7 @@ async def ping_employee_location(
         conn.row_factory = aiosqlite.Row
         cur = await conn.execute("""
             SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
-                   work_start_time, work_end_time
+                   work_start_time, work_end_time, shift_status
             FROM users WHERE id = ?
         """, (user_id,))
         row = await cur.fetchone()
@@ -114,6 +114,7 @@ async def ping_employee_location(
         end_time = row["work_end_time"] or "19:00"
         current_hm = get_current_tashkent_hm()
         is_within_hours = is_time_within_interval(current_hm, start_time, end_time)
+        shift_status = row["shift_status"] if ("shift_status" in row.keys() and row["shift_status"]) else "WORKING"
 
         w_lat = row["workplace_latitude"]
         w_lon = row["workplace_longitude"]
@@ -149,11 +150,30 @@ async def ping_employee_location(
         ))
         await conn.commit()
 
-        # Agar ish vaqti bo'lmasa, dam olish holati qaytariladi
+        # Agar Rahbar tomonidan xodim dam olish rejimiga o'tkazilgan bo'lsa
+        if shift_status == "RESTING":
+            return {
+                "success": True,
+                "is_within_hours": False,
+                "shift_status": "RESTING",
+                "work_start_time": start_time,
+                "work_end_time": end_time,
+                "current_time": current_hm,
+                "status_text": "Damda 🌙 (Dam olish rejimi)",
+                "distance_meters": distance_meters,
+                "radius_meters": w_radius,
+                "is_inside": is_inside,
+                "workplace_name": w_name,
+                "is_configured": is_configured,
+                "updated_at": datetime.now().isoformat()
+            }
+
+        # Agar ish soati bo'lmasa, dam olish holati qaytariladi
         if not is_within_hours:
             return {
                 "success": True,
                 "is_within_hours": False,
+                "shift_status": "WORKING",
                 "work_start_time": start_time,
                 "work_end_time": end_time,
                 "current_time": current_hm,
@@ -169,6 +189,7 @@ async def ping_employee_location(
         return {
             "success": True,
             "is_within_hours": True,
+            "shift_status": "WORKING",
             "work_start_time": start_time,
             "work_end_time": end_time,
             "current_time": current_hm,
@@ -304,7 +325,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
         cur = await conn.execute("""
             SELECT id, telegram_id, full_name, role, is_active,
                    workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
-                   work_start_time, work_end_time,
+                   work_start_time, work_end_time, shift_status,
                    last_latitude, last_longitude, last_distance_meters, last_location_updated_at
             FROM users
             WHERE is_active = 1 AND role != 'ADMIN'
@@ -326,6 +347,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
             start_time = r["work_start_time"] or "09:00"
             end_time = r["work_end_time"] or "19:00"
             is_within_hours = is_time_within_interval(current_hm, start_time, end_time)
+            emp_shift = r["shift_status"] if ("shift_status" in r.keys() and r["shift_status"]) else "WORKING"
 
             dist = r["last_distance_meters"]
             radius = r["workplace_radius_meters"] or 50
@@ -336,6 +358,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                 "telegram_id": r["telegram_id"],
                 "full_name": r["full_name"],
                 "role": r["role"],
+                "shift_status": emp_shift,
                 "workplace_name": r["workplace_name"] or "Ish joyi",
                 "workplace_latitude": w_lat,
                 "workplace_longitude": w_lon,

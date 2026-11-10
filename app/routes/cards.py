@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import aiosqlite
 from app.config import DB_PATH
 from app.models import CardTopupCreate, StatusActionRequest
-from app.dependencies import get_current_user, require_role
+from app.dependencies import get_current_user, require_role, require_active_shift
 from app.bot import notify_card_topup_in_group
 
 router = APIRouter(prefix="/api/cards", tags=["Cards"])
@@ -27,11 +27,16 @@ def validate_card_holder(name: str) -> str:
     return cleaned
 
 @router.post("/topup")
-async def create_card_topup(req: CardTopupCreate, user: dict = Depends(get_current_user)):
+async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_active_shift)):
     if user.get("role") == "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bosh Rahbar xodim emas! Karta to'ldirish so'rovini faqat xodimlar (operator va kassir) yubora oladi."
+        )
+    if user.get("shift_status") == "RESTING":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbarga murojaat qiling."
         )
     formatted_card = format_card_number(req.card_number)
     validated_holder = validate_card_holder(req.card_holder)

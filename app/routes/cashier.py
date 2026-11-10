@@ -27,6 +27,12 @@ async def get_active_employees(user: dict = Depends(require_role(["CASHIER", "AD
 
 @router.post("/handover")
 async def record_handover(req: CashierHandoverCreate, user: dict = Depends(require_role(["CASHIER", "ADMIN"]))):
+    if user.get("role") != "ADMIN" and user.get("shift_status") == "RESTING":
+        raise HTTPException(
+            status_code=403,
+            detail="Siz hozirda dam olish (damda) rejimidasiz! Kassa amallarini bajarish vaqtinchalik cheklangan."
+        )
+
     import asyncio
     from app.bot import send_cashier_receipt_to_telegram
     from app.security import get_tashkent_now

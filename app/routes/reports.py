@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 import aiosqlite
 from app.config import DB_PATH
 from app.models import DailyReportCreate, StatusActionRequest
-from app.dependencies import get_current_user, require_role
+from app.dependencies import get_current_user, require_role, require_active_shift
 from app.security import get_tashkent_today_str, get_tashkent_now
 from app.bot import send_report_summary_to_telegram, send_report_status_to_telegram
 
@@ -71,11 +71,16 @@ async def get_today_prefill(user: dict = Depends(get_current_user)):
         }
 
 @router.post("/submit")
-async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(get_current_user)):
+async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(require_active_shift)):
     if user.get("role") == "ADMIN":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Bosh Rahbar xodim emas! Kunlik hisobotni faqat xodimlar (operator va kassir) topshira oladi."
+        )
+    if user.get("shift_status") == "RESTING":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbarga murojaat qiling."
         )
     today_str = get_tashkent_today_str()
     comment = validate_comment(req.comment)

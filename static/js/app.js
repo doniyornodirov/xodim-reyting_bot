@@ -710,6 +710,92 @@ function updateDebtBadges() {
   }
 }
 
+function updateShiftStatusBadgesAndBanner() {
+  const navShiftBadge = document.getElementById("nav-user-shift");
+  const sidebarShiftBadge = document.getElementById("sidebar-user-shift");
+  const banner = document.getElementById("employee-resting-banner");
+
+  if (!currentUser || currentUser.role === "ADMIN") {
+    if (navShiftBadge) navShiftBadge.style.display = "none";
+    if (sidebarShiftBadge) sidebarShiftBadge.style.display = "none";
+    if (banner) banner.style.display = "none";
+    applyShiftFormRestrictions(false);
+    return;
+  }
+
+  const isResting = (currentUser.shift_status === "RESTING");
+
+  if (navShiftBadge) {
+    navShiftBadge.style.display = "inline-flex";
+    if (isResting) {
+      navShiftBadge.innerText = "🌙 Damda";
+      navShiftBadge.style.background = "rgba(245, 158, 11, 0.18)";
+      navShiftBadge.style.borderColor = "rgba(245, 158, 11, 0.45)";
+      navShiftBadge.style.color = "#fbbf24";
+      navShiftBadge.title = "Siz hozirda dam olish (damda) rejimidasiz";
+    } else {
+      navShiftBadge.innerText = "🟢 Ishda";
+      navShiftBadge.style.background = "rgba(16, 185, 129, 0.18)";
+      navShiftBadge.style.borderColor = "rgba(16, 185, 129, 0.45)";
+      navShiftBadge.style.color = "#34d399";
+      navShiftBadge.title = "Siz faol ish rejimidasiz";
+    }
+  }
+
+  if (sidebarShiftBadge) {
+    sidebarShiftBadge.style.display = "inline-flex";
+    if (isResting) {
+      sidebarShiftBadge.innerText = "🌙 Damda";
+      sidebarShiftBadge.style.background = "rgba(245, 158, 11, 0.18)";
+      sidebarShiftBadge.style.borderColor = "rgba(245, 158, 11, 0.45)";
+      sidebarShiftBadge.style.color = "#fbbf24";
+    } else {
+      sidebarShiftBadge.innerText = "🟢 Ishda";
+      sidebarShiftBadge.style.background = "rgba(16, 185, 129, 0.18)";
+      sidebarShiftBadge.style.borderColor = "rgba(16, 185, 129, 0.45)";
+      sidebarShiftBadge.style.color = "#34d399";
+    }
+  }
+
+  if (banner) {
+    banner.style.display = isResting ? "flex" : "none";
+  }
+
+  applyShiftFormRestrictions(isResting);
+}
+
+function applyShiftFormRestrictions(isResting) {
+  const formSubmitButtons = [
+    "#card-topup-form button[type='submit']",
+    "#given-amount-form button[type='submit']",
+    "#daily-report-form button[type='submit']",
+    "#cashier-handover-form button[type='submit']",
+    "#cashier-distribute-sim-form button[type='submit']"
+  ];
+
+  formSubmitButtons.forEach(selector => {
+    const btn = document.querySelector(selector);
+    if (btn) {
+      if (isResting) {
+        btn.disabled = true;
+        if (!btn.dataset.originalText) {
+          btn.dataset.originalText = btn.innerHTML;
+        }
+        btn.innerHTML = "<span>🌙</span> Dam olish rejimidasiz (Amallar cheklangan)";
+        btn.style.opacity = "0.55";
+        btn.style.cursor = "not-allowed";
+      } else {
+        btn.disabled = false;
+        if (btn.dataset.originalText) {
+          btn.innerHTML = btn.dataset.originalText;
+        }
+        btn.style.opacity = "1";
+        btn.style.cursor = "pointer";
+      }
+    }
+  });
+}
+
 function updateSidebarContent() {
   if (!currentUser) return;
 
@@ -742,6 +828,7 @@ function updateSidebarContent() {
   }
 
   updateDebtBadges();
+  updateShiftStatusBadgesAndBanner();
 
   const navContainer = document.getElementById("sidebar-nav-list");
   if (!navContainer) return;
@@ -925,6 +1012,9 @@ function renderApp() {
     switchEmployeeTab("card-topup");
   }
 
+  // Dam olish / ish rejimi va banner holatini yangilash
+  updateShiftStatusBadgesAndBanner();
+
   // Yon menyuni ham foydalanuvchi ma'lumotlari bilan to'liq sinxronlash
   updateSidebarContent();
 
@@ -1060,6 +1150,9 @@ function switchEmployeeTab(tabName) {
   const activePane = document.getElementById(`pane-${tabName}`);
   if (activePane) activePane.style.display = "block";
 
+  // Damda bo'lgan xodimlar uchun shakllarni cheklash
+  applyShiftFormRestrictions(currentUser && currentUser.role !== "ADMIN" && currentUser.shift_status === "RESTING");
+
   if (tabName === "card-topup") loadCardHistory();
   else if (tabName === "given-amount") loadGivenHistory();
   else if (tabName === "daily-report") loadDailyReportPrefill();
@@ -1120,6 +1213,10 @@ function setupCardTopupInputs() {
 
 async function handleCardTopupSubmit(e) {
   e.preventDefault();
+  if (currentUser && currentUser.role !== "ADMIN" && currentUser.shift_status === "RESTING") {
+    showToast("Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish cheklangan.", "warning");
+    return;
+  }
   const cardNumber = document.getElementById("topup-card-number").value.trim();
   const cardHolder = document.getElementById("topup-card-holder").value.trim();
   const amount = parseFormattedNumber(document.getElementById("topup-amount").value);
@@ -1213,6 +1310,10 @@ function setupGivenAmountInputs() {
 
 async function handleGivenAmountSubmit(e) {
   e.preventDefault();
+  if (currentUser && currentUser.role !== "ADMIN" && currentUser.shift_status === "RESTING") {
+    showToast("Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish cheklangan.", "warning");
+    return;
+  }
   const amount = parseFormattedNumber(document.getElementById("given-amount-input").value);
   const comment = document.getElementById("given-comment-input").value.trim();
 
@@ -1419,6 +1520,10 @@ function calculateLiveReportFormula() {
 
 async function handleReportSubmit(e) {
   e.preventDefault();
+  if (currentUser && currentUser.role !== "ADMIN" && currentUser.shift_status === "RESTING") {
+    showToast("Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish cheklangan.", "warning");
+    return;
+  }
 
   const paynet = parseFormattedNumber(document.getElementById("rep-paynet").value);
   const leviy = parseFormattedNumber(document.getElementById("rep-leviy").value);
@@ -1592,6 +1697,10 @@ function calculateCashierLiveTotal() {
 
 async function handleCashierHandoverSubmit(e) {
   e.preventDefault();
+  if (currentUser && currentUser.role !== "ADMIN" && currentUser.shift_status === "RESTING") {
+    showToast("Siz hozirda dam olish (damda) rejimidasiz! Kassa amallarini bajarish cheklangan.", "warning");
+    return;
+  }
   const empId = document.getElementById("cashier-employee-select").value;
   const uzs = parseFormattedNumber(document.getElementById("cashier-amount-uzs").value) || 0;
   const usd = parseFormattedNumber(document.getElementById("cashier-amount-usd").value) || 0;
@@ -2821,22 +2930,58 @@ async function loadAdminUsers() {
         ? `<button class="btn-logout" style="border-color: #f59e0b; color: #fbbf24;" onclick="selectUserForDebt(${u.id})">+ Qarz</button>`
         : "";
 
+      const isResting = (u.shift_status === "RESTING");
+      const shiftToggleBtn = (u.role !== "ADMIN" && u.is_active)
+        ? (isResting
+            ? `<button class="btn-success" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="toggleEmployeeShift(${u.id}, 'WORKING')">🟢 Ishga chiqarish</button>`
+            : `<button class="btn-logout" style="border-color: #fbbf24; color: #fbbf24; font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="toggleEmployeeShift(${u.id}, 'RESTING')">🌙 Damga chiqarish</button>`)
+        : "";
+
+      let statusHtml = '<span style="color: #f87171;">Bo\'shatilgan</span>';
+      if (u.is_active) {
+        if (u.role === "ADMIN") {
+          statusHtml = '<span style="color: #34d399;">Faol</span>';
+        } else if (isResting) {
+          statusHtml = '<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.75rem; padding: 0.2rem 0.55rem; font-weight: 600;">🌙 Damda</span>';
+        } else {
+          statusHtml = '<span class="badge" style="background: rgba(16, 185, 129, 0.18); border: 1px solid rgba(16, 185, 129, 0.45); color: #34d399; font-size: 0.75rem; padding: 0.2rem 0.55rem; font-weight: 600;">🟢 Ishda</span>';
+        }
+      }
+
       tbody.innerHTML += `
         <tr style="opacity: ${u.is_active ? 1 : 0.5};">
           <td><b>${u.full_name}</b></td>
           <td><code>${u.telegram_id}</code></td>
           <td><span class="badge ${u.role === 'ADMIN' ? 'badge-admin' : u.role === 'CASHIER' ? 'badge-cashier' : 'badge-employee'}">${formatRoleName(u.role)}</span></td>
           <td><b>${formatNumberSpaces(u.debt_amount ?? 0)} so'm</b></td>
-          <td>${u.is_active ? '<span style="color: #34d399;">Faol</span>' : '<span style="color: #f87171;">Bo\'shatilgan</span>'}</td>
+          <td>${statusHtml}</td>
           <td style="display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center;">
             ${activeBtn}
             ${debtBtn}
             <button class="btn-logout" onclick="promptUpdatePassword(${u.id}, '${u.full_name}')">Parol</button>
             ${appointCashierBtn}
+            ${shiftToggleBtn}
           </td>
         </tr>
       `;
     });
+  } catch (e) {}
+}
+
+async function toggleEmployeeShift(userId, targetStatus) {
+  const targetUser = (adminUsersCache || []).find(u => u.id === userId);
+  const name = targetUser ? targetUser.full_name : "xodim";
+  const isToRest = targetStatus === "RESTING";
+  const confirmMsg = isToRest
+    ? `Haqiqatan ham '${name}'ni dam olish (damda) rejimiga o'tkazmoqchimisiz?\n\n(Xodim ilovaga kira oladi, lekin amallarni bajara olmaydi)`
+    : `Haqiqatan ham '${name}'ni faol ish rejimiga qaytarmoqchimisiz?`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await api(`/api/admin/users/${userId}/toggle-shift`, "POST", { shift_status: targetStatus });
+    showToast(res.message || "Holat muvaffaqiyatli o'zgartirildi!", "success");
+    loadAdminUsers();
+    if (typeof loadAdminLocationTab === "function") loadAdminLocationTab(false);
   } catch (e) {}
 }
 
@@ -3336,6 +3481,10 @@ async function searchSimCard() {
 
 async function handleDistributeSim(e, role) {
   e.preventDefault();
+  if (currentUser && currentUser.role !== "ADMIN" && currentUser.shift_status === "RESTING") {
+    showToast("Siz hozirda dam olish (damda) rejimidasiz! Sim-karta amallarini bajarish cheklangan.", "warning");
+    return;
+  }
   const operatorSelect = document.getElementById(`${role}-sim-operator`);
   const startInput = document.getElementById(`${role}-sim-start`);
   const endInput = document.getElementById(`${role}-sim-end`);
@@ -3578,7 +3727,10 @@ async function loadAdminLocationTab(showToastNotice = false) {
       let distCell = "";
       let statusBadge = "";
 
-      if (!isConfigured) {
+      if (emp.shift_status === "RESTING") {
+        distCell = `<span style="opacity: 0.85; font-size: 0.75rem; color: #fbbf24;">🌙 Damda (Rahbar belgilagan)</span>`;
+        statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.75rem;">🌙 Damda</span>`;
+      } else if (!isConfigured) {
         distCell = `<span style="opacity: 0.5;">-</span>`;
         statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 0.75rem;">⚪ Belgilanmagan</span>`;
       } else if (!isWithin) {
@@ -3780,6 +3932,15 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
   }
 
   badge.style.display = "inline-flex";
+
+  if (currentUser && currentUser.shift_status === "RESTING") {
+    badge.style.background = "rgba(245, 158, 11, 0.15)";
+    badge.style.color = "#fbbf24";
+    badge.style.border = "1px solid rgba(245, 158, 11, 0.4)";
+    badge.innerHTML = "<span>🌙</span> Dam olish (damda)";
+    badge.title = "Rahbar sizni dam olish rejimiga o'tkazgan.";
+    return;
+  }
 
   if (!isConfigured) {
     badge.style.background = "rgba(100, 116, 139, 0.2)";

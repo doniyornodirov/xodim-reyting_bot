@@ -115,7 +115,7 @@ async def init_db():
                 pass
         await conn.execute("UPDATE cashier_handovers SET amount_uzs = amount WHERE amount_uzs = 0 AND amount_usd = 0")
 
-        # Migratsiyalar: users jadvaliga har bir xodim uchun alohida geolokatsiya ustunlari
+        # Migratsiyalar: users jadvaliga har bir xodim uchun alohida geolokatsiya va ish/dam statusi ustunlari
         for col_sql in [
             "ALTER TABLE users ADD COLUMN last_latitude REAL",
             "ALTER TABLE users ADD COLUMN last_longitude REAL",
@@ -126,12 +126,14 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN workplace_longitude REAL",
             "ALTER TABLE users ADD COLUMN workplace_radius_meters INTEGER DEFAULT 50",
             "ALTER TABLE users ADD COLUMN work_start_time TEXT DEFAULT '09:00'",
-            "ALTER TABLE users ADD COLUMN work_end_time TEXT DEFAULT '19:00'"
+            "ALTER TABLE users ADD COLUMN work_end_time TEXT DEFAULT '19:00'",
+            "ALTER TABLE users ADD COLUMN shift_status TEXT DEFAULT 'WORKING'"
         ]:
             try:
                 await conn.execute(col_sql)
             except Exception:
                 pass
+        await conn.execute("UPDATE users SET shift_status = 'WORKING' WHERE shift_status IS NULL OR shift_status = ''")
 
         # 6. Kassirlik tarixi
         await conn.execute("""

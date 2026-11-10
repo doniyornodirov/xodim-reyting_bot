@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
 from app.config import DB_PATH
 from app.models import GivenAmountCreate, StatusActionRequest
-from app.dependencies import get_current_user, require_role
+from app.dependencies import get_current_user, require_role, require_active_shift
 
 router = APIRouter(prefix="/api/given", tags=["Given Amount"])
 
@@ -16,11 +16,16 @@ def validate_comment(comment: str) -> str:
     return cleaned
 
 @router.post("/submit")
-async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(get_current_user)):
+async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(require_active_shift)):
     if user.get("role") == "ADMIN":
         raise HTTPException(
             status_code=403,
             detail="Bosh Rahbar xodim emas! Berilgan summa so'rovini faqat xodimlar (operator va kassir) yubora oladi."
+        )
+    if user.get("shift_status") == "RESTING":
+        raise HTTPException(
+            status_code=403,
+            detail="Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbarga murojaat qiling."
         )
     amount = float(req.amount)
     if amount <= 0:

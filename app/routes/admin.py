@@ -1,9 +1,10 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime, timedelta
 import aiosqlite
 from app.config import DB_PATH
 from app.models import (
-    CreateUserRequest, UpdatePasswordRequest, SetDebtRequest, AppointCashierRequest
+    CreateUserRequest, UpdatePasswordRequest, SetDebtRequest, AppointCashierRequest, ToggleShiftRequest
 )
 from app.dependencies import require_role
 from app.security import hash_password
@@ -16,7 +17,8 @@ async def get_all_users():
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role, debt_amount, is_active, created_at,
-                   last_latitude, last_longitude, last_distance_meters, last_location_updated_at
+                   last_latitude, last_longitude, last_distance_meters, last_location_updated_at,
+                   shift_status, work_start_time, work_end_time
             FROM users 
             ORDER BY is_active DESC, role ASC, full_name ASC
         """)
@@ -92,6 +94,51 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
         await conn.commit()
 
     return {"success": True, "message": f"Xodim {user['full_name']} muvaffaqiyatli {status_name}!"}
+
+@router.post("/users/{user_id}/toggle-shift")
+async def toggle_employee_shift(
+    user_id: int, 
+    req: Optional[ToggleShiftRequest] = None, 
+    admin: dict = Depends(require_role(["ADMIN"]))
+):
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user = await cursor.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi!")
+
+        if user["role"] == "ADMIN" or user["id"] == admin["id"] or user["telegram_id"] == 8686341550:
+            raise HTTPException(status_code=403, detail="Bosh Rahbar daxlsiz! Uni dam olish rejimiga o'tkazib bo'lmaydi.")
+
+        if not user["is_active"]:
+            raise HTTPException(status_code=400, detail="Ishdan bo'shatilgan xodimning ish rejimini o'zgartirib bo'lmaydi! Avval uni faollashtiring.")
+
+        current_shift = user["shift_status"] if ("shift_status" in user.keys() and user["shift_status"]) else "WORKING"
+
+        if req and req.shift_status:
+            target_status = req.shift_status.strip().upper()
+            if target_status not in ["WORKING", "RESTING"]:
+                raise HTTPException(status_code=400, detail="Status faqat 'WORKING' yoki 'RESTING' bo'lishi mumkin!")
+            new_status = target_status
+        else:
+            new_status = "RESTING" if current_shift == "WORKING" else "WORKING"
+
+        status_label = "Damda 🌙 (Dam olish rejimi)" if new_status == "RESTING" else "Ishda 🟢 (Faol ish rejimi)"
+
+        await conn.execute("UPDATE users SET shift_status = ? WHERE id = ?", (new_status, user_id))
+
+        await conn.execute("""
+            INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
+            VALUES ('USER_SHIFT', ?, 'STATUS_CHANGE', ?, ?)
+        """, (user_id, admin["full_name"], f"Xodim '{user['full_name']}' ish statusi '{status_label}' ga o'zgartirildi"))
+        await conn.commit()
+
+    return {
+        "success": True,
+        "shift_status": new_status,
+        "message": f"Xodim {user['full_name']} muvaffaqiyatli '{status_label}' ga o'tkazildi!"
+    }
 
 @router.post("/users/{user_id}/debt")
 async def assign_debt(user_id: int, req: SetDebtRequest, admin: dict = Depends(require_role(["ADMIN"]))):

@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 class LoginRequest(BaseModel):
@@ -53,6 +54,9 @@ class SetDebtRequest(BaseModel):
 
 class AppointCashierRequest(BaseModel):
     user_id: int
+
+class ToggleShiftRequest(BaseModel):
+    shift_status: Optional[str] = Field(None, description="'WORKING' yoki 'RESTING'")
 
 class StatusActionRequest(BaseModel):
     status: str # 'APPROVED' yoki 'REJECTED'

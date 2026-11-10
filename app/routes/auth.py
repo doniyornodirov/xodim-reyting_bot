@@ -161,7 +161,8 @@ async def verify_otp(req: VerifyOtpRequest):
                 "telegram_id": user["telegram_id"],
                 "full_name": user["full_name"],
                 "role": user["role"],
-                "debt_amount": user["debt_amount"]
+                "debt_amount": user["debt_amount"],
+                "shift_status": user["shift_status"] if ("shift_status" in user.keys() and user["shift_status"]) else "WORKING"
             }
         }
 
@@ -174,6 +175,7 @@ async def get_me(user: dict = Depends(get_current_user)):
             "telegram_id": user["telegram_id"],
             "full_name": user["full_name"],
             "role": user["role"],
-            "debt_amount": user["debt_amount"]
+            "debt_amount": user["debt_amount"],
+            "shift_status": user.get("shift_status") or "WORKING"
         }
     }

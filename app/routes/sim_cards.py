@@ -46,6 +46,9 @@ async def distribute_sim_cards(
     if current_user["role"] not in ["ADMIN", "CASHIER"]:
         raise HTTPException(status_code=403, detail="Sim-karta tarqatish huquqi faqat Bosh Rahbar va Kassirga berilgan.")
 
+    if current_user.get("role") != "ADMIN" and current_user.get("shift_status") == "RESTING":
+        raise HTTPException(status_code=403, detail="Siz hozirda dam olish (damda) rejimidasiz! Sim-karta tarqatish amallari vaqtinchalik cheklangan.")
+
     op_type = payload.operator_type.strip()
     if op_type not in VALID_OPERATORS:
         raise HTTPException(status_code=400, detail=f"Noto'g'ri operator turi! Faqat {', '.join(VALID_OPERATORS)} tanlanishi mumkin.")
@@ -70,7 +73,7 @@ async def distribute_sim_cards(
         raise HTTPException(status_code=400, detail="Bitta amaliyotda ko'pi bilan 1000 ta sim-karta tarqatish mumkin.")
 
     # 2. Xodimni tekshirish
-    cursor = await db.execute("SELECT id, full_name, telegram_id, role, is_active FROM users WHERE id = ?", (payload.employee_id,))
+    cursor = await db.execute("SELECT id, full_name, telegram_id, role, is_active, shift_status FROM users WHERE id = ?", (payload.employee_id,))
     employee = await cursor.fetchone()
     if not employee:
         raise HTTPException(status_code=404, detail="Tanlangan xodim topilmadi.")
@@ -78,6 +81,8 @@ async def distribute_sim_cards(
         raise HTTPException(status_code=400, detail="Rahbar xodim bo'la olmaydi va unga sim-karta biriktirib bo'lmaydi!")
     if not employee["is_active"]:
         raise HTTPException(status_code=400, detail="Faolsizlantirilgan xodimga sim-karta berib bo'lmaydi.")
+    if employee["shift_status"] == "RESTING":
+        raise HTTPException(status_code=400, detail=f"Xodim '{employee['full_name']}' hozirda dam olish (damda) rejimida! Unga sim-karta biriktirib bo'lmaydi.")
 
     # 3. Seriya raqamlari ro'yxatini shakllantirish
     serials_to_insert = [str(n).zfill(18) for n in range(start_num, end_num + 1)]
