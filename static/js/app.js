@@ -355,6 +355,36 @@ function handleInactivityLogout() {
 // Har 30 soniyada fonda tekshirib borish
 setInterval(checkInactivityTimeout, 30000);
 
+// ==========================================
+// ANDROID NATIVE BRIDGE INTEGRATSIYASI
+// ==========================================
+function syncWithAndroidBridge() {
+  if (window.AndroidBridge && authToken && currentUser) {
+    try {
+      window.AndroidBridge.saveAuth(
+        authToken,
+        currentUser.role || "",
+        currentUser.full_name || "",
+        currentUser.id || 0
+      );
+      console.log("AndroidBridge bilan sinxronlandi:", currentUser.full_name, currentUser.role);
+    } catch (e) {
+      console.warn("AndroidBridge saveAuth xatoligi:", e);
+    }
+  }
+}
+
+function clearAndroidBridgeAuth() {
+  if (window.AndroidBridge) {
+    try {
+      window.AndroidBridge.clearAuth();
+      console.log("AndroidBridge ma'lumotlari tozalandi");
+    } catch (e) {
+      console.warn("AndroidBridge clearAuth xatoligi:", e);
+    }
+  }
+}
+
 async function initApp() {
   if (authToken) {
     if (checkInactivityTimeout()) {
@@ -365,6 +395,7 @@ async function initApp() {
       currentUser = res.user;
       localStorage.setItem("crm_last_activity", Date.now().toString());
       renderApp();
+      syncWithAndroidBridge();
       return;
     } catch (e) {
       authToken = null;
@@ -377,6 +408,7 @@ async function initApp() {
 
 function logout() {
   stopAutoLocationTracking();
+  clearAndroidBridgeAuth();
   authToken = null;
   currentUser = null;
   localStorage.removeItem("crm_token");
@@ -596,6 +628,7 @@ async function handleVerifyOtp(e) {
     document.getElementById("login-modal").style.display = "none";
     showToast("Tizimga muvaffaqiyatli kirdingiz!", "success");
     renderApp();
+    syncWithAndroidBridge();
   } catch (err) {
     if (alertEl) {
       alertEl.innerText = err.message || "Kodni tekshirishda xatolik!";

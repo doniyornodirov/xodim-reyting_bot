@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Xodim-Reyting CRM</string>
+    <string name="server_url">https://xodim-reyting-bot.onrender.com</string>
+    <string name="location_channel_name">Xodim ish joyi monitoringi</string>
+    <string name="location_channel_desc">Ish vaqtida xodimning filial hududida ekanligini avtomatik aniqlab turuvchi xizmat</string>
+    <string name="notification_title">Xodim-Reyting CRM</string>
+    <string name="notification_running">Ish joyi geolokatsiya monitoringi faol</string>
+    <string name="battery_dialog_title">Batareya cheklovini olib tashlash</string>
+    <string name="battery_dialog_msg">Xodim ish joyida ekanligini tizim uzluksiz aniqlashi uchun batareyani tejash (Battery Optimization) cheklovini olib tashlash tavsiya etiladi. Davom etasizmi?</string>
+    <string name="btn_yes">Ha, sozlash</string>
+    <string name="btn_cancel">Keyinroq</string>
+</resources>
