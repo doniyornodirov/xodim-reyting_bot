@@ -15,7 +15,8 @@ async def get_all_users():
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cursor = await conn.execute("""
-            SELECT id, telegram_id, full_name, role, debt_amount, is_active, created_at 
+            SELECT id, telegram_id, full_name, role, debt_amount, is_active, created_at,
+                   last_latitude, last_longitude, last_distance_meters, last_location_updated_at
             FROM users 
             ORDER BY is_active DESC, role ASC, full_name ASC
         """)

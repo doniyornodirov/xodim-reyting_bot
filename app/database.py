@@ -115,6 +115,18 @@ async def init_db():
                 pass
         await conn.execute("UPDATE cashier_handovers SET amount_uzs = amount WHERE amount_uzs = 0 AND amount_usd = 0")
 
+        # Migratsiyalar: users jadvaliga geolokatsiya ustunlari
+        for col_sql in [
+            "ALTER TABLE users ADD COLUMN last_latitude REAL",
+            "ALTER TABLE users ADD COLUMN last_longitude REAL",
+            "ALTER TABLE users ADD COLUMN last_distance_meters REAL",
+            "ALTER TABLE users ADD COLUMN last_location_updated_at TIMESTAMP"
+        ]:
+            try:
+                await conn.execute(col_sql)
+            except Exception:
+                pass
+
         # 6. Kassirlik tarixi
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS cashier_history (
@@ -200,6 +212,10 @@ async def init_db():
         INSERT OR IGNORE INTO system_settings (key, value)
         VALUES ('usd_rate', '12000');
         """)
+        await conn.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('workplace_lat', '0');")
+        await conn.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('workplace_lon', '0');")
+        await conn.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('workplace_radius', '50');")
+        await conn.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES ('workplace_name', 'Bosh Ofis');")
 
         # 11. Sim-kartalar tarqatish partiyalari (dan - gacha)
         await conn.execute("""

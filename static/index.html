@@ -116,6 +116,7 @@
         <span id="nav-user-name" class="text-xs font-semibold hidden md:inline-block">Mehmon</span>
         <span id="nav-user-role" class="badge badge-employee inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold">Xodim</span>
         <span id="nav-user-debt" class="badge badge-debt inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold" style="display: none;">Qarz: 0 so'm</span>
+        <span id="nav-user-location" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold transition" style="display: none;" title="Ish joyigacha bo'lgan masofa">📍 Joylashuv</span>
         <button id="btn-theme-toggle" class="btn-theme-toggle inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium transition" onclick="toggleAppTheme()" aria-label="Mavzuni almashtirish" title="Tungi / Kunduzgi rejimni almashtirish">
           <span id="theme-icon">🌙</span> <span id="theme-text">Tungi</span>
         </button>
@@ -504,6 +505,37 @@
       <div class="card-box">
         <h2 class="card-title">👥 Xodimlar va Qarz boshqaruvi</h2>
 
+        <!-- Ish joyi geolokatsiyasi va Geofencing kartasi -->
+        <div id="admin-workplace-card" style="background: rgba(99, 102, 241, 0.06); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <h3 style="margin: 0 0 0.35rem 0; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem;">
+                <span>📍</span> Ish joyi geolokatsiyasi & Geofencing nazorati
+              </h3>
+              <p style="margin: 0 0 0.75rem 0; font-size: 0.85rem; color: var(--text-muted);">
+                Xodimlar ushbu nuqtaga yaqinlashganda avtomatik tarzda "Ish joyida" holati belgilanadi va real vaqt masofasi ko'rsatiladi.
+              </p>
+              <div style="display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.85rem;">
+                <div><span style="opacity: 0.7;">Manzil nomi:</span> <b id="geo-workplace-name" style="color: #c7d2fe;">Bosh Ofis</b></div>
+                <div><span style="opacity: 0.7;">Kordinatalar:</span> <code id="geo-workplace-coords" style="color: #38bdf8;">0.000000, 0.000000</code></div>
+                <div><span style="opacity: 0.7;">Ruxsat etilgan radius:</span> <b id="geo-workplace-radius" style="color: #34d399;">50 metr</b></div>
+                <div><span style="opacity: 0.7;">Tizim holati:</span> <span id="geo-workplace-status" class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">Belgilanmagan</span></div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+              <button type="button" class="btn-success" id="btn-save-current-gps-workplace" onclick="handleSetCurrentLocationAsWorkplace()" style="font-size: 0.82rem; padding: 0.5rem 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span>📍</span> Hozirgi joylashuvimni saqlash
+              </button>
+              <button type="button" class="btn-primary" onclick="openWorkplaceModal()" style="font-size: 0.82rem; padding: 0.5rem 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span>✏️</span> Kordinatani tahrirlash
+              </button>
+              <a id="btn-view-workplace-map" href="#" target="_blank" rel="noopener noreferrer" class="btn-logout" style="font-size: 0.82rem; padding: 0.5rem 0.85rem; display: none; align-items: center; gap: 0.35rem; text-decoration: none;">
+                <span>🗺️</span> Xaritada ko'rish
+              </a>
+            </div>
+          </div>
+        </div>
+
         <!-- 2 ta alohida forma: 1) Yangi xodim qo'shish, 2) Xodimga qarz belgilash -->
         <div class="grid-2" style="margin-bottom: 1.5rem;">
           <!-- 1. Yangi xodim qo'shish formasi -->
@@ -561,6 +593,7 @@
                 <th>Telegram ID</th>
                 <th>Roli</th>
                 <th>Mavjud qarzdorlik</th>
+                <th>Joylashuv (Masofa)</th>
                 <th>Holati</th>
                 <th>Boshqaruv amallari</th>
               </tr>
@@ -1348,6 +1381,51 @@
     </div>
   </div>
 
+  <!-- ================================================= -->
+  <!-- ISH JOYI GEOLOKATSIYASI MODALI (RAHBAR UCHUN)     -->
+  <!-- ================================================= -->
+  <div class="modal-overlay" id="workplace-location-modal" style="display: none;" onclick="handleWorkplaceModalOverlayClick(event)">
+    <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h3 style="font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; margin: 0; color: #a5b4fc;">
+          <span>📍</span> Ish joyi manzilini sozlash
+        </h3>
+        <button type="button" class="btn-logout" style="padding: 0.25rem 0.6rem; font-size: 0.85rem;" onclick="closeWorkplaceModal()">✕</button>
+      </div>
+
+      <form id="workplace-location-form" onsubmit="handleWorkplaceLocationSubmit(event)">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label">Ish joyi / Filial nomi *</label>
+          <input type="text" id="modal-geo-name" class="form-input" placeholder="Masalan: Bosh Ofis" required maxlength="100">
+        </div>
+
+        <div class="grid-2" style="margin-bottom: 1rem; gap: 0.75rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Kenglik (Latitude) *</label>
+            <input type="number" step="any" id="modal-geo-lat" class="form-input" placeholder="41.311081" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Uzunlik (Longitude) *</label>
+            <input type="number" step="any" id="modal-geo-lon" class="form-input" placeholder="69.240562" required>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label class="form-label">Geofence radiusi (metrda) *</label>
+          <input type="number" id="modal-geo-radius" class="form-input" placeholder="50" min="5" max="5000" required>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Xodim ushbu radius ichida bo'lsa (masalan 50 metr), tizim uni "Ish joyida ✅" deb ko'rsatadi.
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem;">
+          <button type="submit" class="btn-primary" style="flex: 1;">💾 Saqlash</button>
+          <button type="button" class="btn-logout" style="flex: 1;" onclick="closeWorkplaceModal()">Bekor qilish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ========================================== -->
   <!-- ALOHIDA CHIROYLI KALENDAR VA SANA SARALASH -->
   <!-- ========================================== -->
@@ -1454,6 +1532,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=339"></script>
+  <script src="/static/js/app.js?v=340"></script>
 </body>
 </html>
