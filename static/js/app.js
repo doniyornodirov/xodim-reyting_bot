@@ -730,6 +730,7 @@ function updateSidebarContent() {
         { id: "topups", icon: "💳", title: "Karta so'rovlari", isAdmin: true },
         { id: "comparison", icon: "⚖️", title: "Kassa taqqoslash (Audit)", isAdmin: true },
         { id: "users", icon: "👥", title: "Xodimlar & Qarz boshqaruvi", isAdmin: true },
+        { id: "location", icon: "📍", title: "Geolokatsiya nazorati", isAdmin: true },
         { id: "cashier", icon: "💼", title: "Kassir tayinlash & Tarix", isAdmin: true },
         { id: "sims", icon: "📲", title: "Sim-karta boshqaruvi", isAdmin: true },
         { id: "rating", icon: "🏆", title: "Reyting & KPI", isAdmin: true },
@@ -894,8 +895,14 @@ function renderApp() {
   // Yon menyuni ham foydalanuvchi ma'lumotlari bilan to'liq sinxronlash
   updateSidebarContent();
 
-  // Xodim va foydalanuvchilar uchun avtomatik geolokatsiya kuzatuvini boshlash
-  startAutoLocationTracking();
+  // Bosh Rahbar o'zi kuzatilmaydi! Faqat xodimlar avtomatik kuzatiladi
+  if (currentUser.role === "ADMIN") {
+    const locBadge = document.getElementById("nav-user-location");
+    if (locBadge) locBadge.style.display = "none";
+    stopAutoLocationTracking();
+  } else {
+    startAutoLocationTracking();
+  }
 }
 
 // Rahbar Kassir rejimiga o'tishi / qaytishi
@@ -981,12 +988,22 @@ function switchAdminTab(tabName) {
   const activePane = document.getElementById(`pane-admin-${tabName}`);
   if (activePane) activePane.style.display = "block";
 
+  // Avvalgi geolokatsiya monitoring intervalini to'xtatish
+  if (adminLocationPollInterval) {
+    clearInterval(adminLocationPollInterval);
+    adminLocationPollInterval = null;
+  }
+
   if (tabName === "reports") loadAdminReports();
   else if (tabName === "analytics") loadAdminAnalytics();
   else if (tabName === "givens") loadAdminGivens();
   else if (tabName === "topups") loadAdminTopups();
   else if (tabName === "comparison") loadAdminComparison();
-  else if (tabName === "users") { loadAdminUsers(); loadWorkplaceSettings(); }
+  else if (tabName === "users") loadAdminUsers();
+  else if (tabName === "location") {
+    loadAdminLocationTab();
+    adminLocationPollInterval = setInterval(() => loadAdminLocationTab(false), 15000);
+  }
   else if (tabName === "cashier") loadAdminCashierTab();
   else if (tabName === "sims") loadAdminSimsTab();
   else if (tabName === "rating") loadLeaderboard("monthly", "admin");
@@ -2771,43 +2788,12 @@ async function loadAdminUsers() {
         ? `<button class="btn-logout" style="border-color: #f59e0b; color: #fbbf24;" onclick="selectUserForDebt(${u.id})">+ Qarz</button>`
         : "";
 
-      // Joylashuv va masofa ustuni
-      let locationCell = "";
-      if (u.role === "ADMIN") {
-        locationCell = `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #c7d2fe; font-size: 0.75rem;">👑 Rahbar</span>`;
-      } else if (u.last_distance_meters !== null && u.last_distance_meters !== undefined) {
-        const distM = Math.round(u.last_distance_meters);
-        const workplaceRadius = (currentWorkplaceSettings && currentWorkplaceSettings.radius_meters) || 50;
-        const isInside = distM <= workplaceRadius;
-        const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
-        const badgeStyle = isInside
-          ? "background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);"
-          : "background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.35);";
-        const statusLabel = isInside ? "Ish joyida ✅" : "Tashqarida ⚠️";
-        const timeAgo = formatLocationTimeAgo(u.last_location_updated_at);
-        const mapBtn = (u.last_latitude && u.last_longitude)
-          ? `<a href="https://www.google.com/maps?q=${u.last_latitude},${u.last_longitude}" target="_blank" rel="noopener noreferrer" class="btn-logout" style="padding: 2px 6px; font-size: 0.7rem; text-decoration: none; margin-left: 4px; display: inline-flex; align-items: center; gap: 2px;" title="Google xaritasida ochish">🗺️ Xarita</a>`
-          : "";
-        locationCell = `
-          <div style="display: flex; flex-direction: column; gap: 2px;">
-            <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-              <span class="badge" style="${badgeStyle} font-size: 0.75rem; padding: 2px 6px;">📍 ${distText} (${statusLabel})</span>
-              ${mapBtn}
-            </div>
-            ${timeAgo ? `<span style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.85;">🕒 ${timeAgo}</span>` : ""}
-          </div>
-        `;
-      } else {
-        locationCell = `<span class="badge" style="opacity: 0.5; font-size: 0.75rem;">📍 Aniqlanmagan</span>`;
-      }
-
       tbody.innerHTML += `
         <tr style="opacity: ${u.is_active ? 1 : 0.5};">
           <td><b>${u.full_name}</b></td>
           <td><code>${u.telegram_id}</code></td>
           <td><span class="badge ${u.role === 'ADMIN' ? 'badge-admin' : u.role === 'CASHIER' ? 'badge-cashier' : 'badge-employee'}">${formatRoleName(u.role)}</span></td>
           <td><b>${formatNumberSpaces(u.debt_amount ?? 0)} so'm</b></td>
-          <td>${locationCell}</td>
           <td>${u.is_active ? '<span style="color: #34d399;">Faol</span>' : '<span style="color: #f87171;">Bo\'shatilgan</span>'}</td>
           <td style="display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center;">
             ${activeBtn}
@@ -3466,10 +3452,12 @@ function registerServiceWorker() {
 // ==========================================
 // ISH JOYI GEOLOKATSIYASI VA GEOFENCING (RAHBAR VA XODIM)
 // ==========================================
-let currentWorkplaceSettings = null;
+let myAssignedWorkplace = null;
 let locationWatchId = null;
 let lastLocationPingTime = 0;
 let lastPingedCoords = null;
+let adminLocationPollInterval = null;
+let adminEmployeesLocationCache = [];
 
 function formatLocationTimeAgo(isoString) {
   if (!isoString) return "";
@@ -3501,85 +3489,204 @@ function calculateClientDistanceMeters(lat1, lon1, lat2, lon2) {
   return Math.round(R * c);
 }
 
-async function loadWorkplaceSettings() {
+// ==========================================
+// RAHBAR UCHUN: GEOLOKATSIYA MONITORINGI TABI
+// ==========================================
+async function loadAdminLocationTab(showToastNotice = false) {
   try {
-    const res = await api("/api/location/workplace");
+    const res = await api("/api/location/employees");
     if (!res || !res.success) return;
-    currentWorkplaceSettings = res;
 
-    const nameEl = document.getElementById("geo-workplace-name");
-    const coordsEl = document.getElementById("geo-workplace-coords");
-    const radiusEl = document.getElementById("geo-workplace-radius");
-    const statusEl = document.getElementById("geo-workplace-status");
-    const mapBtn = document.getElementById("btn-view-workplace-map");
+    adminEmployeesLocationCache = res.employees || [];
 
-    if (nameEl) nameEl.innerText = res.name || "Bosh Ofis";
-    if (radiusEl) radiusEl.innerText = `${res.radius_meters || 50} metr`;
+    // 1. Statistika
+    const total = adminEmployeesLocationCache.length;
+    let configured = 0;
+    let inside = 0;
+    let outside = 0;
 
-    if (res.is_configured && res.latitude && res.longitude) {
-      if (coordsEl) coordsEl.innerText = `${res.latitude.toFixed(6)}, ${res.longitude.toFixed(6)}`;
-      if (statusEl) {
-        statusEl.className = "badge";
-        statusEl.style.background = "rgba(16, 185, 129, 0.2)";
-        statusEl.style.color = "#34d399";
-        statusEl.innerText = "🟢 Faol (Nazorat yoqilgan)";
-      }
-      if (mapBtn) {
-        mapBtn.style.display = "inline-flex";
-        mapBtn.href = `https://www.google.com/maps?q=${res.latitude},${res.longitude}`;
-      }
-    } else {
-      if (coordsEl) coordsEl.innerText = "Kordinata belgilanmagan";
-      if (statusEl) {
-        statusEl.className = "badge";
-        statusEl.style.background = "rgba(245, 158, 11, 0.2)";
-        statusEl.style.color = "#fbbf24";
-        statusEl.innerText = "⚠️ Belgilanmagan";
-      }
-      if (mapBtn) mapBtn.style.display = "none";
+    adminEmployeesLocationCache.forEach(emp => {
+      if (emp.is_workplace_configured) configured++;
+      if (emp.is_inside === true) inside++;
+      else if (emp.is_inside === false) outside++;
+    });
+
+    const totalEl = document.getElementById("geo-stat-total");
+    const confEl = document.getElementById("geo-stat-configured");
+    const inEl = document.getElementById("geo-stat-inside");
+    const outEl = document.getElementById("geo-stat-outside");
+
+    if (totalEl) totalEl.innerText = total;
+    if (confEl) confEl.innerText = configured;
+    if (inEl) inEl.innerText = inside;
+    if (outEl) outEl.innerText = outside;
+
+    // 2. Jadval
+    const tbody = document.getElementById("admin-location-tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    if (adminEmployeesLocationCache.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
+      return;
     }
-  } catch (e) {
-    console.warn("Ish joyi sozlamalarini yuklashda xatolik:", e);
+
+    adminEmployeesLocationCache.forEach(emp => {
+      const isConfigured = emp.is_workplace_configured;
+      const wpName = isConfigured ? `<b>${emp.workplace_name}</b>` : `<span style="color: #fbbf24; opacity: 0.85;">⚠️ Kordinata kiritilmagan</span>`;
+      const wpCoords = isConfigured ? `<code>${emp.workplace_latitude.toFixed(5)}, ${emp.workplace_longitude.toFixed(5)}</code>` : `<span style="opacity: 0.5;">-</span>`;
+      const wpRadius = isConfigured ? `<span class="badge" style="font-size: 0.75rem;">${emp.workplace_radius_meters} m</span>` : `<span style="opacity: 0.5;">-</span>`;
+
+      let distCell = "";
+      let statusBadge = "";
+
+      if (!isConfigured) {
+        distCell = `<span style="opacity: 0.5;">-</span>`;
+        statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 0.75rem;">⚪ Belgilanmagan</span>`;
+      } else if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
+        const distM = Math.round(emp.last_distance_meters);
+        const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
+        if (emp.is_inside) {
+          distCell = `<b style="color: #34d399;">📍 ${distText}</b>`;
+          statusBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 0.75rem;">🟢 Ish joyida (${distText})</span>`;
+        } else {
+          distCell = `<b style="color: #f87171;">📍 ${distText}</b>`;
+          statusBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.75rem;">🔴 Tashqarida (${distText})</span>`;
+        }
+      } else {
+        distCell = `<span style="opacity: 0.6; font-size: 0.78rem;">Kutilmoqda...</span>`;
+        statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size: 0.75rem;">⏳ Aniqlanmoqda</span>`;
+      }
+
+      const timeAgo = formatLocationTimeAgo(emp.last_location_updated_at);
+      const timeCell = timeAgo ? `<span style="font-size: 0.75rem; color: var(--text-muted);">🕒 ${timeAgo}</span>` : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
+
+      // Xaritada ko'rish tugmasi (xodimning oxirgi jonli lokatsiyasi)
+      const mapBtn = (emp.last_latitude && emp.last_longitude)
+        ? `<a href="https://www.google.com/maps?q=${emp.last_latitude},${emp.last_longitude}" target="_blank" rel="noopener noreferrer" class="btn-logout" style="padding: 3px 7px; font-size: 0.72rem; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;" title="Xodimning joylashuvi xaritada">🗺️ Xodim</a>`
+        : "";
+
+      // Ish joyini xaritada ko'rish tugmasi (agar belgilangan bo'lsa)
+      const wpMapBtn = isConfigured
+        ? `<a href="https://www.google.com/maps?q=${emp.workplace_latitude},${emp.workplace_longitude}" target="_blank" rel="noopener noreferrer" class="btn-logout" style="padding: 3px 7px; font-size: 0.72rem; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;" title="Ish joyi manzili">🏢 Ish joyi</a>`
+        : "";
+
+      // Ish joyini tozalash tugmasi
+      const clearBtn = isConfigured
+        ? `<button type="button" class="btn-logout" style="padding: 3px 7px; font-size: 0.72rem; color: #f87171; border-color: rgba(239, 68, 68, 0.35);" onclick="handleClearEmployeeWorkplace(${emp.id}, '${emp.full_name}')" title="Kordinatani tozalash">🗑️</button>`
+        : "";
+
+      tbody.innerHTML += `
+        <tr>
+          <td><b>${emp.full_name}</b></td>
+          <td><code>${emp.telegram_id}</code></td>
+          <td><span class="badge ${emp.role === 'CASHIER' ? 'badge-cashier' : 'badge-employee'}">${formatRoleName(emp.role)}</span></td>
+          <td>${wpName}</td>
+          <td>${wpCoords}</td>
+          <td>${wpRadius}</td>
+          <td>${distCell}</td>
+          <td>${statusBadge}</td>
+          <td>${timeCell}</td>
+          <td>
+            <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="openSetEmployeeLocationModal(${emp.id})">
+                ${isConfigured ? '✏️ Kordinata' : '📍 Kordinata kiritish'}
+              </button>
+              ${mapBtn}
+              ${wpMapBtn}
+              ${clearBtn}
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+
+    if (showToastNotice) {
+      showToast("Xodimlar geolokatsiyasi yangilandi", "info");
+    }
+  } catch (err) {
+    console.warn("Geolokatsiya ma'lumotlarini yuklashda xatolik:", err);
   }
 }
 
-async function handleSetCurrentLocationAsWorkplace() {
-  if (!navigator.geolocation) {
-    showToast("Brauzeringizda GPS geolokatsiya qo'llab-quvvatlanmaydi", "danger");
+function openSetEmployeeLocationModal(userId) {
+  const emp = (adminEmployeesLocationCache || []).find(u => u.id === userId);
+  if (!emp) return;
+
+  const modal = document.getElementById("set-employee-location-modal");
+  if (!modal) return;
+
+  document.getElementById("modal-emp-id").value = emp.id;
+  document.getElementById("modal-emp-name-display").innerText = `${emp.full_name} (TG: ${emp.telegram_id})`;
+  document.getElementById("modal-emp-wp-name").value = emp.workplace_name || `${emp.full_name} ish joyi`;
+  document.getElementById("modal-emp-wp-lat").value = emp.workplace_latitude ?? "";
+  document.getElementById("modal-emp-wp-lon").value = emp.workplace_longitude ?? "";
+  document.getElementById("modal-emp-wp-radius").value = emp.workplace_radius_meters || 50;
+
+  modal.style.display = "flex";
+}
+
+function closeSetEmployeeLocationModal() {
+  const modal = document.getElementById("set-employee-location-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function handleEmployeeLocationModalOverlayClick(e) {
+  if (e.target && e.target.id === "set-employee-location-modal") {
+    closeSetEmployeeLocationModal();
+  }
+}
+
+async function handleSetEmployeeLocationSubmit(e) {
+  if (e) e.preventDefault();
+  const userId = parseInt(document.getElementById("modal-emp-id").value, 10);
+  const name = document.getElementById("modal-emp-wp-name")?.value?.trim() || "Ish joyi";
+  const lat = parseFloat(document.getElementById("modal-emp-wp-lat")?.value);
+  const lon = parseFloat(document.getElementById("modal-emp-wp-lon")?.value);
+  const radius = parseInt(document.getElementById("modal-emp-wp-radius")?.value || "50", 10);
+
+  if (isNaN(lat) || isNaN(lon)) {
+    showToast("Kenglik va uzunlik to'g'ri kiritilishi shart!", "danger");
     return;
   }
-  const btn = document.getElementById("btn-save-current-gps-workplace");
+
+  try {
+    const res = await api("/api/location/set-employee-workplace", "POST", {
+      user_id: userId,
+      workplace_name: name,
+      latitude: lat,
+      longitude: lon,
+      radius_meters: radius
+    });
+
+    showToast(res.message || "Xodim uchun kordinata saqlandi!", "success");
+    closeSetEmployeeLocationModal();
+    await loadAdminLocationTab(false);
+  } catch (err) {
+    showToast("Xatolik: " + err.message, "danger");
+  }
+}
+
+function handleFillCurrentLocationToModal() {
+  if (!navigator.geolocation) {
+    showToast("Brauzerda GPS qo'llab-quvvatlanmaydi", "danger");
+    return;
+  }
+  const btn = document.getElementById("btn-modal-fill-gps");
   const origText = btn ? btn.innerHTML : "";
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = `<span>⏳</span> GPS aniqlanmoqda...`;
+    btn.innerHTML = "<span>⏳</span> GPS olinmoqda...";
   }
 
   navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      try {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const currentName = currentWorkplaceSettings?.name || "Bosh Ofis";
-        const currentRadius = currentWorkplaceSettings?.radius_meters || 50;
-
-        const res = await api("/api/location/workplace", "POST", {
-          latitude: lat,
-          longitude: lon,
-          radius_meters: currentRadius,
-          name: currentName
-        });
-
-        showToast(res.message || "Hozirgi joylashuv ish joyi qilib saqlandi!", "success");
-        await loadWorkplaceSettings();
-        await loadAdminUsers();
-      } catch (err) {
-        showToast("Ish joyini saqlashda xatolik: " + err.message, "danger");
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = origText;
-        }
+    (pos) => {
+      document.getElementById("modal-emp-wp-lat").value = pos.coords.latitude.toFixed(6);
+      document.getElementById("modal-emp-wp-lon").value = pos.coords.longitude.toFixed(6);
+      showToast("Hozirgi koordinatangiz maydonga joylandi!", "success");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = origText;
       }
     },
     (err) => {
@@ -3587,74 +3694,35 @@ async function handleSetCurrentLocationAsWorkplace() {
         btn.disabled = false;
         btn.innerHTML = origText;
       }
-      let msg = "GPS koordinatasini olish imkoni bo'lmadi.";
-      if (err.code === 1) msg = "Brauzerda GPS joylashuvga ruxsat bering!";
-      else if (err.code === 2) msg = "GPS signali topilmadi.";
-      else if (err.code === 3) msg = "GPS so'rovi vaqti tugadi.";
-      showToast(msg, "danger");
+      showToast("GPS xatosi: Brauzerda lokatsiyaga ruxsat bering!", "danger");
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
-function openWorkplaceModal() {
-  const modal = document.getElementById("workplace-location-modal");
-  if (!modal) return;
-  const nameInput = document.getElementById("modal-geo-name");
-  const latInput = document.getElementById("modal-geo-lat");
-  const lonInput = document.getElementById("modal-geo-lon");
-  const radiusInput = document.getElementById("modal-geo-radius");
-
-  if (nameInput) nameInput.value = currentWorkplaceSettings?.name || "Bosh Ofis";
-  if (latInput) latInput.value = (currentWorkplaceSettings?.is_configured && currentWorkplaceSettings?.latitude) ? currentWorkplaceSettings.latitude : "";
-  if (lonInput) lonInput.value = (currentWorkplaceSettings?.is_configured && currentWorkplaceSettings?.longitude) ? currentWorkplaceSettings.longitude : "";
-  if (radiusInput) radiusInput.value = currentWorkplaceSettings?.radius_meters || 50;
-
-  modal.style.display = "flex";
-}
-
-function closeWorkplaceModal() {
-  const modal = document.getElementById("workplace-location-modal");
-  if (modal) modal.style.display = "none";
-}
-
-function handleWorkplaceModalOverlayClick(e) {
-  if (e.target && e.target.id === "workplace-location-modal") {
-    closeWorkplaceModal();
-  }
-}
-
-async function handleWorkplaceLocationSubmit(e) {
-  if (e) e.preventDefault();
-  const name = document.getElementById("modal-geo-name")?.value?.trim() || "Bosh Ofis";
-  const lat = parseFloat(document.getElementById("modal-geo-lat")?.value);
-  const lon = parseFloat(document.getElementById("modal-geo-lon")?.value);
-  const radius = parseInt(document.getElementById("modal-geo-radius")?.value || "50", 10);
-
-  if (isNaN(lat) || isNaN(lon)) {
-    showToast("Kenglik va uzunlik raqam bo'lishi shart!", "danger");
-    return;
-  }
-
+async function handleClearEmployeeWorkplace(userId, fullName) {
+  if (!confirm(`Haqiqatan ham '${fullName}' xodimining ish joyi koordinatasini tozalamoqchimisiz?`)) return;
   try {
-    const res = await api("/api/location/workplace", "POST", {
-      latitude: lat,
-      longitude: lon,
-      radius_meters: radius,
-      name: name
-    });
-    showToast(res.message || "Ish joyi muvaffaqiyatli saqlandi!", "success");
-    closeWorkplaceModal();
-    await loadWorkplaceSettings();
-    await loadAdminUsers();
+    const res = await api(`/api/location/clear-employee-workplace/${userId}`, "POST");
+    showToast(res.message, "success");
+    await loadAdminLocationTab(false);
   } catch (err) {
     showToast("Xatolik: " + err.message, "danger");
   }
 }
 
+// ==========================================
+// XODIM UCHUN: AVTOMATIK GEOLOKATSIYA KUZATUVI
+// Xodim HECH NARSA kiritmaydi!
+// ==========================================
 function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
   const badge = document.getElementById("nav-user-location");
   if (!badge) return;
+
+  if (currentUser && currentUser.role === "ADMIN") {
+    badge.style.display = "none";
+    return;
+  }
 
   badge.style.display = "inline-flex";
 
@@ -3663,7 +3731,7 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.color = "#94a3b8";
     badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
     badge.innerHTML = "<span>📍</span> Ish joyi belgilanmagan";
-    badge.title = "Rahbar hali ish joyi koordinatasini kiritmagan";
+    badge.title = "Rahbar hali sizga ish joyi koordinatasini biriktirmagan";
     return;
   }
 
@@ -3682,18 +3750,25 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.color = "#34d399";
     badge.style.border = "1px solid rgba(16, 185, 129, 0.4)";
     badge.innerHTML = `<span>📍</span> ${distText} (Ish joyida ✅)`;
-    badge.title = `Siz ish joyi radiusidasiz (${distText})`;
+    badge.title = `Siz ish joyingizdasiz (${distText})`;
   } else {
     badge.style.background = "rgba(239, 68, 68, 0.15)";
     badge.style.color = "#f87171";
     badge.style.border = "1px solid rgba(239, 68, 68, 0.35)";
     badge.innerHTML = `<span>📍</span> ${distText} (Tashqarida ⚠️)`;
-    badge.title = `Siz ish joyidan ${distText} uzoqlikdasiz`;
+    badge.title = `Siz ish joyingizdan ${distText} uzoqlikdasiz`;
   }
 }
 
 async function startAutoLocationTracking() {
   if (!authToken || !currentUser) return;
+  // Bosh Rahbar hech qachon kuzatilmaydi!
+  if (currentUser.role === "ADMIN") {
+    const badge = document.getElementById("nav-user-location");
+    if (badge) badge.style.display = "none";
+    return;
+  }
+
   if (locationWatchId !== null) return;
 
   if (!("geolocation" in navigator)) {
@@ -3701,14 +3776,14 @@ async function startAutoLocationTracking() {
     return;
   }
 
-  // Ish joyi sozlamalarini yuklash
-  if (!currentWorkplaceSettings) {
-    try {
-      const res = await api("/api/location/workplace");
-      if (res && res.success) currentWorkplaceSettings = res;
-    } catch (e) {
-      console.warn("Workplace config yuklashda xatolik:", e);
+  // Xodimning o'ziga biriktirilgan ish joyi kordinatalarini olish
+  try {
+    const res = await api("/api/location/my-workplace");
+    if (res && res.success) {
+      myAssignedWorkplace = res;
     }
+  } catch (e) {
+    console.warn("Xodim ish joyini yuklashda xatolik:", e);
   }
 
   const onPositionSuccess = async (pos) => {
@@ -3717,23 +3792,20 @@ async function startAutoLocationTracking() {
     const now = Date.now();
 
     // Lokal masofani hisoblab, zudlik bilan navbar badgeni yangilash
-    if (currentWorkplaceSettings && currentWorkplaceSettings.is_configured) {
+    if (myAssignedWorkplace && myAssignedWorkplace.is_configured) {
       const localDist = calculateClientDistanceMeters(
-        currentWorkplaceSettings.latitude,
-        currentWorkplaceSettings.longitude,
+        myAssignedWorkplace.latitude,
+        myAssignedWorkplace.longitude,
         lat,
         lon
       );
-      const isInside = localDist <= (currentWorkplaceSettings.radius_meters || 50);
+      const isInside = localDist <= (myAssignedWorkplace.radius_meters || 50);
       updateNavbarLocationBadge(localDist, isInside, true);
     } else {
       updateNavbarLocationBadge(null, false, false);
     }
 
-    // Backend serverga ping yuborish mezonlari:
-    // 1) Birinchi marta bo'lsa
-    // 2) Oxirgi pingdan 30 soniya o'tgan bo'lsa
-    // 3) Xodim 20 metrdan ortiq siljigan bo'lsa
+    // Backend serverga ping yuborish mezonlari (har 30 soniyada yoki 20m siljiganda)
     let shouldPing = false;
     if (!lastPingedCoords || (now - lastLocationPingTime > 30000)) {
       shouldPing = true;
@@ -3754,7 +3826,7 @@ async function startAutoLocationTracking() {
       lastPingedCoords = { latitude: lat, longitude: lon };
       try {
         const pingRes = await api("/api/location/ping", "POST", { latitude: lat, longitude: lon });
-        if (pingRes && pingRes.success && pingRes.workplace_configured) {
+        if (pingRes && pingRes.success && pingRes.is_configured) {
           updateNavbarLocationBadge(
             Math.round(pingRes.distance_meters),
             pingRes.is_inside,
@@ -3770,7 +3842,7 @@ async function startAutoLocationTracking() {
   const onPositionError = (err) => {
     console.warn("GPS lokatsiya xatoligi:", err.message);
     const badge = document.getElementById("nav-user-location");
-    if (!badge) return;
+    if (!badge || (currentUser && currentUser.role === "ADMIN")) return;
     badge.style.display = "inline-flex";
     if (err.code === 1) { // PERMISSION_DENIED
       badge.style.background = "rgba(245, 158, 11, 0.15)";
@@ -3805,10 +3877,11 @@ function stopAutoLocationTracking() {
   if (badge) badge.style.display = "none";
   lastLocationPingTime = 0;
   lastPingedCoords = null;
+  myAssignedWorkplace = null;
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && authToken && currentUser && navigator.geolocation) {
+  if (document.visibilityState === "visible" && authToken && currentUser && currentUser.role !== "ADMIN" && navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 10000 });
   }
 });

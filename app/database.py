@@ -115,12 +115,16 @@ async def init_db():
                 pass
         await conn.execute("UPDATE cashier_handovers SET amount_uzs = amount WHERE amount_uzs = 0 AND amount_usd = 0")
 
-        # Migratsiyalar: users jadvaliga geolokatsiya ustunlari
+        # Migratsiyalar: users jadvaliga har bir xodim uchun alohida geolokatsiya ustunlari
         for col_sql in [
             "ALTER TABLE users ADD COLUMN last_latitude REAL",
             "ALTER TABLE users ADD COLUMN last_longitude REAL",
             "ALTER TABLE users ADD COLUMN last_distance_meters REAL",
-            "ALTER TABLE users ADD COLUMN last_location_updated_at TIMESTAMP"
+            "ALTER TABLE users ADD COLUMN last_location_updated_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN workplace_name TEXT DEFAULT 'Ish joyi'",
+            "ALTER TABLE users ADD COLUMN workplace_latitude REAL",
+            "ALTER TABLE users ADD COLUMN workplace_longitude REAL",
+            "ALTER TABLE users ADD COLUMN workplace_radius_meters INTEGER DEFAULT 50"
         ]:
             try:
                 await conn.execute(col_sql)

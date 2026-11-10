@@ -57,6 +57,13 @@ class AppointCashierRequest(BaseModel):
 class StatusActionRequest(BaseModel):
     status: str # 'APPROVED' yoki 'REJECTED'
 
+class SetEmployeeWorkplaceRequest(BaseModel):
+    user_id: int
+    workplace_name: str = Field(default="Ish joyi", min_length=1, max_length=100, description="Filial / Ish joyi nomi")
+    latitude: float = Field(..., ge=-90.0, le=90.0, description="Kenglik (Latitude)")
+    longitude: float = Field(..., ge=-180.0, le=180.0, description="Uzunlik (Longitude)")
+    radius_meters: int = Field(default=50, ge=5, le=5000, description="Geofence radiusi (metrlarda)")
+
 class WorkplaceLocationUpdate(BaseModel):
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Kenglik (Latitude)")
     longitude: float = Field(..., ge=-180.0, le=180.0, description="Uzunlik (Longitude)")
