@@ -33,6 +33,10 @@ Gemini agenti va ishlab chiquvchilar ushbu 4 ta ustuvor tamoyilga qat'iy rioya q
    - Aniq tiplashtirish (Exact Types): `any` yoki umumiy `object` ishlatish taqiqlanadi.
    - Arxitektura: Qatlamli arxitektura (Clean Architecture / Hexagonal) — Domain, Application, Infrastructure, Presentation.
 
+5. **Anti-Dangasalik va To'liq Bajarish (Unlazy & Full Production-Ready Execution)**:
+   - Hech qachon dangasalik qilinmaydi: kodni qisqartirib tashlab ketish (`// rest of code`, `TODO`), chala qoldirish yoki yarim yo'lda to'xtash qat'iy taqiqlanadi.
+   - Har bir vazifa 100% to'liq, mukammal, ishlab chiqarishga tayyor holatda oxirigacha yoziladi va o'zi mustaqil sinovdan o'tkaziladi.
+
 ---
 
 ## 2. 📁 LOYIHA TUZILMASI VA KONFIGURATSIYA (.gemini/)
@@ -50,6 +54,7 @@ Gemini va Antigravity muhitida avtomatlashtirish qoidalari `.gemini/` papkasida 
 │   └── 05-architecture.md           # Qatlamlar va bog'liqlik qoidalari
 ├── skills/                         # Qayta ishlatiluvchi bilimlar (Skills)
 │   ├── anti-hallucination-checker/  # Kodni tasdiqlash protokoli
+│   ├── unlazy/                      # Anti-dangasalik va to'liq bajarish protokoli
 │   ├── high-load-optimization/      # So'rovlarni va keshni optimallash
 │   ├── security-audit/              # OWASP tekshiruv nazorat ro'yxati
 │   └── rating-calculator/           # Yuqori tezlikda reyting hisoblash namunasi
