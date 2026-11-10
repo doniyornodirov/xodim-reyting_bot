@@ -115,20 +115,6 @@ async def ping_employee_location(
         current_hm = get_current_tashkent_hm()
         is_within_hours = is_time_within_interval(current_hm, start_time, end_time)
 
-        # Agar hozir ish vaqti bo'lmasa, kordinatani saqlamaymiz va "Dam olish vaqti" qaytaramiz
-        if not is_within_hours:
-            return {
-                "success": True,
-                "is_within_hours": False,
-                "work_start_time": start_time,
-                "work_end_time": end_time,
-                "current_time": current_hm,
-                "status_text": "Ish vaqti emas 🌙 (Dam olish)",
-                "distance_meters": None,
-                "is_inside": None,
-                "workplace_name": row["workplace_name"] or "Ish joyi"
-            }
-
         w_lat = row["workplace_latitude"]
         w_lon = row["workplace_longitude"]
         w_radius = row["workplace_radius_meters"] or 50
@@ -147,6 +133,7 @@ async def ping_employee_location(
             )
             is_inside = distance_meters <= w_radius
 
+        # Kordinata doimo yangilanadi (toki Rahbar xodim kordinatasini istalgan paytda bitta tugma bilan ola bilsin)
         await conn.execute("""
             UPDATE users
             SET last_latitude = ?,
@@ -161,6 +148,23 @@ async def ping_employee_location(
             user_id
         ))
         await conn.commit()
+
+        # Agar ish vaqti bo'lmasa, dam olish holati qaytariladi
+        if not is_within_hours:
+            return {
+                "success": True,
+                "is_within_hours": False,
+                "work_start_time": start_time,
+                "work_end_time": end_time,
+                "current_time": current_hm,
+                "status_text": "Ish vaqti emas 🌙 (Dam olish)",
+                "distance_meters": distance_meters,
+                "radius_meters": w_radius,
+                "is_inside": is_inside,
+                "workplace_name": w_name,
+                "is_configured": is_configured,
+                "updated_at": datetime.now().isoformat()
+            }
 
         return {
             "success": True,
