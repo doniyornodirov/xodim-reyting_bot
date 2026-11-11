@@ -231,3 +231,4 @@ def generate_reports_excel(
     wb.save(output)
     output.seek(0)
     return output.getvalue()
+
