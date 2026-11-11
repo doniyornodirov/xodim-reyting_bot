@@ -4354,36 +4354,26 @@ async function loadSaasCompanies() {
         planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #db2777; border: 1px solid rgba(236, 72, 153, 0.35); font-weight: 700;">${c.plan}</span>`;
       }
 
-      // Amallar tugmalari
+      // Amallar tugmalari (Sanani uzaytirish va Bloklash yonma-yon va ixcham)
       const safeCompName = (c.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      let actionsHtml = `<div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">`;
+      let actionsHtml = `<div style="display: inline-flex; gap: 0.35rem; align-items: center; white-space: nowrap;">`;
       if (!isMain) {
-        actionsHtml += `
-          <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 600;" onclick="openSaasEditCompanyModal(${c.id})" title="Firma va Rahbar ma'lumotlarini tahrirlash">
-            ✏️ Tahrirlash
-          </button>
-        `;
-      }
-      if (!isMain && c.plan !== "UNLIMITED") {
-        actionsHtml += `
-          <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Sanani belgilash">
-            📅 Sanani uzaytirish
-          </button>
-          <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem;" onclick="extendCompanySubscription(${c.id}, 30)" title="+30 kun qo'shish">
-            +30 kun
-          </button>
-        `;
-      }
-      if (!isMain) {
+        if (c.plan !== "UNLIMITED") {
+          actionsHtml += `
+            <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600; border-radius: 6px; line-height: 1.2; display: inline-flex; align-items: center; gap: 0.25rem;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Sanani uzaytirish">
+              <span>📅</span> Sanani uzaytirish
+            </button>
+          `;
+        }
         if (c.is_active) {
           actionsHtml += `
-            <button type="button" class="btn btn-danger" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="toggleCompanyActive(${c.id}, true)">
+            <button type="button" class="btn btn-danger" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; line-height: 1.2; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, true)">
               Bloklash
             </button>
           `;
         } else {
           actionsHtml += `
-            <button type="button" class="btn btn-success" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="toggleCompanyActive(${c.id}, false)">
+            <button type="button" class="btn btn-success" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; line-height: 1.2; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, false)">
               Faollashtirish
             </button>
           `;
