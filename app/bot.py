@@ -129,25 +129,51 @@ if dp:
                     parse_mode="HTML"
                 )
             else:
-                # XODIMLAR VA KASSIRLAR: Ish joyi va lokatsiya tartibi (Klaviaturani tozalaymiz)
+                # XODIMLAR VA KASSIRLAR: Ish joyi va lokatsiya tartibi
                 w_name = user["workplace_name"] or "Bosh ofis / Ish joyi"
                 w_hours = f"{user['work_start_time'] or '09:00'} - {user['work_end_time'] or '19:00'}"
-                await message.answer(
-                    f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
-                    f"🏢 <b>Tashkilot:</b> {comp_name}\n"
-                    f"👤 <b>Maqomingiz:</b> {role_title}\n"
-                    f"📍 <b>Filial:</b> {w_name}\n"
-                    f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
-                    f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
-                    f"📍 <b>JOYLASHUV YUBORISH TARTIBI:</b>\n"
-                    f"Pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> bo'limi orqali:\n\n"
-                    f"1️⃣ <b>Filialning aniq joylashuvini belgilash:</b>\n"
-                    f"   Filialingizga borganingizda <i>'Отправить свою геопозицию' (Oddiy joylashuv)</i> ni yuboring. Ushbu koordinata filialingizning rasmiy manzili sifatida saqlanadi.\n\n"
-                    f"2️⃣ <b>🛰 Kunlik jonli kuzatuv (Live Location):</b>\n"
-                    f"   <i>'Транслировать геопозицию...'</i> ni tanlab <b>8 soat</b> qilib yuboring. Telefoningiz fonda filialda ekanligingizni CRM tizimiga avtomatik uzatib turadi.",
-                    reply_markup=ReplyKeyboardRemove(),
-                    parse_mode="HTML"
-                )
+                w_lat = user["workplace_latitude"]
+                w_lon = user["workplace_longitude"]
+                is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
+
+                if not is_configured:
+                    kb_workplace = ReplyKeyboardMarkup(
+                        keyboard=[
+                            [KeyboardButton(text="📍 Ish joyimni belgilash", request_location=True)]
+                        ],
+                        resize_keyboard=True,
+                        one_time_keyboard=True
+                    )
+                    await message.answer(
+                        f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
+                        f"🏢 <b>Tashkilot:</b> {comp_name}\n"
+                        f"👤 <b>Maqomingiz:</b> {role_title}\n"
+                        f"📍 <b>Filial:</b> {w_name}\n"
+                        f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
+                        f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
+                        f"📍 <b>ISH JOYINI BELGILASH (1 MARTALIK):</b>\n"
+                        f"Hurmatli xodim, sizning ish joyingiz hali belgilanmagan.\n\n"
+                        f"Ishxonangizda (filialingizda) turib pastdagi <b>«📍 Ish joyimni belgilash»</b> tugmasini bosing.\n"
+                        f"<i>(Ushbu tugma va amal filialingiz koordinatasini saqlab olish uchun faqat 1 marta so'raladi)</i>.",
+                        reply_markup=kb_workplace,
+                        parse_mode="HTML"
+                    )
+                else:
+                    await message.answer(
+                        f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
+                        f"🏢 <b>Tashkilot:</b> {comp_name}\n"
+                        f"👤 <b>Maqomingiz:</b> {role_title}\n"
+                        f"📍 <b>Filial:</b> {w_name}\n"
+                        f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
+                        f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
+                        f"✅ <b>Ish joyingiz koordinatasi belgilangan.</b>\n\n"
+                        f"🛰 <b>KUNLIK JONLI JOYLASHUV (LIVE LOCATION):</b>\n"
+                        f"Har kuni ishga kelganingizda <b>jonli joylashuv</b> yuborib qo'ying:\n"
+                        f"Pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...' (Jonli joylashuv)</i> ni tanlab <b>8 soat</b> qilib yuboring.\n\n"
+                        f"<i>(Agar yangi filialga o'tgan bo'lsangiz, ish joyini qayta belgilash uchun /qayta_sozlash buyrug'ini yuboring)</i>",
+                        reply_markup=ReplyKeyboardRemove(),
+                        parse_mode="HTML"
+                    )
         else:
             # Ro'yxatdan o'tmagan mehmon: Klaviaturani tozalaymiz
             await message.answer(
@@ -190,21 +216,55 @@ if dp:
         )
         await message.answer(guide_text, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
 
+    @dp.message(F.text.in_({"📍 Ish joyimni belgilash", "📍 Ish joyini belgilash", "Ish joyimni belgilash", "Ish joyini belgilash"}))
+    async def handle_workplace_button_text(message: types.Message):
+        kb_workplace = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="📍 Ish joyimni belgilash", request_location=True)]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+        await message.answer(
+            "📍 Ish joyingizni belgilash uchun pastdagi <b>«📍 Ish joyimni belgilash»</b> tugmasini bosing va <i>'Ulashish' (Share)</i> ni tasdiqlang yoki 📎 (Skrepka) -> <b>📍 Geopozitsiya</b> orqali oddiy joylashuvingizni yuboring.",
+            reply_markup=kb_workplace,
+            parse_mode="HTML"
+        )
+
     @dp.message(Command("recalibrate"))
     @dp.message(Command("qayta_sozlash"))
     async def handle_recalibrate(message: types.Message):
         user_tg_id = message.from_user.id
         async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT id, role FROM users WHERE telegram_id = ?", (user_tg_id,))
+            u = await cur.fetchone()
+            if u and u["role"] in ("ADMIN", "DEVELOPER"):
+                await message.answer(
+                    "👑 Siz Rahbar maqomidasiz. Ish joyi lokatsiyasini sozlash xodimlar uchun mo'ljallangan.",
+                    reply_markup=ReplyKeyboardRemove(),
+                    parse_mode="HTML"
+                )
+                return
+
             await conn.execute("""
                 UPDATE users 
                 SET workplace_latitude = NULL, workplace_longitude = NULL, last_distance_meters = NULL 
                 WHERE telegram_id = ?
             """, (user_tg_id,))
             await conn.commit()
+
+        kb_workplace = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="📍 Ish joyimni belgilash", request_location=True)]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
         await message.answer(
             "🔄 <b>Ish joyi koordinatasi muvaffaqiyatli nollashtirildi!</b>\n\n"
-            "Endi yangi filialingizga borganingizda, <b>1 marta oddiy joylashuv (Geopozitsiya)</b> yuboring — tizim yangi filialingiz koordinatasini avtomatik aniqlab oladi.",
-            reply_markup=ReplyKeyboardRemove(),
+            "Yangi filialingizga borganingizda, pastdagi <b>«📍 Ish joyimni belgilash»</b> tugmasini bosing — tizim yangi filialingiz koordinatasini saqlab oladi (bu faqat 1 marta bajariladi).",
+            reply_markup=kb_workplace,
             parse_mode="HTML"
         )
 
@@ -281,14 +341,14 @@ if dp:
                     await conn.commit()
 
                     reply_text = (
-                        f"🏢 <b>ISH JOYINGIZ LOKATSIYASI ANIQLANDI VA SAQLANDI!</b>\n"
+                        f"✅ <b>Ish joyingiz joylashuvi muvaffaqiyatli belgilandi!</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"📍 <b>Filial:</b> {w_name}\n"
-                        f"📌 <b>Koordinata:</b> <code>{lat:.6f}, {lon:.6f}</code>\n"
-                        f"✅ Tizim ushbu manzilni sizning doimiy ish joyingiz sifatida muvaffaqiyatli aniqlab oldi!\n\n"
-                        f"🛰 <b>Endi har kuni ishga kelganda:</b>\n"
-                        f"Ish boshlanishida faqat <b>JONLI JOYLASHUV (Live Location)</b> yuborasiz:\n"
-                        f"📎 (Skrepka) -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...'</i> ni tanlab <b>8 soat</b> qilib yuboring.\n"
+                        f"🏢 <b>Filial:</b> {w_name}\n"
+                        f"📌 <b>Koordinata:</b> <code>{lat:.6f}, {lon:.6f}</code>\n\n"
+                        f"🛰 <b>Endi jonli joylashuv yuborib qo'ying:</b>\n"
+                        f"Kun davomida ish joyida ekanligingizni tasdiqlash uchun jonli joylashuv yuborib qo'ying:\n"
+                        f"Pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...' (Jonli joylashuv)</i> ni tanlab <b>8 soat</b> qilib yuboring.\n\n"
+                        f"<i>(Ish joyingiz belgilandi, bu tugma boshqa chiqmaydi)</i>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
                         f"🕒 <b>Toshkent vaqti:</b> {time_hm}"
                     )
@@ -318,14 +378,14 @@ if dp:
                     await conn.commit()
 
                     reply_text = (
-                        f"📍 <b>BIR MARTALIK JOYLASHUV QABUL QILINDI</b>\n"
+                        f"📍 <b>Sizning ish joyingiz avvalroq belgilangan!</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"🏢 <b>Aniqlangan ish joyingiz:</b> {w_name}\n"
+                        f"🏢 <b>Filial:</b> {w_name}\n"
                         f"📏 <b>Ish joyigacha masofa:</b> {dist_str} ({status_label})\n\n"
-                        f"💡 <b>Eslatma:</b> Ish joyingiz avvalroq tizim tomonidan aniqlab saqlangan. "
-                        f"Kun davomida to'liq nazorat qilinishi uchun har kuni ishga kelganda <b>JONLI JOYLASHUV</b> yuboring:\n"
-                        f"📎 (Skrepka) -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...'</i> (8 soat).\n\n"
-                        f"<i>(Agar boshqa filialga o'tgan bo'lsangiz, ish joyini qayta aniqlash uchun /qayta_sozlash buyrug'ini yuboring)</i>\n"
+                        f"🛰 <b>Endi jonli joylashuv yuborib qo'ying:</b>\n"
+                        f"Kunlik monitoring uchun <b>jonli joylashuv (Live Location)</b> yuborishingiz kerak:\n"
+                        f"Pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...'</i> ni tanlab <b>8 soat</b> qilib yuboring.\n\n"
+                        f"<i>(Agar yangi filialga o'tgan bo'lsangiz, ish joyini qayta belgilash uchun /qayta_sozlash buyrug'ini yuboring)</i>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━\n"
                         f"🕒 <b>Toshkent vaqti:</b> {time_hm}"
                     )
@@ -414,10 +474,9 @@ if dp:
             is_live_edit=False
         )
         if res.get("reply_text"):
-            is_admin_user = ("Rahbar" in res["reply_text"] or "Dasturchi" in res["reply_text"])
             await message.reply(
                 res["reply_text"],
-                reply_markup=ReplyKeyboardRemove() if is_admin_user else None,
+                reply_markup=ReplyKeyboardRemove(),
                 parse_mode="HTML"
             )
 
