@@ -166,7 +166,11 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN stillness_state TEXT DEFAULT 'ACTIVE'",
             "ALTER TABLE users ADD COLUMN is_charging INTEGER DEFAULT 0",
             "ALTER TABLE users ADD COLUMN last_motion_lat REAL",
-            "ALTER TABLE users ADD COLUMN last_motion_lon REAL"
+            "ALTER TABLE users ADD COLUMN last_motion_lon REAL",
+            "ALTER TABLE users ADD COLUMN bound_device_token TEXT",
+            "ALTER TABLE users ADD COLUMN bound_device_name TEXT",
+            "ALTER TABLE users ADD COLUMN device_bound_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN allow_device_reset INTEGER DEFAULT 0"
         ]:
             try:
                 await conn.execute(col_sql)

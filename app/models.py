@@ -84,6 +84,11 @@ class DeviceTelemetryRequest(BaseModel):
     has_motion: bool = Field(default=False, description="Harakat yoki tebranish qayd etilganligi")
     is_charging: Optional[bool] = Field(default=None, description="Qurilma tokka ulanganligi")
 
+class DeviceVerifyOrBindRequest(BaseModel):
+    device_token: Optional[str] = Field(None, description="Qurilma ichki xotirasidagi maxfiy apparat tokeni")
+    device_name: Optional[str] = Field(None, max_length=150, description="Qurilma nomi (masalan: Honor X9b)")
+    platform_info: Optional[str] = Field(None, max_length=255, description="OS va brauzer ma'lumotlari")
+
 class CreateCompanyRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, description="Firma / Tashkilot nomi")
     owner_telegram_id: int = Field(..., description="Firma Rahbarining Telegram ID si")

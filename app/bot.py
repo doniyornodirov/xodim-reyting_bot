@@ -182,12 +182,21 @@ if dp:
                     else:
                         signal_line = f"📶 <b>Signal holati:</b> 🟢 <b>Jonli signal kelmoqda</b> ({loc_lag} daqiqa oldin yangilangan)\n\n"
 
+                    dev_name = user["bound_device_name"] if ("bound_device_name" in user.keys() and user["bound_device_name"]) else None
+                    if dev_name:
+                        device_line = f"📱 <b>Biriktirilgan telefon:</b> <code>{dev_name}</code>\n"
+                    elif user.get("allow_device_reset"):
+                        device_line = "📱 <b>Telefon holati:</b> ⏳ Yangi telefon biriktirishga ruxsat berilgan\n"
+                    else:
+                        device_line = "📱 <b>Telefon holati:</b> ⚪ Hali biriktirilmagan (CRMga kirganda avtomatik muhrlanadi)\n"
+
                     await message.answer(
                         f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
                         f"🏢 <b>Tashkilot:</b> {comp_name}\n"
                         f"👤 <b>Maqomingiz:</b> {role_title}\n"
                         f"📍 <b>Filial:</b> {w_name}\n"
                         f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
+                        f"{device_line}"
                         f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
                         f"{signal_line}"
                         f"✅ <b>Ish joyingiz koordinatasi belgilangan.</b>\n\n"

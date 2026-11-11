@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 import aiosqlite
 from app.config import DB_PATH, OTP_EXPIRATION_SECONDS, DEBUG, BOT_USERNAME, RAHBAR_ID, DEVELOPER_ID
-from app.models import LoginRequest, VerifyOtpRequest
+from app.models import LoginRequest, VerifyOtpRequest, DeviceVerifyOrBindRequest
 from app.security import verify_password, generate_otp, create_access_token
 from app.bot import send_otp_to_telegram
 from app.dependencies import get_current_user
@@ -216,6 +216,97 @@ async def verify_otp(req: VerifyOtpRequest):
                 "is_super_admin": is_super_admin
             }
         }
+
+@router.post("/device/verify-or-bind")
+async def verify_or_bind_device(
+    req: DeviceVerifyOrBindRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Qurilmani tekshirish va biriktirish (Device Binding & Hardware Token Verification).
+    Xodimning hisobini uning haqiqiy telefon apparatiga mixlab qo'yadi.
+    Boshqa qurilmadan (masalan, ikkinchi telefondan) kirishga urinishlarni avtomatik bloklaydi.
+    """
+    user_id = current_user["id"]
+    role = current_user.get("role")
+
+    # Rahbarlar va Dasturchilar uchun qurilma cheklovi talab etilmaydi
+    if role in ("ADMIN", "DEVELOPER"):
+        return {
+            "success": True,
+            "is_trusted": True,
+            "is_admin": True,
+            "device_name": "Rahbar qurilmasi",
+            "message": "Rahbar uchun apparat cheklovi qo'yilmaydi."
+        }
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("""
+            SELECT id, full_name, telegram_id, company_id,
+                   bound_device_token, bound_device_name, device_bound_at, allow_device_reset
+            FROM users WHERE id = ?
+        """, (user_id,))
+        u = await cur.fetchone()
+        if not u:
+            raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
+
+        bound_token = u["bound_device_token"]
+        allow_reset = bool(u["allow_device_reset"])
+        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # 1. Birinchi marta ulanayotgan bo'lsa YOKI Rahbar yangi telefon biriktirishga ruxsat bergan bo'lsa:
+        if not bound_token or allow_reset:
+            import secrets
+            new_device_token = secrets.token_hex(32) # 64-belgili apparat maxfiy kaliti
+            dev_name = (req.device_name or "Mobil telefon").strip()[:100]
+
+            await conn.execute("""
+                UPDATE users 
+                SET bound_device_token = ?,
+                    bound_device_name = ?,
+                    device_bound_at = ?,
+                    allow_device_reset = 0
+                WHERE id = ?
+            """, (new_device_token, dev_name, now_utc, user_id))
+
+            details = f"Xodim '{u['full_name']}' ga yangi apparat ({dev_name}) muhrlab biriktirildi."
+            await conn.execute("""
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'DEVICE', ?, 'BIND_DEVICE', ?, ?)
+            """, (u["company_id"] or 1, user_id, u["full_name"], details))
+            await conn.commit()
+
+            return {
+                "success": True,
+                "is_trusted": True,
+                "action": "BOUND",
+                "device_token": new_device_token,
+                "device_name": dev_name,
+                "message": f"Ushbu qurilma ({dev_name}) rasmiy telefoningiz sifatida muvaffaqiyatli biriktirildi!"
+            }
+
+        # 2. Qurilma allaqachon biriktirilgan bo'lsa, xotiradagi token solishtiriladi:
+        incoming_token = req.device_token.strip() if req.device_token else ""
+        if incoming_token and incoming_token == bound_token:
+            return {
+                "success": True,
+                "is_trusted": True,
+                "action": "VERIFIED",
+                "device_token": bound_token,
+                "device_name": u["bound_device_name"] or "Tasdiqlangan telefon",
+                "message": "Qurilma tasdiqlangan."
+            }
+        else:
+            dev_name_orig = u["bound_device_name"] or "Boshqa telefon"
+            return {
+                "success": False,
+                "is_trusted": False,
+                "action": "REJECTED",
+                "error_code": "UNTRUSTED_DEVICE",
+                "bound_device_name": dev_name_orig,
+                "message": f"⛔ DIQQAT: Begona qurilma aniqlandi! Tizimga faqat sizning rasmiy ro'yxatdan o'tgan telefoningiz ({dev_name_orig}) orqali kirish mumkin. Yangi telefon biriktirish uchun Rahbaringizga murojaat qiling."
+            }
 
 @router.get("/me")
 async def get_me(user: dict = Depends(get_current_user)):

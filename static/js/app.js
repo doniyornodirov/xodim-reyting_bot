@@ -418,6 +418,8 @@ async function initApp() {
       currentUser = res.user;
       localStorage.setItem("crm_last_activity", Date.now().toString());
       hideSubscriptionExpiredModal();
+      const isDeviceOk = await verifyOrBindClientDevice();
+      if (!isDeviceOk) return;
       try {
         renderApp();
       } catch (renderErr) {
@@ -664,6 +666,8 @@ async function handleVerifyOtp(e) {
     clearInterval(otpCountdownTimer);
     document.getElementById("login-modal").style.display = "none";
     showToast("Tizimga muvaffaqiyatli kirdingiz!", "success");
+    const isDeviceOk = await verifyOrBindClientDevice();
+    if (!isDeviceOk) return;
     try {
       renderApp();
     } catch (renderErr) {
@@ -2455,12 +2459,14 @@ function renderMainAnalyticsChart(timeline) {
         position: "left",
         beginAtZero: true,
         min: 0,
+        suggestedMin: 0,
+        suggestedMax: 100000,
         grid: { color: tc.gridColor },
         ticks: {
           color: tc.textColor,
           font: { size: 11 },
           precision: 0,
-          callback: (v) => formatNumberShort(v)
+          callback: (v) => formatNumberShort(Math.max(0, v))
         }
       }
     };
@@ -2469,7 +2475,9 @@ function renderMainAnalyticsChart(timeline) {
       scales.yRight = {
         type: "linear",
         position: "right",
+        beginAtZero: true,
         min: 0,
+        suggestedMin: 0,
         suggestedMax: 5,
         grid: { drawOnChartArea: false },
         ticks: {
@@ -2477,7 +2485,7 @@ function renderMainAnalyticsChart(timeline) {
           font: { size: 11 },
           precision: 0,
           stepSize: 1,
-          callback: (v) => `${Math.round(v)} ta`
+          callback: (v) => `${Math.max(0, Math.round(v))} ta`
         }
       };
     }
@@ -3100,6 +3108,32 @@ async function loadAdminUsers() {
         }
       }
 
+      let deviceHtml = "";
+      if (u.role === "ADMIN" || u.role === "DEVELOPER") {
+        deviceHtml = '<span style="color: var(--text-muted); font-size: 0.78rem;">🛡️ Cheklovsiz</span>';
+      } else if (u.bound_device_name) {
+        const safeName = escapeHtml(u.bound_device_name);
+        const safeUser = escapeHtml(u.full_name);
+        deviceHtml = `
+          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+            <span style="font-weight: 600; font-size: 0.82rem; color: #38bdf8; display: inline-flex; align-items: center; gap: 4px;" title="Biriktirilgan sana: ${u.device_bound_at || '-'}">
+              📱 ${safeName}
+            </span>
+            <button type="button" class="btn-logout" style="font-size: 0.72rem; padding: 2px 7px; border-color: #64748b; color: #94a3b8; border-radius: 4px;" onclick="handleResetUserDevice(${u.id}, '${safeUser}')" title="Xodim telefonini yangilaganda yangi apparat ulashga ruxsat berish">
+              🔄 Almashtirish
+            </button>
+          </div>
+        `;
+      } else if (u.allow_device_reset) {
+        deviceHtml = `
+          <span class="badge" style="background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.4); color: #facc15; font-size: 0.73rem; white-space: nowrap;">
+            ⏳ Ruxsat berilgan
+          </span>
+        `;
+      } else {
+        deviceHtml = '<span style="color: var(--text-muted); font-size: 0.78rem;">⚪ Biriktirilmagan</span>';
+      }
+
       tbody.innerHTML += `
         <tr style="opacity: ${u.is_active ? 1 : 0.5};">
           <td><b>${u.full_name}</b></td>
@@ -3107,6 +3141,7 @@ async function loadAdminUsers() {
           <td><span class="badge ${u.role === 'ADMIN' ? 'badge-admin' : u.role === 'CASHIER' ? 'badge-cashier' : 'badge-employee'}">${formatRoleName(u.role)}</span></td>
           <td><b>${formatNumberSpaces(u.debt_amount ?? 0)} so'm</b></td>
           <td>${statusHtml}</td>
+          <td>${deviceHtml}</td>
           <td style="display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center;">
             ${activeBtn}
             ${debtBtn}
@@ -3135,6 +3170,19 @@ async function toggleEmployeeShift(userId, targetStatus) {
     loadAdminUsers();
     if (typeof loadAdminLocationTab === "function") loadAdminLocationTab(false);
   } catch (e) {}
+}
+
+async function handleResetUserDevice(userId, fullName) {
+  if (!confirm(`Haqiqatan ham '${fullName}' xodimi uchun yangi telefon apparati biriktirishga ruxsat bermoqchimisiz?\n\nBu ruxsatdan so'ng xodim o'zining yangi telefonidan tizimga kirgan zahoti yangi apparat avtomatik qayta muhrlanadi.`)) {
+    return;
+  }
+  try {
+    const res = await api(`/api/admin/users/${userId}/reset-device`, "POST");
+    showToast(res.message || "Ruxsat berildi!", "success");
+    loadAdminUsers();
+  } catch (err) {
+    showToast(err.message || "Xatolik yuz berdi", "danger");
+  }
 }
 
 async function toggleUserActive(userId) {
@@ -4820,6 +4868,77 @@ async function checkSubscriptionStatusAgain(silent = false) {
     if (!silent) {
       showToast("Obuna muddati hali uzaytirilmadi. Iltimos, Dasturchi Admin bilan bog'laning.", "warning");
     }
+  }
+}
+
+// ==========================================
+// QURILMA BIRIKTIRISH VA BEGONA APPARATNI BLOKLASH (Hardware Crypto Binding)
+// ==========================================
+
+function getClientDeviceName() {
+  const ua = navigator.userAgent || "";
+  const androidMatch = ua.match(/Android[^;]+;\s*([^;)]+)\s*Build/i) || ua.match(/Android[^;]+;\s*([^;)]+)\)/i);
+  if (androidMatch && androidMatch[1]) {
+    let raw = androidMatch[1].trim();
+    if (raw.includes("ANY-NX1") || raw.includes("Honor") || raw.includes("HONOR")) {
+      return "Honor X9b (Android)";
+    }
+    return raw;
+  }
+  if (/iPhone/i.test(ua)) return "Apple iPhone (iOS)";
+  if (/iPad/i.test(ua)) return "Apple iPad (iOS)";
+  if (/Android/i.test(ua)) return "Android telefon";
+  if (/Windows/i.test(ua)) return "Windows kompyuter";
+  if (/Macintosh/i.test(ua)) return "Mac kompyuter";
+  return "Mobil telefon";
+}
+
+function showUntrustedDeviceModal(boundDeviceName) {
+  const modal = document.getElementById("modal-untrusted-device");
+  if (!modal) return;
+  const nameEl = document.getElementById("untrusted-device-orig-name");
+  if (nameEl) nameEl.innerText = boundDeviceName || "Boshqa telefon apparati";
+  modal.style.display = "flex";
+
+  const appContent = document.getElementById("app-content");
+  if (appContent) appContent.style.display = "none";
+}
+
+function hideUntrustedDeviceModal() {
+  const modal = document.getElementById("modal-untrusted-device");
+  if (modal) modal.style.display = "none";
+}
+
+async function verifyOrBindClientDevice() {
+  if (!currentUser) return true;
+  if (currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") {
+    hideUntrustedDeviceModal();
+    return true;
+  }
+
+  const savedToken = localStorage.getItem("crm_trusted_device_token") || "";
+  const devName = getClientDeviceName();
+
+  try {
+    const res = await api("/api/auth/device/verify-or-bind", "POST", {
+      device_token: savedToken,
+      device_name: devName,
+      platform_info: (navigator.userAgent || "").substring(0, 200)
+    });
+
+    if (res && res.success && res.is_trusted) {
+      if (res.device_token) {
+        localStorage.setItem("crm_trusted_device_token", res.device_token);
+      }
+      hideUntrustedDeviceModal();
+      return true;
+    } else {
+      showUntrustedDeviceModal((res && res.bound_device_name) || "Biriktirilgan telefon");
+      return false;
+    }
+  } catch (err) {
+    console.warn("Qurilma tekshirishda xatolik:", err);
+    return true;
   }
 }
 

@@ -19,7 +19,8 @@ async def get_all_users(admin: dict = Depends(require_role(["ADMIN"]))):
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role, debt_amount, is_active, created_at,
                    last_latitude, last_longitude, last_distance_meters, last_location_updated_at,
-                   shift_status, work_start_time, work_end_time, company_id
+                   shift_status, work_start_time, work_end_time, company_id,
+                   bound_device_name, device_bound_at, allow_device_reset
             FROM users 
             WHERE company_id = ? AND role != 'DEVELOPER'
             ORDER BY is_active DESC, role ASC, full_name ASC
@@ -147,6 +148,42 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
         await conn.commit()
 
     return {"success": True, "message": f"Xodim {user['full_name']} muvaffaqiyatli {status_name}!"}
+
+@router.post("/users/{user_id}/reset-device")
+async def reset_user_device(
+    user_id: int,
+    admin: dict = Depends(require_role(["ADMIN"]))
+):
+    """
+    Rahbar tomonidan xodimga yangi telefon apparatini biriktirishga ruxsat berish
+    (masalan, xodim telefonini almashtirganida yoki yo'qotganida).
+    """
+    comp_id = admin.get("company_id") or 1
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("SELECT * FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
+        target_user = await cur.fetchone()
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Xodim topilmadi!")
+
+        await conn.execute("""
+            UPDATE users 
+            SET allow_device_reset = 1,
+                bound_device_token = NULL
+            WHERE id = ?
+        """, (user_id,))
+
+        details = f"Rahbar '{admin['full_name']}' xodim '{target_user['full_name']}' ga yangi telefon apparatini biriktirishga ruxsat berdi."
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'DEVICE', ?, 'RESET_DEVICE_PERM', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], details))
+        await conn.commit()
+
+    return {
+        "success": True,
+        "message": f"'{target_user['full_name']}' uchun yangi telefon apparatini biriktirishga ruxsat berildi! Endi xodim yangi telefonidan kirishi mumkin."
+    }
 
 @router.post("/users/{user_id}/toggle-shift")
 async def toggle_employee_shift(
