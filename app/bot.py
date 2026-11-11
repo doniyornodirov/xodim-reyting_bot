@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime, timezone, timedelta
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
@@ -7,6 +8,7 @@ from aiogram.types import (
     ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
     WebAppInfo
 )
+import aiosqlite
 from app.config import BOT_TOKEN, TELEGRAM_GROUP_ID, DB_PATH, FRONTEND_URL
 
 logger = logging.getLogger("telegram_bot")
@@ -182,9 +184,10 @@ if dp:
                         signal_line = f"📶 <b>Signal holati:</b> 🟢 <b>Jonli signal kelmoqda</b> ({loc_lag} daqiqa oldin yangilangan)\n\n"
 
                     dev_name = user["bound_device_name"] if ("bound_device_name" in user.keys() and user["bound_device_name"]) else None
+                    allow_reset = bool(user["allow_device_reset"]) if ("allow_device_reset" in user.keys() and user["allow_device_reset"]) else False
                     if dev_name:
                         device_line = f"📱 <b>Biriktirilgan telefon:</b> <code>{dev_name}</code>\n"
-                    elif user.get("allow_device_reset"):
+                    elif allow_reset:
                         device_line = "📱 <b>Telefon holati:</b> ⏳ Yangi telefon biriktirishga ruxsat berilgan\n"
                     else:
                         device_line = "📱 <b>Telefon holati:</b> ⚪ Hali biriktirilmagan (CRMga kirganda avtomatik muhrlanadi)\n"
