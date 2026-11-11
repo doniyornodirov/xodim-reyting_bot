@@ -6,7 +6,7 @@ from app.config import DB_PATH
 from app.models import (
     CreateUserRequest, UpdatePasswordRequest, SetDebtRequest, AppointCashierRequest, ToggleShiftRequest
 )
-from app.dependencies import require_role
+from app.dependencies import require_role, get_current_user
 from app.security import hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"], dependencies=[Depends(require_role(["ADMIN"]))])
