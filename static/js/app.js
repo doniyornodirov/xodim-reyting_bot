@@ -4816,24 +4816,24 @@ async function downloadDatabaseBackup() {
   }
 }
 
-// Bugungi yoki tanlangan sana/davr bo'yicha svodkani Telegram guruhga yuborish
+// Bugungi yoki tanlangan sana/davr bo'yicha svodkani Rahbar shaxsiy Telegram lichkasiga yuborish
 async function sendTodayDigestToTelegram() {
   const s = adminReportDateFilter?.startDate;
   const e = adminReportDateFilter?.endDate;
 
   let promptText = "";
   if (s && e && s === e) {
-    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?`;
+    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?`;
   } else if (s && e && s !== e) {
-    promptText = `${formatDateOnly(s)} dan ${formatDateOnly(e)} gacha bo'lgan davriy svodkani Telegram guruhga yuborishni tasdiqlaysizmi?`;
+    promptText = `${formatDateOnly(s)} dan ${formatDateOnly(e)} gacha bo'lgan davriy svodkani shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?`;
   } else if (s && !e) {
-    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?`;
+    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?`;
   } else {
-    promptText = "Bugungi kun yakuniy hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?";
+    promptText = "Bugungi kun yakuniy hisobot svodkasini shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?";
   }
 
   if (!confirm(promptText)) return;
-  showToast("Svodka hisoblanmoqda va Telegramga yuborilmoqda...", "info");
+  showToast("Svodka hisoblanmoqda va shaxsiy Telegramingizga yuborilmoqda...", "info");
 
   try {
     let url = "/api/reports/send-daily-digest";
@@ -4844,7 +4844,7 @@ async function sendTodayDigestToTelegram() {
 
     const res = await api(url, "POST");
     if (res.success) {
-      showToast(res.message || "Svodka Telegramga muvaffaqiyatli yuborildi!", "success");
+      showToast(res.message || "Svodka shaxsiy Telegramingizga muvaffaqiyatli yuborildi!", "success");
     } else {
       showToast(res.message || res.detail || "Telegramga yuborib bo'lmadi", "warning");
     }
@@ -4853,8 +4853,72 @@ async function sendTodayDigestToTelegram() {
   }
 }
 
-// 1. Kunlik hisobotlarni Excelga (.xlsx) eksport qilish
-function exportAdminReportsToExcel() {
+// Har qanday XLSX faylini rahbar shaxsiy Telegram lichkasiga yuborish yordamchisi
+async function sendGeneratedXlsxToTelegram(wb, filename, caption) {
+  try {
+    if (typeof XLSX === "undefined") return;
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "base64" });
+    await api("/api/reports/send-excel-telegram", "POST", {
+      filename: filename,
+      file_base64: wbout,
+      caption: caption
+    });
+  } catch (e) {
+    console.warn("Telegramga Excel yuborishda xatolik:", e);
+  }
+}
+
+// 1. Kunlik hisobotlarni Excelga (.xlsx) eksport qilish va Rahbar shaxsiy Telegramiga yuborish
+async function exportAdminReportsToExcel() {
+  const s = adminReportDateFilter?.startDate;
+  const e = adminReportDateFilter?.endDate;
+
+  showToast("Excel hisoboti tayyorlanmoqda va Telegramingizga yuborilmoqda...", "info");
+
+  try {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    let url = "/api/reports/export-excel";
+    const params = [];
+    if (s) params.push(`start_date=${encodeURIComponent(s)}`);
+    if (e && e !== s) params.push(`end_date=${encodeURIComponent(e)}`);
+    if (params.length > 0) url += `?${params.join("&")}`;
+
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+
+    if (!resp.ok) {
+      const errJson = await resp.json().catch(() => null);
+      throw new Error(errJson?.detail || "Excel hisobotini yuklab olishda xatolik");
+    }
+
+    let filename = `Hisobotlar_${s || 'barcha'}.xlsx`;
+    const disp = resp.headers.get("Content-Disposition");
+    if (disp && disp.includes("filename=")) {
+      const match = disp.match(/filename="?([^";]+)"?/);
+      if (match && match[1]) filename = match[1];
+    }
+
+    const blob = await resp.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(downloadUrl);
+    a.remove();
+
+    showToast("Excel hisoboti yuklab olindi va shaxsiy Telegramingizga (@xodim_reyting_bot) yuborildi! 📥", "success");
+    return;
+  } catch (err) {
+    console.warn("Backend Excel export xatoligi, mijoz tomonidan yuklanmoqda:", err);
+  }
+
+  // Fallback: Agar tarmoq uzilsa mijoz tomonida XLSX orqali generatsiya
   if (typeof XLSX === "undefined") {
     showToast("Excel kutubxonasi yuklanmadi. Sahifani qayta yangilang!", "error");
     return;
@@ -4887,24 +4951,10 @@ function exportAdminReportsToExcel() {
 
   const ws = XLSX.utils.json_to_sheet(exportData);
   ws["!cols"] = [
-    { wch: 6 },
-    { wch: 12 },
-    { wch: 22 },
-    { wch: 15 },
-    { wch: 18 },
-    { wch: 14 },
-    { wch: 16 },
-    { wch: 16 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 18 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 16 },
-    { wch: 18 },
-    { wch: 20 },
-    { wch: 15 },
-    { wch: 30 }
+    { wch: 6 }, { wch: 12 }, { wch: 22 }, { wch: 15 }, { wch: 18 },
+    { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 },
+    { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 18 },
+    { wch: 20 }, { wch: 15 }, { wch: 30 }
   ];
 
   const wb = XLSX.utils.book_new();
@@ -4912,7 +4962,8 @@ function exportAdminReportsToExcel() {
   const dateLabel = adminReportDateFilter?.startDate || "barcha";
   const fileName = `Hisobotlar_${dateLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, fileName);
-  showToast("Kunlik hisobotlar Excel (.xlsx) fayliga muvaffaqiyatli yuklandi!", "success");
+  sendGeneratedXlsxToTelegram(wb, fileName, `📥 <b>KUNLIK HISOBOTLAR (${dateLabel})</b>\n\n📎 <i>Excel fayli biriktirildi.</i>`);
+  showToast("Kunlik hisobotlar Excel (.xlsx) fayliga yuklandi va Telegramingizga yuborildi! 📥", "success");
 }
 
 // 2. Kassa taqqoslash jadvalini Excelga (.xlsx) eksport qilish
@@ -4953,8 +5004,10 @@ function exportComparisonToExcel() {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Kassa Taqqoslash");
-  XLSX.writeFile(wb, `Kassa_Taqqoslash_${new Date().toISOString().slice(0,10)}.xlsx`);
-  showToast("Kassa taqqoslash ma'lumotlari Excelga yuklandi!", "success");
+  const fileName = `Kassa_Taqqoslash_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  sendGeneratedXlsxToTelegram(wb, fileName, "📥 <b>KASSA TAQQOSLASH HISOBOTI</b>\n\n📎 <i>Excel fayli biriktirildi.</i>");
+  showToast("Kassa taqqoslash ma'lumotlari Excelga yuklandi va Telegramingizga yuborildi! 📥", "success");
 }
 
 // 3. Sim-kartalar hisobi va balansini Excelga (.xlsx) eksport qilish
@@ -5000,8 +5053,10 @@ function exportSimCardsToExcel() {
     XLSX.utils.book_append_sheet(wb, ws2, "Partiyalar Tarixi");
   }
 
-  XLSX.writeFile(wb, `Sim_Kartalar_Hisobi_${new Date().toISOString().slice(0,10)}.xlsx`);
-  showToast("Sim-kartalar hisobi Excel fayliga yuklandi!", "success");
+  const fileName = `Sim_Kartalar_Hisobi_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  sendGeneratedXlsxToTelegram(wb, fileName, "📱 <b>SIM-KARTALAR HISOBI VA BALANSI</b>\n\n📎 <i>Excel fayli biriktirildi.</i>");
+  showToast("Sim-kartalar hisobi Excel fayliga yuklandi va Telegramingizga yuborildi! 📥", "success");
 }
 
 // 4. Reyting va Liderlar jadvalini Excelga (.xlsx) eksport qilish
@@ -5046,8 +5101,10 @@ function exportRatingToExcel() {
   const wb = XLSX.utils.book_new();
   const periodLabel = adminLeaderboardCache.period === "monthly" ? "Oylik" : "Umumiy";
   XLSX.utils.book_append_sheet(wb, ws, `Reyting_${periodLabel}`);
-  XLSX.writeFile(wb, `Reyting_${periodLabel}_${new Date().toISOString().slice(0,10)}.xlsx`);
-  showToast("Reyting jadvali Excelga muvaffaqiyatli yuklandi!", "success");
+  const fileName = `Reyting_${periodLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  sendGeneratedXlsxToTelegram(wb, fileName, `🏆 <b>XODIMLAR REYTINGI (${periodLabel.toUpperCase()})</b>\n\n📎 <i>Excel fayli biriktirildi.</i>`);
+  showToast("Reyting jadvali Excelga yuklandi va Telegramingizga yuborildi! 📥", "success");
 }
 
 // Window load init

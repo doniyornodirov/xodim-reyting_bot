@@ -188,8 +188,8 @@ async def get_retention_stats(retention_days: int = RETENTION_DAYS) -> dict:
     }
 
 
-async def send_daily_digest_for_all_companies():
-    """Barcha faol kompaniyalar uchun kechki yakuniy svodkani avtomatik yuborish"""
+async def send_daily_digest_for_all_companies(send_to_owner: bool = True):
+    """Barcha faol kompaniyalar uchun kechki soat 23:55 da yakuniy svodkani rahbarning shaxsiy lichkasiga yuborish"""
     from app.bot import send_daily_digest_for_company
     try:
         async with aiosqlite.connect(DB_PATH) as conn:
@@ -199,7 +199,7 @@ async def send_daily_digest_for_all_companies():
 
         for c in comps:
             try:
-                await send_daily_digest_for_company(c["id"])
+                await send_daily_digest_for_company(c["id"], send_to_owner=send_to_owner)
                 await asyncio.sleep(1.0)  # Telegram flood control
             except Exception as e:
                 logger.warning(f"Kompaniya {c['id']} svodkasida xatolik: {e}")
@@ -239,11 +239,11 @@ async def start_retention_scheduler(interval_hours: int = 24):
             now_t = get_tashkent_now()
             today_str = now_t.strftime("%Y-%m-%d")
 
-            # 1. Soat 20:00 da kunlik svodka
-            if now_t.hour == 20 and now_t.minute >= 0 and last_digest_date != today_str:
+            # 1. Soat 23:55 da kunlik svodka har bir firmaning rahbari shaxsiy lichkasiga
+            if now_t.hour == 23 and now_t.minute >= 55 and last_digest_date != today_str:
                 last_digest_date = today_str
-                logger.info("Kechki 20:00 avtomatik kunlik hisobot svodkasi vazifasi boshlandi...")
-                asyncio.create_task(send_daily_digest_for_all_companies())
+                logger.info("Kechki 23:55 avtomatik kunlik hisobot svodkasi (rahbar shaxsiy lichkasiga) vazifasi boshlandi...")
+                asyncio.create_task(send_daily_digest_for_all_companies(send_to_owner=True))
 
             # 2. Soat 10:00 da obuna ogohlantirishlari
             if now_t.hour == 10 and now_t.minute >= 0 and last_expiry_check_date != today_str:

@@ -100,3 +100,9 @@ class UpdateCompanySettingsRequest(BaseModel):
     telegram_group_id: Optional[str] = Field(None, description="Telegram Guruh ID si")
     max_employees: Optional[int] = Field(None, ge=1, le=10000, description="Maksimal ruxsat etilgan faol xodimlar soni")
 
+class SendExcelTelegramRequest(BaseModel):
+    filename: str = Field(..., min_length=3, max_length=150, description="Fayl nomi (.xlsx)")
+    file_base64: str = Field(..., description="Base64 formatidagi Excel fayl baytlari")
+    caption: Optional[str] = Field(None, max_length=500, description="Telegram xabar matni")
+
+

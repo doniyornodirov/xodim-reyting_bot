@@ -571,11 +571,13 @@ async def send_report_status_to_telegram(employee_tg_id: int, report_date: str, 
 async def send_daily_digest_for_company(
     company_id: int,
     target_date: str | None = None,
-    end_date: str | None = None
+    end_date: str | None = None,
+    send_to_owner: bool = True,
+    owner_override_tg: int | None = None
 ) -> dict:
     """
     Kompaniya uchun bugungi yoki belgilangan sana/davr bo'yicha yakuniy svodkani hisoblash va
-    Telegram guruhiga (yoki rahbar shaxsiyiga) yuborish
+    Rahbar shaxsiy lichkasiga (va agar sozlangan bo'lsa Telegram guruhiga) yuborish
     """
     if not bot:
         return {"success": False, "message": "Bot faol emas"}
@@ -759,40 +761,54 @@ async def send_daily_digest_for_company(
         "✨ <i>Xodim-Reyting CRM tahlili</i>"
     )
 
-    # Qayerga yuborish: Guruhga va rahbar shaxsiyiga
-    sent = False
-    targets = []
+    # Qayerga yuborish: Rahbar shaxsiy lichkasiga (birinchi va kafolatli) va guruhga
+    sent_owner = False
+    sent_group = False
+    delivery_targets = []
+
+    target_owner_id = owner_override_tg or owner_tg
+    if send_to_owner and target_owner_id:
+        try:
+            target_owner_int = int(target_owner_id)
+            await asyncio.wait_for(
+                bot.send_message(chat_id=target_owner_int, text=text, parse_mode="HTML"),
+                timeout=5.0
+            )
+            sent_owner = True
+            delivery_targets.append(f"Rahbar lichkasiga (TG: {target_owner_int})")
+        except Exception as e:
+            logger.warning(f"Svodkani rahbar lichkasiga ({target_owner_id}) yuborishda xatolik: {e}")
+
+    # Agar guruh ham sozlangan bo'lsa, guruhga ham nusxasini yuborish
     if target_group and str(target_group).strip():
         raw_grp = str(target_group).strip()
+        group_cid = None
         try:
-            targets.append(int(raw_grp))
+            group_cid = int(raw_grp)
         except Exception:
-            pass
-        if raw_grp.startswith("-") and not raw_grp.startswith("-100"):
+            if raw_grp.startswith("-") and not raw_grp.startswith("-100"):
+                try:
+                    group_cid = int("-100" + raw_grp[1:])
+                except Exception:
+                    pass
+        if group_cid:
             try:
-                targets.append(int("-100" + raw_grp[1:]))
-            except Exception:
-                pass
-    if owner_tg:
-        try:
-            targets.append(int(owner_tg))
-        except Exception:
-            pass
+                await asyncio.wait_for(
+                    bot.send_message(chat_id=group_cid, text=text, parse_mode="HTML"),
+                    timeout=5.0
+                )
+                sent_group = True
+                delivery_targets.append("Telegram guruhiga")
+            except Exception as e:
+                logger.warning(f"Svodkani guruhga ({group_cid}) yuborishda xatolik: {e}")
 
-    for cid in targets:
-        try:
-            await asyncio.wait_for(
-                bot.send_message(chat_id=cid, text=text, parse_mode="HTML"),
-                timeout=4.0
-            )
-            sent = True
-            break
-        except Exception as e:
-            logger.warning(f"Svodkani {cid} ga yuborishda xatolik: {e}")
+    sent = sent_owner or sent_group
+    dest_str = " va ".join(delivery_targets) if delivery_targets else "Telegramga"
+    msg = f"Svodka {dest_str} muvaffaqiyatli yuborildi! 🚀" if sent else "Telegramga yuborib bo'lmadi (Bot bilan chat boshlanmagan yoki guruhga qo'shilmagan bo'lishi mumkin)."
 
     return {
         "success": sent,
-        "message": "Bugungi kunlik svodka Telegramga muvaffaqiyatli yuborildi!" if sent else "Telegramga yuborib bo'lmadi (Bot guruhga qo'shilmagan bo'lishi mumkin).",
+        "message": msg,
         "data": {
             "submitted_count": submitted_count,
             "total_emps": total_emps,
@@ -802,6 +818,27 @@ async def send_daily_digest_for_company(
             "leader": leader_name
         }
     }
+
+async def send_document_to_telegram(
+    chat_id: int,
+    file_bytes: bytes,
+    filename: str,
+    caption: str = ""
+) -> bool:
+    """Excel yoki boshqa hujjatni Telegram chatiga (rahbar lichkasiga) yuborish"""
+    if not bot or not chat_id:
+        return False
+    try:
+        from aiogram.types import BufferedInputFile
+        doc = BufferedInputFile(file_bytes, filename=filename)
+        await asyncio.wait_for(
+            bot.send_document(chat_id=int(chat_id), document=doc, caption=caption, parse_mode="HTML"),
+            timeout=10.0
+        )
+        return True
+    except Exception as e:
+        logger.warning(f"Hujjatni Telegramga ({chat_id}) yuborishda xatolik: {e}")
+        return False
 
 async def send_subscription_expiry_alert(company_id: int, days_left: int) -> bool:
     """Obunasi tugashiga 3 kun yoki 1 kun qolgan firma rahbariga Telegram orqali ogohlantirish"""

@@ -2,10 +2,10 @@ import re
 import asyncio
 import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 import aiosqlite
 from app.config import DB_PATH
-from app.models import DailyReportCreate, StatusActionRequest
+from app.models import DailyReportCreate, StatusActionRequest, SendExcelTelegramRequest
 from app.dependencies import get_current_user, require_role, require_active_shift
 from app.security import get_tashkent_today_str, get_tashkent_now
 from app.bot import send_report_summary_to_telegram, send_report_status_to_telegram
@@ -388,8 +388,171 @@ async def trigger_daily_digest(
     end_date: Optional[str] = None,
     user: dict = Depends(require_role(["ADMIN"]))
 ):
-    """Firma Rahbari tomonidan bugungi yoki belgilangan sana/davr bo'yicha hisobot svodkasini Telegram guruhiga yuborish"""
+    """
+    Firma Rahbari tomonidan bugungi yoki belgilangan sana/davr bo'yicha hisobot svodkasini
+    o'zining shaxsiy Telegram lichkasiga (va agar sozlangan bo'lsa guruhga) yuborish
+    """
     from app.bot import send_daily_digest_for_company
     comp_id = user.get("company_id") or 1
-    res = await send_daily_digest_for_company(comp_id, target_date=target_date, end_date=end_date)
+    caller_tg = user.get("telegram_id")
+    res = await send_daily_digest_for_company(
+        comp_id,
+        target_date=target_date,
+        end_date=end_date,
+        send_to_owner=True,
+        owner_override_tg=caller_tg
+    )
     return res
+
+@router.get("/export-excel")
+async def export_reports_excel_endpoint(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    target_date: Optional[str] = None,
+    date: Optional[str] = None,
+    send_telegram: bool = True,
+    user: dict = Depends(require_role(["ADMIN"]))
+):
+    """
+    Belgilangan sana yoki sana oralig'i bo'yicha hisobotlarni professional Excel (.xlsx) fayliga
+    eksport qilish, brauzerga yuklab berish VA rahbarning shaxsiy Telegram lichkasiga yuborish
+    """
+    from app.excel import generate_reports_excel
+    from app.bot import send_document_to_telegram
+
+    comp_id = user.get("company_id") or 1
+    # Sanalarni normalizatsiya qilish
+    s_date = (start_date or target_date or date or "").strip()
+    e_date = (end_date or "").strip()
+
+    if s_date and not e_date:
+        e_date = s_date
+    elif not s_date and e_date:
+        s_date = e_date
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+
+        # Kompaniya ma'lumotlari
+        cur_c = await conn.execute("SELECT * FROM companies WHERE id = ?", (comp_id,))
+        comp = await cur_c.fetchone()
+        comp_name = comp["name"] if comp else "Kompaniya"
+        owner_tg = user.get("telegram_id") or (comp["owner_telegram_id"] if comp else None)
+
+        if s_date and e_date:
+            cur_r = await conn.execute("""
+                SELECT r.*, u.full_name as employee_name
+                FROM daily_reports r
+                JOIN users u ON r.employee_id = u.id
+                WHERE r.company_id = ? AND r.report_date >= ? AND r.report_date <= ?
+                ORDER BY r.report_date DESC, r.id DESC
+            """, (comp_id, s_date, e_date))
+            if s_date == e_date:
+                try:
+                    from datetime import datetime
+                    d_fmt = datetime.strptime(s_date, "%Y-%m-%d").strftime("%d.%m.%Y")
+                    date_display = d_fmt
+                except Exception:
+                    date_display = s_date
+                filename = f"Hisobotlar_{s_date}.xlsx"
+            else:
+                try:
+                    from datetime import datetime
+                    d1 = datetime.strptime(s_date, "%Y-%m-%d").strftime("%d.%m.%Y")
+                    d2 = datetime.strptime(e_date, "%Y-%m-%d").strftime("%d.%m.%Y")
+                    date_display = f"{d1} — {d2}"
+                except Exception:
+                    date_display = f"{s_date} — {e_date}"
+                filename = f"Hisobotlar_{s_date}_dan_{e_date}_gacha.xlsx"
+        else:
+            cur_r = await conn.execute("""
+                SELECT r.*, u.full_name as employee_name
+                FROM daily_reports r
+                JOIN users u ON r.employee_id = u.id
+                WHERE r.company_id = ?
+                ORDER BY r.report_date DESC, r.id DESC
+            """, (comp_id,))
+            date_display = "Barcha sanalar"
+            filename = f"Hisobotlar_Barcha_{get_tashkent_today_str()}.xlsx"
+
+        reports_rows = await cur_r.fetchall()
+        reports_list = [dict(r) for r in reports_rows]
+
+    # Excel baytlarini generatsiya qilish
+    excel_bytes = generate_reports_excel(comp_name, reports_list, date_display)
+
+    # Rahbar shaxsiy Telegram lichkasiga hujjat sifatida yuborish
+    if send_telegram and owner_tg:
+        total_count = len(reports_list)
+        total_net = sum((r.get("net_amount") or 0) for r in reports_list)
+        total_sims = sum((r.get("sim_cards_count") or 0) for r in reports_list)
+        total_net_fmt = f"{int(total_net):,}".replace(",", " ")
+
+        caption = (
+            f"📥 <b>KUNLIK HISOBOTLAR (EXCEL)</b>\n"
+            f"🏢 <b>{comp_name}</b>\n"
+            f"📅 <b>Sana / Davr:</b> {date_display}\n"
+            f"👥 <b>Jami hisobotlar soni:</b> {total_count} ta\n"
+            f"💰 <b>Jami sof kassa (Net):</b> <b>{total_net_fmt} so'm</b>\n"
+            f"📱 <b>Sotilgan sim-kartalar:</b> {total_sims} dona\n\n"
+            f"📎 <i>Belgilangan davr bo'yicha Excel (.xlsx) hisoboti biriktirildi.</i>"
+        )
+        try:
+            asyncio.create_task(send_document_to_telegram(
+                chat_id=int(owner_tg),
+                file_bytes=excel_bytes,
+                filename=filename,
+                caption=caption
+            ))
+        except Exception as e:
+            logger.warning(f"Excel faylini telegramga yuborishda task xatosi: {e}")
+
+    return Response(
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )
+
+@router.post("/send-excel-telegram")
+async def send_excel_telegram_endpoint(
+    req: SendExcelTelegramRequest,
+    user: dict = Depends(require_role(["ADMIN"]))
+):
+    """
+    Frontendda yaratilgan har qanday Excel faylini rahbarning shaxsiy Telegram lichkasiga yuborish
+    """
+    import base64
+    from app.bot import send_document_to_telegram
+
+    comp_id = user.get("company_id") or 1
+    owner_tg = user.get("telegram_id")
+    if not owner_tg:
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT owner_telegram_id FROM companies WHERE id = ?", (comp_id,))
+            c_row = await cur.fetchone()
+            owner_tg = c_row["owner_telegram_id"] if c_row else None
+
+    if not owner_tg:
+        return {"success": False, "message": "Rahbar Telegram ID si topilmadi"}
+
+    try:
+        file_bytes = base64.b64decode(req.file_base64)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Base64 dekodlashda xatolik: {e}")
+
+    caption = req.caption or f"📥 <b>{req.filename}</b>\n\n📎 <i>Excel hisoboti biriktirildi.</i>"
+    success = await send_document_to_telegram(
+        chat_id=int(owner_tg),
+        file_bytes=file_bytes,
+        filename=req.filename,
+        caption=caption
+    )
+
+    return {
+        "success": success,
+        "message": "Excel fayli shaxsiy Telegramingizga (@xodim_reyting_bot) yuborildi!" if success else "Telegramga yuborib bo'lmadi (Bot bilan chat boshlanmagan bo'lishi mumkin)."
+    }
