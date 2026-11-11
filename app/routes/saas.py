@@ -279,7 +279,7 @@ async def update_company_limit(
 @router.post("/companies/{company_id}/update-plan")
 async def update_company_plan(
     company_id: int,
-    new_plan: str = Query(..., regex="^(STANDARD|5_YEARS|UNLIMITED)$"),
+    new_plan: str = Query(..., pattern="^(STANDARD|5_YEARS|UNLIMITED)$"),
     super_admin: dict = Depends(require_super_admin)
 ):
     """Firma tarif rejasini o'zgartirish (STANDARD, 5_YEARS, UNLIMITED)"""
