@@ -4861,7 +4861,7 @@ async function promptChangeCompanyPlan(companyId, currentPlan) {
 
 // Baza zaxira nusxasini (Snapshot .db) yuklab olish
 async function downloadDatabaseBackup() {
-  const token = localStorage.getItem("token");
+  const token = authToken || localStorage.getItem("crm_token") || localStorage.getItem("token");
   if (!token) {
     showToast("Avtorizatsiyadan o'tilmagan!", "error");
     return;
@@ -4961,7 +4961,7 @@ async function exportAdminReportsToExcel() {
   showToast("Excel hisoboti tayyorlanmoqda va Telegramingizga yuborilmoqda...", "info");
 
   try {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    const token = authToken || localStorage.getItem("crm_token") || localStorage.getItem("token") || sessionStorage.getItem("token");
     let url = "/api/reports/export-excel";
     const params = [];
     if (s) params.push(`start_date=${encodeURIComponent(s)}`);
