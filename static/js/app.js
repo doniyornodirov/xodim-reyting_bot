@@ -104,11 +104,16 @@ async function api(endpoint, method = "GET", data = null) {
       if (res.status === 401 && !endpoint.includes("/api/auth/")) {
         logout();
       }
+      if (res.status === 403 && json.detail && json.detail.includes("Obunangizni uzaytiring")) {
+        showSubscriptionExpiredModal(json.detail);
+      }
       throw new Error(json.detail || json.message || "Xatolik yuz berdi");
     }
     return json;
   } catch (err) {
-    showToast(err.message, "danger");
+    if (!err.message || !err.message.includes("Obunangizni uzaytiring")) {
+      showToast(err.message, "danger");
+    }
     throw err;
   }
 }
@@ -395,19 +400,20 @@ async function initApp() {
       const res = await api("/api/auth/me");
       currentUser = res.user;
       localStorage.setItem("crm_last_activity", Date.now().toString());
+      hideSubscriptionExpiredModal();
       try {
-        try {
-      renderApp();
-    } catch (renderErr) {
-      console.error("renderApp xatosi:", renderErr);
-    }
+        renderApp();
       } catch (renderErr) {
         console.error("renderApp xatosi:", renderErr);
       }
       syncWithAndroidBridge();
       return;
     } catch (e) {
-      console.warn("Auth token yaroqsiz:", e);
+      console.warn("Auth token yaroqsiz yoki obuna tugagan:", e);
+      if (e.message && e.message.includes("Obunangizni uzaytiring")) {
+        showSubscriptionExpiredModal(e.message);
+        return;
+      }
       authToken = null;
       localStorage.removeItem("crm_token");
       localStorage.removeItem("crm_last_activity");
@@ -419,6 +425,7 @@ async function initApp() {
 function logout() {
   stopAutoLocationTracking();
   clearAndroidBridgeAuth();
+  hideSubscriptionExpiredModal();
   authToken = null;
   currentUser = null;
   localStorage.removeItem("crm_token");
@@ -553,6 +560,9 @@ async function handleLoginStep1(e) {
       if (tgDisplay) tgDisplay.innerText = tgIdClean;
       startOtpCountdown(getCooldownSecondsLeft() || 60);
     }
+    if (errText.includes("Obunangizni uzaytiring")) {
+      showSubscriptionExpiredModal(errText);
+    }
   } finally {
     isLoginStep1InProgress = false;
     if (submitBtn) {
@@ -647,6 +657,9 @@ async function handleVerifyOtp(e) {
     if (alertEl) {
       alertEl.innerText = err.message || "Kodni tekshirishda xatolik!";
       alertEl.style.display = "block";
+    }
+    if (err.message && err.message.includes("Obunangizni uzaytiring")) {
+      showSubscriptionExpiredModal(err.message);
     }
   } finally {
     isVerifyOtpInProgress = false;
@@ -929,6 +942,25 @@ function updateSidebarContent() {
 // ==========================================
 
 function renderApp() {
+  // SaaS: Agar kompaniya obunasi tugagan bo'lsa (Dasturchi Admin va UNLIMITED bundan mustasno)
+  if (currentUser && currentUser.role !== "DEVELOPER" && !currentUser.is_super_admin && currentUser.company_plan !== "UNLIMITED") {
+    if (currentUser.company_subscription_expires_at) {
+      try {
+        const expTime = new Date(currentUser.company_subscription_expires_at).getTime();
+        if (Date.now() > expTime) {
+          showSubscriptionExpiredModal(
+            null,
+            currentUser.company_name,
+            formatDateOnly(currentUser.company_subscription_expires_at)
+          );
+          return;
+        }
+      } catch (e) {
+        console.warn("Obuna muddati tekshirishda xatolik:", e);
+      }
+    }
+  }
+
   document.getElementById("login-modal").style.display = "none";
   document.getElementById("app-content").style.display = "block";
 
@@ -4209,6 +4241,8 @@ document.addEventListener("visibilitychange", () => {
 async function loadSaasCompanies() {
   if (!currentUser || (!currentUser.is_super_admin && currentUser.role !== "DEVELOPER")) return;
 
+  initSaasCreateFormDate();
+
   const tbody = document.getElementById("saas-companies-tbody");
   if (tbody) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 2rem;">Ma'lumotlar yuklanmoqda...</td></tr>`;
@@ -4272,7 +4306,10 @@ async function loadSaasCompanies() {
       let actionsHtml = `<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">`;
       if (!isMain && c.plan !== "UNLIMITED") {
         actionsHtml += `
-          <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem;" onclick="extendCompanySubscription(${c.id}, 30)">
+          <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600;" onclick="openSaasExtendModal(${c.id}, '${escapeHtml(c.name).replace(/'/g, "\\'")}', '${c.subscription_expires_at || ''}')" title="Sanani belgilash">
+            📅 Sanani uzaytirish
+          </button>
+          <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem;" onclick="extendCompanySubscription(${c.id}, 30)" title="+30 kun qo'shish">
             +30 kun
           </button>
         `;
@@ -4313,7 +4350,7 @@ async function loadSaasCompanies() {
           <td>${planBadge}</td>
           <td>
             <div>${expiryText}</div>
-            ${c.subscription_expires_at ? `<span style="font-size: 0.7rem; color: #94a3b8;">${formatDateOnly(c.subscription_expires_at)}</span>` : ''}
+            ${c.subscription_expires_at ? `<span style="font-size: 0.72rem; color: #a5b4fc; font-weight: 600; display: block; margin-top: 2px;">📅 ${formatDateOnly(c.subscription_expires_at)} gacha</span>` : ''}
           </td>
           <td>
             <b style="color: #818cf8;">${c.employees_count || 0} ta</b>
@@ -4334,6 +4371,37 @@ async function loadSaasCompanies() {
   }
 }
 
+function handleSaasPlanChange(plan) {
+  const dateContainer = document.getElementById("saas-new-date-container");
+  const dateInput = document.getElementById("saas-new-expires-date");
+  if (!dateContainer || !dateInput) return;
+  if (plan === "UNLIMITED") {
+    dateContainer.style.display = "none";
+    dateInput.required = false;
+    dateInput.value = "";
+  } else {
+    dateContainer.style.display = "block";
+    dateInput.required = true;
+    if (!dateInput.value) {
+      initSaasCreateFormDate();
+    }
+  }
+}
+
+function initSaasCreateFormDate() {
+  const dateInput = document.getElementById("saas-new-expires-date");
+  if (!dateInput) return;
+  const d = new Date();
+  const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  dateInput.min = todayStr;
+
+  if (!dateInput.value) {
+    d.setDate(d.getDate() + 30);
+    const nextMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    dateInput.value = nextMonthStr;
+  }
+}
+
 async function handleCreateCompanySubmit(event) {
   event.preventDefault();
   const nameInput = document.getElementById("saas-new-name");
@@ -4341,7 +4409,7 @@ async function handleCreateCompanySubmit(event) {
   const ownerTgInput = document.getElementById("saas-new-owner-tg");
   const passwordInput = document.getElementById("saas-new-password");
   const groupIdInput = document.getElementById("saas-new-group-id");
-  const daysSelect = document.getElementById("saas-new-subscription-days");
+  const dateInput = document.getElementById("saas-new-expires-date");
   const planSelect = document.getElementById("saas-new-plan");
 
   const name = nameInput?.value.trim();
@@ -4349,11 +4417,16 @@ async function handleCreateCompanySubmit(event) {
   const ownerTg = parseInt(ownerTgInput?.value);
   const initialPassword = passwordInput?.value.trim() || null;
   const groupId = groupIdInput?.value.trim() || null;
-  const days = parseInt(daysSelect?.value || "30");
   const plan = planSelect?.value || "STANDARD";
+  const expiresDate = dateInput?.value || null;
 
   if (!name || !ownerName || !ownerTg) {
     showToast("Iltimos, barcha majburiy maydonlarni to'ldiring!", "error");
+    return;
+  }
+
+  if (plan === "STANDARD" && !expiresDate) {
+    showToast("Iltimos, firmaning amal qilish sanasini belgilang!", "warning");
     return;
   }
 
@@ -4364,19 +4437,108 @@ async function handleCreateCompanySubmit(event) {
       owner_telegram_id: ownerTg,
       initial_password: initialPassword,
       telegram_group_id: groupId,
-      subscription_days: days,
+      expires_date: plan === "STANDARD" ? expiresDate : null,
       plan: plan
     });
 
     if (res.success) {
       showToast(res.message || "Firma muvaffaqiyatli ro'yxatdan o'tkazildi!", "success");
       document.getElementById("saas-create-company-form")?.reset();
+      initSaasCreateFormDate();
       loadSaasCompanies();
     } else {
       showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
     }
   } catch (e) {
     showToast(e.message || "Server bilan aloqa xatosi!", "error");
+  }
+}
+
+let saasExtendingCompanyId = null;
+
+function openSaasExtendModal(companyId, companyName, currentExpiresAt) {
+  saasExtendingCompanyId = companyId;
+  const modal = document.getElementById("saas-extend-modal");
+  const nameEl = document.getElementById("saas-extend-modal-comp-name");
+  const curDateEl = document.getElementById("saas-extend-modal-cur-date");
+  const dateInput = document.getElementById("saas-extend-new-date");
+
+  if (nameEl) nameEl.innerText = companyName;
+  if (curDateEl) {
+    curDateEl.innerText = currentExpiresAt ? `${formatDateOnly(currentExpiresAt)} gacha` : "Muddatsiz / Belgilanmagan";
+  }
+
+  let baseDate = new Date();
+  if (currentExpiresAt) {
+    try {
+      const curD = new Date(currentExpiresAt);
+      if (curD > baseDate) {
+        baseDate = curD;
+      }
+    } catch (e) {}
+  }
+  baseDate.setDate(baseDate.getDate() + 30);
+  const y = baseDate.getFullYear();
+  const m = String(baseDate.getMonth() + 1).padStart(2, "0");
+  const d = String(baseDate.getDate()).padStart(2, "0");
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  if (dateInput) {
+    dateInput.min = todayStr;
+    dateInput.value = `${y}-${m}-${d}`;
+  }
+
+  if (modal) modal.style.display = "flex";
+}
+
+function closeSaasExtendModal() {
+  const modal = document.getElementById("saas-extend-modal");
+  if (modal) modal.style.display = "none";
+  saasExtendingCompanyId = null;
+}
+
+function handleSaasExtendModalOverlayClick(e) {
+  if (e.target.id === "saas-extend-modal") {
+    closeSaasExtendModal();
+  }
+}
+
+function setExtendModalDays(days) {
+  const dateInput = document.getElementById("saas-extend-new-date");
+  if (!dateInput) return;
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  dateInput.value = `${y}-${m}-${day}`;
+}
+
+async function handleSaasExtendFormSubmit(event) {
+  event.preventDefault();
+  if (!saasExtendingCompanyId) return;
+  const dateInput = document.getElementById("saas-extend-new-date");
+  const newDate = dateInput?.value;
+  if (!newDate) {
+    showToast("Iltimos, yangi amal qilish sanasini tanlang!", "warning");
+    return;
+  }
+
+  try {
+    const res = await api(`/api/saas/companies/${saasExtendingCompanyId}/extend`, "POST", {
+      new_expires_date: newDate
+    });
+    if (res.success) {
+      showToast(res.message || "Firma obunasi muvaffaqiyatli uzaytirildi!", "success");
+      closeSaasExtendModal();
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server xatosi!", "error");
   }
 }
 
@@ -4414,6 +4576,74 @@ async function extendCompanySubscription(companyId, days = 30) {
     }
   } catch (e) {
     showToast(e.message || "Server xatosi!", "error");
+  }
+}
+
+// ==========================================
+// OBUNA MUDDATI TUGAGANLIGI (Client Device Overlay)
+// ==========================================
+
+let subscriptionAutoCheckTimer = null;
+
+function showSubscriptionExpiredModal(message = null, compName = null, expDate = null) {
+  const modal = document.getElementById("subscription-expired-modal");
+  if (!modal) return;
+
+  const compNameEl = document.getElementById("expired-modal-comp-name");
+  const expDateEl = document.getElementById("expired-modal-exp-date");
+
+  const companyName = compName || (currentUser && currentUser.company_name) || "Kompaniyangiz";
+  let expirationDate = expDate;
+  if (!expirationDate && currentUser && currentUser.company_subscription_expires_at) {
+    expirationDate = formatDateOnly(currentUser.company_subscription_expires_at);
+  }
+  if (!expirationDate) expirationDate = "Muddati tugagan";
+
+  if (compNameEl) compNameEl.innerText = companyName;
+  if (expDateEl) expDateEl.innerText = `${expirationDate} da tugagan`;
+
+  modal.style.display = "flex";
+
+  // Har 15 soniyada avtomatik tekshirib turish
+  if (!subscriptionAutoCheckTimer) {
+    subscriptionAutoCheckTimer = setInterval(() => {
+      checkSubscriptionStatusAgain(true);
+    }, 15000);
+  }
+}
+
+function hideSubscriptionExpiredModal() {
+  const modal = document.getElementById("subscription-expired-modal");
+  if (modal) modal.style.display = "none";
+  if (subscriptionAutoCheckTimer) {
+    clearInterval(subscriptionAutoCheckTimer);
+    subscriptionAutoCheckTimer = null;
+  }
+}
+
+async function checkSubscriptionStatusAgain(silent = false) {
+  if (!authToken) {
+    hideSubscriptionExpiredModal();
+    showLoginModal();
+    return;
+  }
+
+  try {
+    const res = await api("/api/auth/me");
+    if (res && res.success && res.user) {
+      currentUser = res.user;
+      hideSubscriptionExpiredModal();
+      try {
+        renderApp();
+      } catch (e) {
+        console.error("renderApp error:", e);
+      }
+      showToast("Obunangiz muvaffaqiyatli uzaytirildi! Tizimdan to'liq foydalanishingiz mumkin.", "success");
+    }
+  } catch (err) {
+    if (!silent) {
+      showToast("Obuna muddati hali uzaytirilmadi. Iltimos, Dasturchi Admin bilan bog'laning.", "warning");
+    }
   }
 }
 
@@ -4506,6 +4736,7 @@ window.addEventListener("DOMContentLoaded", () => {
   setupGivenAmountInputs();
   setupReportCalculationListeners();
   setupUsdRateInput();
+  initSaasCreateFormDate();
   registerServiceWorker();
 
   document.getElementById("login-form-step-1")?.addEventListener("submit", handleLoginStep1);

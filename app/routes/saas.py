@@ -130,11 +130,22 @@ async def create_company(
 
         # 3. Obuna muddati
         now_utc = datetime.now(timezone.utc)
+        tashkent_tz = timezone(timedelta(hours=5))
         if req.plan == "UNLIMITED":
             expires_at = None
         else:
-            exp_dt = now_utc + timedelta(days=req.subscription_days)
-            expires_at = exp_dt.isoformat()
+            if req.expires_date and req.expires_date.strip():
+                try:
+                    date_obj = datetime.strptime(req.expires_date.strip(), "%Y-%m-%d")
+                    # Belgilangan sananing 23:59:59 gacha amal qiladi (Toshkent vaqti)
+                    exp_dt = datetime(date_obj.year, date_obj.month, date_obj.day, 23, 59, 59, tzinfo=tashkent_tz)
+                    expires_at = exp_dt.astimezone(timezone.utc).isoformat()
+                except ValueError:
+                    raise HTTPException(status_code=400, detail="Sana formati noto'g'ri! YYYY-MM-DD bo'lishi kerak.")
+            else:
+                days = req.subscription_days or 30
+                exp_dt = now_utc + timedelta(days=days)
+                expires_at = exp_dt.isoformat()
 
         # 4. Kompaniyani yaratish
         cur_c = await conn.execute("""
@@ -154,10 +165,18 @@ async def create_company(
         owner_user_id = cur_u.lastrowid
 
         # 6. Audit log
+        if expires_at:
+            try:
+                exp_display = datetime.fromisoformat(expires_at.replace("Z", "+00:00")).astimezone(tashkent_tz).strftime("%d.%m.%Y")
+            except Exception:
+                exp_display = expires_at
+        else:
+            exp_display = "Cheksiz"
+
         details = (
             f"Yangi firma ro'yxatdan o'tkazildi: '{req.name}' (ID: {company_id}). "
             f"Rahbar: {req.owner_name} (TG: {req.owner_telegram_id}). "
-            f"Tarif: {req.plan}, Obuna: {req.subscription_days} kun."
+            f"Tarif: {req.plan}, Amal qilish sanasi: {exp_display} gacha."
         )
         await conn.execute("""
             INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
@@ -223,7 +242,7 @@ async def extend_company_subscription(
     req: ExtendSubscriptionRequest,
     super_admin: dict = Depends(require_super_admin)
 ):
-    """Super Admin tomonidan firmaning ijara obunasini belgilangan kunga uzaytirish"""
+    """Super Admin tomonidan firmaning ijara obunasini belgilangan sana yoki kunga uzaytirish"""
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
 
@@ -239,21 +258,31 @@ async def extend_company_subscription(
             }
 
         now_utc = datetime.now(timezone.utc)
-        cur_exp = comp["subscription_expires_at"]
-        base_dt = now_utc
+        tashkent_tz = timezone(timedelta(hours=5))
 
-        if cur_exp:
+        if req.new_expires_date and req.new_expires_date.strip():
             try:
-                parsed_exp = datetime.fromisoformat(str(cur_exp).replace("Z", "+00:00"))
-                if parsed_exp.tzinfo is None:
-                    parsed_exp = parsed_exp.replace(tzinfo=timezone.utc)
-                if parsed_exp > now_utc:
-                    base_dt = parsed_exp
-            except Exception:
-                base_dt = now_utc
-
-        new_exp_dt = base_dt + timedelta(days=req.days)
-        new_exp_iso = new_exp_dt.isoformat()
+                date_obj = datetime.strptime(req.new_expires_date.strip(), "%Y-%m-%d")
+                new_exp_dt = datetime(date_obj.year, date_obj.month, date_obj.day, 23, 59, 59, tzinfo=tashkent_tz)
+                new_exp_iso = new_exp_dt.astimezone(timezone.utc).isoformat()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Sana formati noto'g'ri! YYYY-MM-DD bo'lishi kerak.")
+        elif req.days:
+            cur_exp = comp["subscription_expires_at"]
+            base_dt = now_utc
+            if cur_exp:
+                try:
+                    parsed_exp = datetime.fromisoformat(str(cur_exp).replace("Z", "+00:00"))
+                    if parsed_exp.tzinfo is None:
+                        parsed_exp = parsed_exp.replace(tzinfo=timezone.utc)
+                    if parsed_exp > now_utc:
+                        base_dt = parsed_exp
+                except Exception:
+                    base_dt = now_utc
+            new_exp_dt = base_dt + timedelta(days=req.days)
+            new_exp_iso = new_exp_dt.isoformat()
+        else:
+            raise HTTPException(status_code=400, detail="Yangi amal qilish sanasi yoki kunlar soni kiritilishi shart!")
 
         await conn.execute("""
             UPDATE companies 
@@ -261,7 +290,8 @@ async def extend_company_subscription(
             WHERE id = ?
         """, (new_exp_iso, company_id))
 
-        details = f"Firma '{comp['name']}' obunasi +{req.days} kunga uzaytirildi. Yangi muddat: {new_exp_dt.strftime('%d.%m.%Y %H:%M')}"
+        display_date = new_exp_dt.astimezone(tashkent_tz).strftime('%d.%m.%Y')
+        details = f"Firma '{comp['name']}' obuna muddati uzaytirildi. Yangi amal qilish sanasi: {display_date} gacha"
         await conn.execute("""
             INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
             VALUES (1, 'COMPANY', ?, 'EXTEND_SUBSCRIPTION', ?, ?)
@@ -271,7 +301,7 @@ async def extend_company_subscription(
 
     return {
         "success": True,
-        "message": f"'{comp['name']}' obunasi muvaffaqiyatli +{req.days} kunga uzaytirildi! Yangi tugash sanasi: {new_exp_dt.strftime('%d.%m.%Y')}",
+        "message": f"'{comp['name']}' firmasi obunasi muvaffaqiyatli uzaytirildi! Yangi amal qilish sanasi: {display_date} gacha",
         "subscription_expires_at": new_exp_iso
     }
 

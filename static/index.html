@@ -972,23 +972,15 @@
               <input type="text" id="saas-new-group-id" class="form-input" placeholder="Masalan: -100123456789">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Ijara obuna muddati *</label>
-              <select id="saas-new-subscription-days" class="form-input" style="height: 42px;">
-                <option value="30" selected>30 kun (1 oy)</option>
-                <option value="60">60 kun (2 oy)</option>
-                <option value="90">90 kun (3 oy)</option>
-                <option value="180">180 kun (6 oy)</option>
-                <option value="365">365 kun (1 yil)</option>
-                <option value="3650">Cheksiz (Unlimited)</option>
-              </select>
-            </div>
-            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Tarif rejasi *</label>
-              <select id="saas-new-plan" class="form-input" style="height: 42px;">
+              <select id="saas-new-plan" class="form-input" style="height: 42px;" onchange="handleSaasPlanChange(this.value)">
                 <option value="STANDARD" selected>STANDARD</option>
-                <option value="PREMIUM">PREMIUM</option>
                 <option value="UNLIMITED">UNLIMITED</option>
               </select>
+            </div>
+            <div class="form-group" id="saas-new-date-container" style="margin-bottom: 0;">
+              <label class="form-label">Amal qilish muddati (Sanagacha) *</label>
+              <input type="date" id="saas-new-expires-date" class="form-input" style="height: 42px;" required>
             </div>
           </div>
           <div style="display: flex; justify-content: flex-end;">
@@ -1792,6 +1784,97 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=354"></script>
+  <!-- Dasturchi Admin: Firma Obuna Muddatini Sanagacha Uzaytirish Modali -->
+  <div class="modal-overlay" id="saas-extend-modal" style="display: none;" onclick="handleSaasExtendModalOverlayClick(event)">
+    <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+        <div>
+          <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📅</span> Obuna muddatini uzaytirish
+          </h3>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-sub);">
+            Firmaning faoliyat ko'rsatish sanasini belgilash yoki yangilash
+          </p>
+        </div>
+        <button type="button" class="btn-logout" style="padding: 0.3rem 0.65rem; font-size: 0.85rem;" onclick="closeSaasExtendModal()">✕</button>
+      </div>
+
+      <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Tashkilot:</span>
+          <b id="saas-extend-modal-comp-name" style="font-size: 0.95rem; color: #fff;">-</b>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Hozirgi amal qilish sanasi:</span>
+          <span id="saas-extend-modal-cur-date" style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">-</span>
+        </div>
+      </div>
+
+      <form id="saas-extend-form" onsubmit="handleSaasExtendFormSubmit(event)">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="form-label">Yangi amal qilish sanasi (Sanagacha) *</label>
+          <input type="date" id="saas-extend-new-date" class="form-input" style="height: 42px;" required>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.4;">
+            Firma ushbu sananing soat 23:59:59 gacha to'liq tizimdan foydalana oladi.
+          </div>
+        </div>
+
+        <!-- Tezkor muddat qo'shish tugmalari -->
+        <div style="margin-bottom: 1.25rem;">
+          <label class="form-label" style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem;">Tezkor muddat qo'shish:</label>
+          <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(7)">+7 kun</button>
+            <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(30)">+1 oy (30 kun)</button>
+            <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(90)">+3 oy</button>
+            <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(180)">+6 oy</button>
+            <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(365)">+1 yil</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="closeSaasExtendModal()">Bekor qilish</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 700; border: none; padding: 0.6rem 1.2rem;">
+            💾 Sanani saqlash va uzaytirish
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Obuna muddati tugaganlik haqida to'siq (Client Device Blocking Overlay) -->
+  <div id="subscription-expired-modal" style="display: none; position: fixed; inset: 0; z-index: 999999; background: rgba(10, 15, 30, 0.96); backdrop-filter: blur(16px); align-items: center; justify-content: center; padding: 1.5rem;">
+    <div style="background: linear-gradient(135deg, #1e1e38, #16162a); border: 2px solid #ef4444; border-radius: 18px; box-shadow: 0 25px 60px rgba(239, 68, 68, 0.35); max-width: 520px; width: 100%; padding: 2.25rem; text-align: center; color: #fff;">
+      <div style="width: 80px; height: 80px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); border: 2px solid #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem auto; font-size: 2.4rem;">
+        ⏳
+      </div>
+      <h2 style="font-size: 1.75rem; font-weight: 800; color: #f87171; margin-bottom: 0.75rem; letter-spacing: -0.5px;">
+        Obunangizni uzaytiring
+      </h2>
+      <p style="font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; margin-bottom: 1.5rem;">
+        Kompaniyangizning tizimdan foydalanish obuna muddati tugagan.<br>
+        Xizmatdan to'siqsiz foydalanishni davom ettirish uchun iltimos, obunangizni uzaytiring.
+      </p>
+
+      <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 1rem 1.25rem; text-align: left; margin-bottom: 1.75rem; font-size: 0.9rem; line-height: 1.8;">
+        <div>🏢 <span style="color: #94a3b8;">Firma:</span> <b id="expired-modal-comp-name" style="color: #fff;">-</b></div>
+        <div>📅 <span style="color: #94a3b8;">Tugagan sana:</span> <b id="expired-modal-exp-date" style="color: #f87171;">-</b></div>
+        <div>📞 <span style="color: #94a3b8;">Dasturchi Admin:</span> <span style="color: #60a5fa; font-weight: 600;">Telegram ID: 8694797293</span></div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <button type="button" class="btn btn-primary" onclick="checkSubscriptionStatusAgain()" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700; padding: 0.85rem 1.5rem; font-size: 1.05rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;">
+          <span>🔄</span> Obuna holatini qayta tekshirish
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="logout()" style="background: transparent; border: 1px solid rgba(255, 255, 255, 0.15); color: #94a3b8; font-size: 0.85rem; padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; width: 100%;">
+          🚪 Tizimdan chiqish (Boshqa hisob)
+        </button>
+      </div>
+      <div style="margin-top: 1.25rem; font-size: 0.75rem; color: #64748b; line-height: 1.4;">
+        💡 Dasturchi Admin sanani uzaytirishi bilanoq tizim avtomatik tarzda faollashadi yoki "Qayta tekshirish" tugmasini bosing.
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=355"></script>
 </body>
 </html>

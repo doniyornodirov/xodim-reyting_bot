@@ -62,7 +62,7 @@ async def login(req: LoginRequest):
                             if datetime.now(timezone.utc) > exp_dt:
                                 raise HTTPException(
                                     status_code=status.HTTP_403_FORBIDDEN,
-                                    detail="Kompaniyangiz obuna muddati tugagan! Foydalanishni davom ettirish uchun platforma ma'muriyati bilan bog'laning."
+                                    detail="Kompaniyangizning foydalanish obuna muddati tugagan! Obunangizni uzaytiring."
                                 )
                         except HTTPException:
                             raise
@@ -186,12 +186,14 @@ async def verify_otp(req: VerifyOtpRequest):
             comp_id = 0
             comp_name = "SaaS Platforma"
             comp_plan = "PLATFORM"
+            comp_expires_at = None
         else:
             comp_id = user["company_id"] if ("company_id" in user.keys() and user["company_id"]) else 1
-            cur_c = await conn.execute("SELECT name, plan FROM companies WHERE id = ?", (comp_id,))
+            cur_c = await conn.execute("SELECT name, plan, subscription_expires_at, is_active FROM companies WHERE id = ?", (comp_id,))
             comp = await cur_c.fetchone()
             comp_name = comp["name"] if comp else "Bosh Tashkilot"
             comp_plan = comp["plan"] if comp else "STANDARD"
+            comp_expires_at = comp["subscription_expires_at"] if comp else None
 
         dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
         is_super_admin = (int(user["telegram_id"]) == dev_id_val or user["role"] == "DEVELOPER")
@@ -205,6 +207,7 @@ async def verify_otp(req: VerifyOtpRequest):
                 "company_id": comp_id,
                 "company_name": comp_name,
                 "company_plan": comp_plan,
+                "company_subscription_expires_at": comp_expires_at,
                 "telegram_id": user["telegram_id"],
                 "full_name": user["full_name"],
                 "role": user["role"],
@@ -223,6 +226,7 @@ async def get_me(user: dict = Depends(get_current_user)):
             "company_id": user.get("company_id", 1),
             "company_name": user.get("company_name", "Bosh Tashkilot"),
             "company_plan": user.get("company_plan", "STANDARD"),
+            "company_subscription_expires_at": user.get("company_subscription_expires_at"),
             "telegram_id": user["telegram_id"],
             "full_name": user["full_name"],
             "role": user["role"],

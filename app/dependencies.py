@@ -84,7 +84,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
                             if now_utc > exp_dt:
                                 raise HTTPException(
                                     status_code=status.HTTP_403_FORBIDDEN,
-                                    detail="Kompaniyangizning foydalanish obuna muddati tugagan! Xizmatni davom ettirish uchun to'lov qiling va platforma ma'muriyati bilan bog'laning."
+                                    detail="Kompaniyangizning foydalanish obuna muddati tugagan! Obunangizni uzaytiring."
                                 )
                         except HTTPException:
                             raise

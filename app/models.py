@@ -86,11 +86,13 @@ class CreateCompanyRequest(BaseModel):
     owner_name: str = Field(..., min_length=2, max_length=100, description="Firma Rahbarining to'liq ismi (F.I.SH)")
     initial_password: Optional[str] = Field(None, description="Boshlang'ich parol (kiritilmasa Telegram ID bo'ladi)")
     telegram_group_id: Optional[str] = Field(None, description="Firma xabarnomalari uchun alohida Telegram Guruh ID si")
-    subscription_days: int = Field(default=30, ge=1, le=3650, description="Obuna muddati (kunlarda)")
-    plan: str = Field(default="STANDARD", description="Tarif: STANDARD, PREMIUM, UNLIMITED")
+    subscription_days: Optional[int] = Field(default=30, ge=1, le=3650, description="Obuna muddati (kunlarda)")
+    expires_date: Optional[str] = Field(None, description="Amal qilish sanasi (YYYY-MM-DD)")
+    plan: str = Field(default="STANDARD", description="Tarif: STANDARD, UNLIMITED")
 
 class ExtendSubscriptionRequest(BaseModel):
-    days: int = Field(..., ge=1, le=3650, description="Uzatiladigan kunlar soni")
+    days: Optional[int] = Field(None, ge=1, le=3650, description="Uzatiladigan kunlar soni")
+    new_expires_date: Optional[str] = Field(None, description="Yangi amal qilish sanasi (YYYY-MM-DD)")
 
 class UpdateCompanySettingsRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100, description="Firma nomi")
