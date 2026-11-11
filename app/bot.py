@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery,
-    ReplyKeyboardMarkup, KeyboardButton
+    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 )
 from app.config import BOT_TOKEN, TELEGRAM_GROUP_ID
 import aiosqlite
@@ -64,18 +64,72 @@ if dp:
 
         async with aiosqlite.connect(DB_PATH) as conn:
             conn.row_factory = aiosqlite.Row
-            cursor = await conn.execute("SELECT * FROM users WHERE telegram_id = ?", (user_tg_id,))
+
+            # Foydalanuvchi ma'lumotlarini kompaniyasi bilan birga olish
+            cursor = await conn.execute("""
+                SELECT u.*, c.name as company_name
+                FROM users u
+                LEFT JOIN companies c ON c.id = u.company_id
+                WHERE u.telegram_id = ?
+            """, (user_tg_id,))
             user = await cursor.fetchone()
 
-        if user:
-            role_title = {
-                "ADMIN": "Bosh Rahbar",
-                "CASHIER": "Kassir",
-                "EMPLOYEE": "Xodim",
-                "DEVELOPER": "Dasturchi Admin"
-            }.get(user["role"], "Xodim")
+            # Agar foydalanuvchi kompaniya egasi (owner) bo'lsa, lekin roli ADMIN bo'lmasa, uni darhol ADMIN ga o'tkazish
+            if user and user["role"] not in ("ADMIN", "DEVELOPER"):
+                cur_comp = await conn.execute("SELECT id, name FROM companies WHERE owner_telegram_id = ?", (user_tg_id,))
+                owned_comp = await cur_comp.fetchone()
+                if owned_comp:
+                    await conn.execute("UPDATE users SET role = 'ADMIN', company_id = ? WHERE telegram_id = ?", (owned_comp["id"], user_tg_id))
+                    await conn.commit()
+                    cursor = await conn.execute("""
+                        SELECT u.*, c.name as company_name
+                        FROM users u
+                        LEFT JOIN companies c ON c.id = u.company_id
+                        WHERE u.telegram_id = ?
+                    """, (user_tg_id,))
+                    user = await cursor.fetchone()
 
-            if user["role"] in ("EMPLOYEE", "CASHIER"):
+        if user:
+            is_super = (user["company_id"] == 1 and user["role"] == "ADMIN")
+            is_company_admin = (user["company_id"] != 1 and user["role"] == "ADMIN")
+            is_developer = (user["role"] == "DEVELOPER")
+            comp_name = user["company_name"] or "Tashkilot"
+
+            if is_developer:
+                role_title = "👑 Dasturchi Admin (Super Admin)"
+            elif is_super:
+                role_title = "👑 Bosh Tashkilot Rahbari"
+            elif is_company_admin:
+                role_title = f"👑 Firma Rahbari ({comp_name})"
+            elif user["role"] == "CASHIER":
+                role_title = f"💼 Kassir ({comp_name})"
+            else:
+                role_title = f"👤 Xodim ({comp_name})"
+
+            # RAHBARLAR (ADMIN, DEVELOPER): Mutlaqo lokatsiya so'ralmaydi, pastdagi klaviatura tozalanadi
+            if user["role"] in ("ADMIN", "DEVELOPER"):
+                inline_crm_kb = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(text="🌐 Web CRM Tizimiga kirish", url="https://xodim-reyting-bot.onrender.com/")]
+                    ]
+                )
+                await message.answer(
+                    f"Assalomu alaykum, Hurmatli <b>{user['full_name']}</b>!\n\n"
+                    f"🏢 <b>Tashkilot:</b> {comp_name}\n"
+                    f"🎖 <b>Maqomingiz:</b> {role_title}\n"
+                    f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
+                    f"👑 Siz <b>Rahbar</b> maqomidasiz. Xodimlar kabi lokatsiya yuborishingiz shart emas va talab etilmaydi.\n\n"
+                    f"Tizimni boshqarish, xodimlar reytingi va kassa hisobotlarini nazorat qilish uchun CRM tizimiga kiring:",
+                    reply_markup=ReplyKeyboardRemove(),
+                    parse_mode="HTML"
+                )
+                await message.answer(
+                    "👇 <b>CRM Tizimiga kirish havolasi:</b>",
+                    reply_markup=inline_crm_kb,
+                    parse_mode="HTML"
+                )
+            else:
+                # XODIMLAR VA KASSIRLAR: Ish joyi va lokatsiya jo'natish klaviaturasi
                 w_name = user["workplace_name"] or "Bosh ofis / Ish joyi"
                 w_hours = f"{user['work_start_time'] or '09:00'} - {user['work_end_time'] or '19:00'}"
                 kb = ReplyKeyboardMarkup(
@@ -102,25 +156,33 @@ if dp:
                     reply_markup=kb,
                     parse_mode="HTML"
                 )
-            else:
-                await message.answer(
-                    f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
-                    f"Siz tizimda <b>{role_title}</b> sifatida ro'yxatdan o'tgansiz.\n"
-                    f"Sizning Telegram ID: <code>{user_tg_id}</code>\n\n"
-                    f"Web ilovaga kirishda ushbu ID va parolingizdan foydalaning.",
-                    parse_mode="HTML"
-                )
         else:
+            # Ro'yxatdan o'tmagan mehmon: Klaviaturani tozalaymiz
             await message.answer(
                 f"Assalomu alaykum, <b>{user_name}</b>!\n\n"
                 f"Sizning Telegram ID raqamingiz: <code>{user_tg_id}</code> (bosib nusxa oling).\n\n"
                 f"Ushbu ID raqamingizni Rahbarga taqdim eting, shunda sizni Xodim-Reyting CRM tizimiga ro'yxatga oladi.",
+                reply_markup=ReplyKeyboardRemove(),
                 parse_mode="HTML"
             )
 
     @dp.message(F.text == "ℹ️ Jonli joylashuv qo'llanmasi")
     @dp.message(Command("location"))
     async def handle_location_guide(message: types.Message):
+        user_tg_id = message.from_user.id
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT role FROM users WHERE telegram_id = ?", (user_tg_id,))
+            u = await cur.fetchone()
+
+        if u and u["role"] in ("ADMIN", "DEVELOPER"):
+            await message.answer(
+                "👑 <b>Hurmatli Rahbar!</b>\n\nSiz rahbar maqomidasiz. Lokatsiya monitoringi faqat xodimlar uchun mo'ljallangan.",
+                reply_markup=ReplyKeyboardRemove(),
+                parse_mode="HTML"
+            )
+            return
+
         guide_text = (
             "🛰 <b>JONLI JOYLASHUV (LIVE LOCATION) YO'RIQNOMASI:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
@@ -263,7 +325,12 @@ if dp:
             is_live_edit=False
         )
         if res.get("reply_text"):
-            await message.reply(res["reply_text"], parse_mode="HTML")
+            is_admin_user = ("Rahbar" in res["reply_text"] or "Dasturchi" in res["reply_text"])
+            await message.reply(
+                res["reply_text"],
+                reply_markup=ReplyKeyboardRemove() if is_admin_user else None,
+                parse_mode="HTML"
+            )
 
     @dp.edited_message(F.location)
     async def handle_location_edited(message: types.Message):

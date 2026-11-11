@@ -350,7 +350,7 @@ async def edit_company_details(
 
         # Rahbar ma'lumotlarini yangilash
         if owner_user:
-            user_updates = []
+            user_updates = ["role = 'ADMIN'"]
             user_params = []
 
             if req.owner_telegram_id is not None:

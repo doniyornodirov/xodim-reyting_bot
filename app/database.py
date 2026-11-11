@@ -381,4 +381,15 @@ async def init_db():
             else:
                 await conn.execute("UPDATE users SET role = 'DEVELOPER', company_id = 0, is_active = 1 WHERE id = ?", (dev_user["id"],))
 
+        # SaaS: Barcha ijarachi firmalarning rahbarlari (owner_telegram_id) roli ADMIN ekanligini kafolatlash
+        try:
+            await conn.execute("""
+                UPDATE users 
+                SET role = 'ADMIN' 
+                WHERE telegram_id IN (SELECT owner_telegram_id FROM companies WHERE owner_telegram_id IS NOT NULL AND id != 1)
+                  AND role != 'DEVELOPER';
+            """)
+        except Exception:
+            pass
+
         await conn.commit()
