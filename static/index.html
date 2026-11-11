@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=820">
+  <link rel="stylesheet" href="/static/css/style.css?v=825">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -113,7 +113,7 @@
         <button id="btn-rahbar-cashier-toggle" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" onclick="toggleRahbarCashierMode()">
           <span>💼</span> Kassir rejimi
         </button>
-        <span id="nav-company-badge" class="badge inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #a5b4fc;" title="Firma sozlamalari" onclick="openCompanySettingsModal()">
+        <span id="nav-company-badge" class="badge badge-company inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" title="Firma sozlamalari" onclick="openCompanySettingsModal()">
           🏢 <span id="nav-company-name">Bosh Tashkilot</span>
         </span>
         <span id="nav-user-name" class="text-xs font-semibold hidden md:inline-block">Mehmon</span>
@@ -149,7 +149,7 @@
     <div class="sidebar-user-card" id="sidebar-user-card">
       <div class="sidebar-avatar">👤</div>
       <div class="sidebar-user-info">
-        <div id="sidebar-user-name" style="font-weight: 700; color: #fff; font-size: 0.95rem;">Mehmon</div>
+        <div id="sidebar-user-name" style="font-weight: 700; color: var(--text-main); font-size: 0.95rem;">Mehmon</div>
         <div style="display: flex; gap: 0.35rem; align-items: center; margin-top: 0.35rem; flex-wrap: wrap;">
           <span id="sidebar-company-badge" class="badge" style="display: none; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #a5b4fc; font-size: 0.72rem; padding: 2px 7px; border-radius: 6px; cursor: pointer;" onclick="openCompanySettingsModal()">
             🏢 <span id="sidebar-company-name">Bosh Tashkilot</span>
@@ -534,9 +534,9 @@
         <!-- 2 ta alohida forma: 1) Yangi xodim qo'shish, 2) Xodimga qarz belgilash -->
         <div class="grid-2" style="margin-bottom: 1.5rem;">
           <!-- 1. Yangi xodim qo'shish formasi -->
-          <form id="create-user-form" style="background: rgba(255, 255, 255, 0.03); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
+          <form id="create-user-form" class="subform-box">
             <div>
-              <h4 style="margin-bottom: 0.85rem; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem;">
+              <h4 style="margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
                 <span>👤</span> Yangi xodim qo'shish
               </h4>
               <div class="form-group">
@@ -554,9 +554,9 @@
           </form>
 
           <!-- 2. Xodimga qarz belgilash formasi -->
-          <form id="assign-debt-form" style="background: rgba(245, 158, 11, 0.05); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid rgba(245, 158, 11, 0.3); display: flex; flex-direction: column; justify-content: space-between;">
+          <form id="assign-debt-form" class="subform-box-amber">
             <div>
-              <h4 style="margin-bottom: 0.85rem; color: #fbbf24; display: flex; align-items: center; gap: 0.5rem;">
+              <h4 style="margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
                 <span>💵</span> Xodimga qarz belgilash
               </h4>
               <div class="form-group">
@@ -866,7 +866,7 @@
       <div class="card-box" style="margin-bottom: 1.25rem; border-left: 4px solid #6366f1;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
           <div>
-            <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+            <h3 class="card-title" style="font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
               <span>📅</span> 90 Kunlik Ma'lumotlarni Saqlash Siyosati (Data Retention)
             </h3>
             <p style="font-size: 0.82rem; color: #94a3b8; margin: 0;">
@@ -910,11 +910,11 @@
     <!-- Rahbar 9: SaaS Multi-Tenant Platforma Boshqaruvi (Faqat Super Admin) -->
     <section class="tab-pane admin-pane" id="pane-admin-saas" style="display: none;">
       <!-- Sarlavha va Umumiy Tushuntirish -->
-      <div class="card-box mb-4" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.08), rgba(99, 102, 241, 0.08)); border-left: 4px solid #ec4899;">
+      <div class="card-box mb-4 saas-banner-box">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h2 class="card-title" style="color: #f472b6; margin-bottom: 0.25rem;">🏢 Firmalar & Multi-Tenant SaaS Boshqaruvi</h2>
-            <p style="font-size: 0.85rem; color: #cbd5e1; margin: 0;">
+            <h2 class="card-title saas-banner-title">🏢 Firmalar & Multi-Tenant SaaS Boshqaruvi</h2>
+            <p class="saas-banner-desc">
               Ushbu platforma orqali tizimni boshqa firmalarga ijaraga berishingiz, yangi firma va ularning rahbarlarini ro'yxatga olishingiz hamda obuna muddatlarini boshqarishingiz mumkin.
             </p>
           </div>
@@ -925,28 +925,28 @@
       </div>
 
       <!-- SaaS Statistika Kartochkalari (4 ta blok) -->
-      <div class="grid-4 mb-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-        <div class="card-box" style="padding: 1rem; border-top: 3px solid #ec4899;">
-          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Jami Tashkilotlar</div>
-          <div id="saas-stat-total-companies" style="font-size: 1.6rem; font-weight: 800; color: #f472b6; margin-top: 0.25rem;">0</div>
+      <div class="grid-4 mb-4 saas-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card-box saas-stat-card saas-stat-card-pink">
+          <div class="saas-stat-label">Jami Tashkilotlar</div>
+          <div id="saas-stat-total-companies" class="saas-stat-value saas-val-pink">0</div>
         </div>
-        <div class="card-box" style="padding: 1rem; border-top: 3px solid #10b981;">
-          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Faol Firmalar</div>
-          <div id="saas-stat-active-companies" style="font-size: 1.6rem; font-weight: 800; color: #34d399; margin-top: 0.25rem;">0</div>
+        <div class="card-box saas-stat-card saas-stat-card-green">
+          <div class="saas-stat-label">Faol Firmalar</div>
+          <div id="saas-stat-active-companies" class="saas-stat-value saas-val-green">0</div>
         </div>
-        <div class="card-box" style="padding: 1rem; border-top: 3px solid #6366f1;">
-          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Jami Xodimlar (Barcha)</div>
-          <div id="saas-stat-total-users" style="font-size: 1.6rem; font-weight: 800; color: #818cf8; margin-top: 0.25rem;">0</div>
+        <div class="card-box saas-stat-card saas-stat-card-indigo">
+          <div class="saas-stat-label">Jami Xodimlar (Barcha)</div>
+          <div id="saas-stat-total-users" class="saas-stat-value saas-val-indigo">0</div>
         </div>
-        <div class="card-box" style="padding: 1rem; border-top: 3px solid #f59e0b;">
-          <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Jami Topshirilgan Hisobotlar</div>
-          <div id="saas-stat-total-reports" style="font-size: 1.6rem; font-weight: 800; color: #fbbf24; margin-top: 0.25rem;">0</div>
+        <div class="card-box saas-stat-card saas-stat-card-amber">
+          <div class="saas-stat-label">Jami Topshirilgan Hisobotlar</div>
+          <div id="saas-stat-total-reports" class="saas-stat-value saas-val-amber">0</div>
         </div>
       </div>
 
       <!-- Yangi Tashkilot Qo'shish Formasi -->
       <div class="card-box mb-4" style="border: 1px solid rgba(236, 72, 153, 0.25);">
-        <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
           <span>➕</span> Yangi Firma (Ijarachi) Qo'shish
         </h3>
         <form id="saas-create-company-form" onsubmit="handleCreateCompanySubmit(event)">
@@ -993,11 +993,11 @@
 
       <!-- Barcha Tashkilotlar Jadvali -->
       <div class="card-box">
-        <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
           <span>📋</span> Barcha Tashkilotlar va Ijarachilar Ro'yxati
         </h3>
         <div class="table-container table-scroll-5">
-          <table class="data-table">
+          <table class="custom-table data-table">
             <thead>
               <tr>
                 <th>#ID</th>
@@ -1738,7 +1738,7 @@
     <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem;" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
         <div>
-          <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem;">
+          <h3 class="card-title" style="font-size: 1.2rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
             <span>🏢</span> Tashkilot ma'lumotlari
           </h3>
           <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-sub);">
@@ -1748,10 +1748,10 @@
         <button type="button" class="btn-logout" style="padding: 0.3rem 0.65rem; font-size: 0.85rem;" onclick="closeCompanySettingsModal()">✕</button>
       </div>
 
-      <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.25rem;">
+      <div class="modal-info-box">
         <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Tashkilot nomi:</span>
-          <b id="company-modal-name" style="font-size: 0.95rem; color: #fff;">-</b>
+          <b id="company-modal-name" style="font-size: 0.95rem; color: var(--text-main);">-</b>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Tarif rejasi:</span>
@@ -1763,7 +1763,7 @@
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Tugash sanasi:</span>
-          <span id="company-modal-expires" style="font-size: 0.85rem; color: #cbd5e1;">-</span>
+          <span id="company-modal-expires" style="font-size: 0.85rem; color: var(--text-muted);">-</span>
         </div>
       </div>
 
@@ -1789,7 +1789,7 @@
     <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem;" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
         <div>
-          <h3 style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #a5b4fc; display: flex; align-items: center; gap: 0.5rem;">
+          <h3 class="card-title" style="font-size: 1.2rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
             <span>📅</span> Obuna muddatini uzaytirish
           </h3>
           <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-sub);">
@@ -1799,14 +1799,14 @@
         <button type="button" class="btn-logout" style="padding: 0.3rem 0.65rem; font-size: 0.85rem;" onclick="closeSaasExtendModal()">✕</button>
       </div>
 
-      <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 0.75rem; padding: 1rem; margin-bottom: 1.25rem;">
+      <div class="modal-info-box">
         <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Tashkilot:</span>
-          <b id="saas-extend-modal-comp-name" style="font-size: 0.95rem; color: #fff;">-</b>
+          <b id="saas-extend-modal-comp-name" style="font-size: 0.95rem; color: var(--text-main);">-</b>
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span style="font-size: 0.85rem; color: var(--text-muted);">Hozirgi amal qilish sanasi:</span>
-          <span id="saas-extend-modal-cur-date" style="font-size: 0.85rem; color: #cbd5e1; font-weight: 600;">-</span>
+          <span id="saas-extend-modal-cur-date" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">-</span>
         </div>
       </div>
 
@@ -1875,6 +1875,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=355"></script>
+  <script src="/static/js/app.js?v=356"></script>
 </body>
 </html>

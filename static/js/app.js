@@ -1012,9 +1012,9 @@ function renderApp() {
 
   if (currentUser.role === "DEVELOPER") {
     roleBadge.className = "badge badge-developer";
-    roleBadge.style.background = "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(99, 102, 241, 0.25))";
-    roleBadge.style.borderColor = "#a855f7";
-    roleBadge.style.color = "#d8b4fe";
+    roleBadge.style.background = "";
+    roleBadge.style.borderColor = "";
+    roleBadge.style.color = "";
     roleBadge.innerText = "💻 Dasturchi Admin";
     debtBadge.style.display = "none";
     if (rahbarCashierToggle) rahbarCashierToggle.style.display = "none";
@@ -4282,25 +4282,25 @@ async function loadSaasCompanies() {
     tbody.innerHTML = companies.map(c => {
       const isMain = (c.id === 1);
       const statusBadge = c.is_active 
-        ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">🟢 Faol</span>`
-        : `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">🔴 To'xtatilgan</span>`;
+        ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 600;">🟢 Faol</span>`
+        : `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.35); font-weight: 600;">🔴 To'xtatilgan</span>`;
 
       let expiryText = "";
       if (c.plan === "UNLIMITED") {
-        expiryText = `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">Cheksiz (Unlimited)</span>`;
+        expiryText = `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #6366f1; font-weight: 600;">Cheksiz (Unlimited)</span>`;
       } else if (c.days_left !== null && c.days_left !== undefined) {
         if (c.days_left <= 0) {
           expiryText = `<b style="color: #ef4444;">Tugagan ⚠️</b>`;
         } else if (c.days_left <= 5) {
           expiryText = `<b style="color: #f59e0b;">${c.days_left} kun qoldi ⏳</b>`;
         } else {
-          expiryText = `<span style="color: #34d399;">${c.days_left} kun qoldi</span>`;
+          expiryText = `<span style="color: #10b981; font-weight: 600;">${c.days_left} kun qoldi</span>`;
         }
       } else {
         expiryText = "-";
       }
 
-      const planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3);">${c.plan}</span>`;
+      const planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #db2777; border: 1px solid rgba(236, 72, 153, 0.35); font-weight: 700;">${c.plan}</span>`;
 
       // Amallar tugmalari
       let actionsHtml = `<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">`;
@@ -4337,12 +4337,12 @@ async function loadSaasCompanies() {
         <tr>
           <td><b>#${c.id}</b></td>
           <td>
-            <b style="color: #fff; display: block;">${escapeHtml(c.name)}</b>
+            <b style="color: var(--text-main); font-size: 0.95rem; display: block;">${escapeHtml(c.name)}</b>
             <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
           </td>
           <td>
-            <div style="font-weight: 600; color: #cbd5e1;">${escapeHtml(c.owner_name)}</div>
-            <code style="font-size: 0.75rem; color: #818cf8;">TG: ${c.owner_telegram_id || '-'}</code>
+            <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(c.owner_name)}</div>
+            <code style="font-size: 0.75rem; color: #6366f1;">TG: ${c.owner_telegram_id || '-'}</code>
           </td>
           <td>
             <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
@@ -4350,11 +4350,11 @@ async function loadSaasCompanies() {
           <td>${planBadge}</td>
           <td>
             <div>${expiryText}</div>
-            ${c.subscription_expires_at ? `<span style="font-size: 0.72rem; color: #a5b4fc; font-weight: 600; display: block; margin-top: 2px;">📅 ${formatDateOnly(c.subscription_expires_at)} gacha</span>` : ''}
+            ${c.subscription_expires_at ? `<span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600; display: block; margin-top: 2px;">📅 ${formatDateOnly(c.subscription_expires_at)} gacha</span>` : ''}
           </td>
           <td>
-            <b style="color: #818cf8;">${c.employees_count || 0} ta</b>
-            ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #fbbf24; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
+            <b style="color: #6366f1;">${c.employees_count || 0} ta</b>
+            ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #f59e0b; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
           </td>
           <td><b>${c.reports_count || 0} ta</b></td>
           <td>${statusBadge}</td>

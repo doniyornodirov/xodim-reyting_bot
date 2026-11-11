@@ -147,80 +147,93 @@ body.theme-light .card-desc {
 }
 
 /* ========================================================= */
-/* KUN REJIMIDA MAYDONLAR QORA, MA'LUMOTLAR OQ BO'LISHI     */
+/* KUNDUZGI (DAY) REJIMDA KIRITISH MAYDONLARI (LINEAR/STRIPE)*/
+/* Toza oppoq (#ffffff) fon, nafis hoshiya, aniq qora matn  */
 /* ========================================================= */
 body.theme-light .form-input,
 body.theme-light select.form-input,
 body.theme-light textarea.form-input {
-  background: #0f172a !important;
-  border-color: #334155 !important;
-  color: #ffffff !important;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 body.theme-light .form-input::placeholder {
   color: #94a3b8 !important;
-  opacity: 0.85;
+  opacity: 1;
 }
 
 body.theme-light .form-input:hover {
-  border-color: #818cf8 !important;
+  border-color: #94a3b8 !important;
 }
 
 body.theme-light .form-input:focus {
-  background: #0f172a !important;
-  border-color: #818cf8 !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35) !important;
+  background: #ffffff !important;
+  border-color: #6366f1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16) !important;
 }
 
-body.theme-light .form-input[readonly] {
-  background: #1e293b !important;
-  border-color: #334155 !important;
-  color: #94a3b8 !important;
+body.theme-light .form-input[readonly],
+body.theme-light .form-input:disabled {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
   cursor: not-allowed;
 }
 
 body.theme-light select.form-input option {
-  background: #0f172a !important;
-  color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
 }
 
 body.theme-light .card-number-input {
-  background: #0f172a !important;
-  color: #60a5fa !important;
+  background: #ffffff !important;
+  color: #2563eb !important;
+  font-weight: 700 !important;
 }
 
 body.theme-light #otp-code-input {
-  background: #0f172a !important;
-  color: #ffffff !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
 }
 
 /* ========================================================= */
 /* DAY MODE TABLE (MODERN SAAS HIGH-DENSITY CLEAN TABLE)     */
 /* ========================================================= */
-body.theme-light .custom-table th {
-  background: #f8fafc;
-  color: #334155;
-  font-weight: 600;
-  border-bottom: 1px solid #e2e8f0;
+body.theme-light .custom-table th,
+body.theme-light .data-table th {
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #e2e8f0 !important;
   padding: 10px 14px;
 }
 
-body.theme-light .custom-table td {
-  color: #0f172a;
-  border-bottom: 1px solid #f1f5f9;
+body.theme-light .custom-table td,
+body.theme-light .data-table td {
+  color: #0f172a !important;
+  border-bottom: 1px solid #f1f5f9 !important;
   padding: 11px 14px;
   background: transparent;
 }
 
-body.theme-light .custom-table tr:hover td {
-  background: #f8fafc;
+body.theme-light .custom-table tr:hover td,
+body.theme-light .data-table tr:hover td {
+  background: #f8fafc !important;
 }
 
 /* No sticky overlap on desktop */
 body.theme-light .custom-table th:first-child,
-body.theme-light .custom-table td:first-child {
+body.theme-light .custom-table td:first-child,
+body.theme-light .data-table th:first-child,
+body.theme-light .data-table td:first-child {
   position: static !important;
   box-shadow: none !important;
   background: transparent;
@@ -782,6 +795,30 @@ body.theme-light .badge-admin {
   background: #eef2ff;
   color: #4338ca;
   border-color: #c7d2fe;
+}
+
+.badge-developer {
+  background: rgba(168, 85, 247, 0.15) !important;
+  color: #c084fc !important;
+  border-color: rgba(168, 85, 247, 0.4) !important;
+}
+
+body.theme-light .badge-developer {
+  background: #f5f3ff !important;
+  color: #6d28d9 !important;
+  border-color: #ddd6fe !important;
+}
+
+.badge-company {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+body.theme-light .badge-company {
+  background: #eef2ff !important;
+  color: #4338ca !important;
+  border-color: #c7d2fe !important;
 }
 
 .badge-cashier {
@@ -1503,50 +1540,52 @@ body.theme-light .btn-secondary-sm:hover {
 }
 
 /* ========================================================= */
-/* TUNGI REJIMDA MAYDONLAR OQ, MA'LUMOTLAR QORA BO'LISHI    */
+/* TUNGI (DARK) REJIMDA KIRITISH MAYDONLARI (LINEAR/STRIPE)  */
+/* Midnight Slate (#131d2e) fon, nafis hoshiya, oq (#f8fafc) */
 /* ========================================================= */
 .form-input,
 select.form-input,
 textarea.form-input {
   width: 100%;
-  background: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
-  border-radius: 6px;
-  padding: 0.45rem 0.75rem;
+  background: #131d2e !important;
+  border: 1px solid #283548 !important;
+  border-radius: 8px;
+  padding: 0.48rem 0.8rem;
   font-size: 0.875rem;
-  color: #0f172a !important;
+  color: #f8fafc !important;
   outline: none;
-  min-height: 36px;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  min-height: 38px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
   transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 
 .form-input::placeholder {
   color: #64748b !important;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .form-input:hover {
-  border-color: #6366f1 !important;
+  border-color: #4f46e5 !important;
 }
 
 .form-input:focus {
   border-color: #6366f1 !important;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
-  background: #ffffff !important;
-  color: #0f172a !important;
+  background: #131d2e !important;
+  color: #ffffff !important;
 }
 
-.form-input[readonly] {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
-  color: #475569 !important;
+.form-input[readonly],
+.form-input:disabled {
+  background: #0b1120 !important;
+  border-color: #1e293b !important;
+  color: #64748b !important;
   cursor: not-allowed;
 }
 
 select.form-input option {
-  background: #ffffff !important;
-  color: #0f172a !important;
+  background: #0f172a !important;
+  color: #f8fafc !important;
 }
 
 /* Card Number Special Format */
@@ -1555,8 +1594,9 @@ select.form-input option {
   font-size: clamp(1.05rem, 4.2vw, 1.35rem);
   letter-spacing: clamp(0.06em, 1.5vw, 0.15em);
   font-weight: 700;
-  color: #1e40af !important;
-  background: #ffffff !important;
+  color: #60a5fa !important;
+  background: #131d2e !important;
+  border-color: #283548 !important;
 }
 
 #otp-code-input {
@@ -1565,8 +1605,9 @@ select.form-input option {
   text-align: center;
   font-family: monospace;
   font-weight: 800;
-  background: #ffffff !important;
-  color: #0f172a !important;
+  background: #131d2e !important;
+  color: #f8fafc !important;
+  border-color: #283548 !important;
 }
 
 /* Live Reactive Readout Box (Compact & Balanced) */
@@ -1958,8 +1999,9 @@ button[style*="background: rgb(217, 119, 6)"]:hover {
 .card-box:has(#admin-audit-tbody) .table-container,
 .card-box:has(#admin-topups-tbody) .table-container,
 .card-box:has(#admin-givens-tbody) .table-container,
-.card-box:has(#admin-reports-tbody) .table-container {
-  max-height: 290px;
+.card-box:has(#admin-reports-tbody) .table-container,
+.card-box:has(#saas-companies-tbody) .table-container {
+  max-height: 380px;
   overflow-y: auto !important;
   overflow-x: auto !important;
   position: relative;
@@ -1982,7 +2024,8 @@ button[style*="background: rgb(217, 119, 6)"]:hover {
 .card-box:has(#admin-audit-tbody) .table-container thead th,
 .card-box:has(#admin-topups-tbody) .table-container thead th,
 .card-box:has(#admin-givens-tbody) .table-container thead th,
-.card-box:has(#admin-reports-tbody) .table-container thead th {
+.card-box:has(#admin-reports-tbody) .table-container thead th,
+.card-box:has(#saas-companies-tbody) .table-container thead th {
   position: sticky !important;
   top: 0 !important;
   z-index: 10 !important;
@@ -2004,7 +2047,8 @@ body.theme-light .card-box:has(#admin-sim-recent-tbody) .table-container thead t
 body.theme-light .card-box:has(#admin-audit-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-topups-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-givens-tbody) .table-container thead th,
-body.theme-light .card-box:has(#admin-reports-tbody) .table-container thead th {
+body.theme-light .card-box:has(#admin-reports-tbody) .table-container thead th,
+body.theme-light .card-box:has(#saas-companies-tbody) .table-container thead th {
   background: #f1f5f9 !important;
   box-shadow: 0 1px 0 #e2e8f0 !important;
   color: #0f172a !important;
@@ -2029,37 +2073,42 @@ body.theme-light .card-box:has(#admin-reports-tbody) .table-container thead th {
   }
 }
 
-.custom-table {
+.custom-table,
+.data-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 14px;
+  font-size: 13.5px;
 }
 
-.custom-table th {
-  background: var(--bg-surface-elevated);
-  padding: 12px 16px;
+.custom-table th,
+.data-table th {
+  background: var(--bg-surface-elevated, #162032);
+  padding: 11px 16px;
   font-weight: 600;
-  font-size: 14px;
-  color: var(--text-main);
-  border-bottom: 1px solid var(--border-color);
+  font-size: 12.5px;
+  color: var(--text-muted, #94a3b8);
+  border-bottom: 1px solid var(--border-color, #1e293b);
   white-space: nowrap;
 }
 
-.custom-table td {
+.custom-table td,
+.data-table td {
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-main);
-  font-size: 14px;
+  border-bottom: 1px solid var(--border-color, #1e293b);
+  color: var(--text-main, #f8fafc);
+  font-size: 13.5px;
   white-space: nowrap;
 }
 
-.custom-table tr:hover {
-  background: rgba(255, 255, 255, 0.04);
+.custom-table tr:hover td,
+.data-table tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 /* Table rows */
-.custom-table tr {
+.custom-table tr,
+.data-table tr {
   transition: background-color 0.1s ease;
 }
 
@@ -3678,4 +3727,189 @@ body.theme-light .btn-reject-topup:hover {
   color: #ffffff;
   border-color: #dc2626;
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+/* ========================================================= */
+/* MULTI-TENANT SAAS & GENERAL THEME BEAUTIFICATION          */
+/* Har ikki rejimda (Kunduzgi va Tungi) mukammal ko'rinish   */
+/* ========================================================= */
+
+/* 1. SaaS Banner */
+.saas-banner-box {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(99, 102, 241, 0.12));
+  border-left: 4px solid #ec4899;
+  border-color: rgba(236, 72, 153, 0.25);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
+.saas-banner-title {
+  color: #f472b6 !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.015em;
+  margin-bottom: 0.35rem;
+}
+
+.saas-banner-desc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+body.theme-light .saas-banner-box {
+  background: linear-gradient(135deg, #fdf2f8, #f5f3ff) !important;
+  border-left: 4px solid #db2777 !important;
+  border-color: #fbcfe8 !important;
+  box-shadow: 0 1px 3px rgba(219, 39, 119, 0.08) !important;
+}
+
+body.theme-light .saas-banner-title {
+  color: #be185d !important;
+}
+
+body.theme-light .saas-banner-desc {
+  color: #475569 !important;
+}
+
+/* 2. SaaS Statistika Kartochkalari (4 ta blok) */
+.saas-stat-card {
+  padding: 1.1rem 1.25rem;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.saas-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.saas-stat-card-pink { border-top: 3px solid #ec4899 !important; }
+.saas-stat-card-green { border-top: 3px solid #10b981 !important; }
+.saas-stat-card-indigo { border-top: 3px solid #6366f1 !important; }
+.saas-stat-card-amber { border-top: 3px solid #f59e0b !important; }
+
+.saas-stat-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.saas-stat-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  margin-top: 0.35rem;
+  line-height: 1.1;
+}
+
+.saas-val-pink { color: #f472b6 !important; }
+.saas-val-green { color: #34d399 !important; }
+.saas-val-indigo { color: #818cf8 !important; }
+.saas-val-amber { color: #fbbf24 !important; }
+
+body.theme-light .saas-stat-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.theme-light .saas-stat-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.theme-light .saas-stat-label {
+  color: #64748b !important;
+}
+
+body.theme-light .saas-val-pink { color: #db2777 !important; }
+body.theme-light .saas-val-green { color: #059669 !important; }
+body.theme-light .saas-val-indigo { color: #4f46e5 !important; }
+body.theme-light .saas-val-amber { color: #d97706 !important; }
+
+/* 3. Subform Qutilari (Xodimlar, Qarz, Sozlamalar) */
+.subform-box {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.subform-box h4 {
+  color: #a5b4fc;
+}
+
+body.theme-light .subform-box {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.theme-light .subform-box h4 {
+  color: #4338ca !important;
+}
+
+.subform-box-amber {
+  background: rgba(245, 158, 11, 0.05);
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.subform-box-amber h4 {
+  color: #fbbf24;
+}
+
+body.theme-light .subform-box-amber {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+body.theme-light .subform-box-amber h4 {
+  color: #b45309 !important;
+}
+
+/* 4. Modal Info Box */
+.modal-info-box {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+body.theme-light .modal-info-box {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* 5. Sana tanlash (date picker) va Select elementlari */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.8);
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+body.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.65;
+}
+
+body.theme-light input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
