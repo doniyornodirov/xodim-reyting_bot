@@ -1879,7 +1879,7 @@ let adminReportsCache = [];
 let adminReportDateFilter = {
   startDate: null, // "YYYY-MM-DD"
   endDate: null,   // "YYYY-MM-DD"
-  label: "Barcha sanalar"
+  label: "Sanani tanlash"
 };
 
 // Kalendar modali ichki holati
@@ -1905,7 +1905,7 @@ function getTashkentTodayIso(offsetDays = 0) {
 function updateAdminReportsDateDisplay() {
   const displayEl = document.getElementById("admin-reports-date-display");
   if (displayEl) {
-    displayEl.textContent = adminReportDateFilter.label || "Barcha sanalar";
+    displayEl.textContent = adminReportDateFilter.label || "Sanani tanlash";
   }
 }
 
@@ -1924,7 +1924,7 @@ function resetAdminReportsFilter() {
   adminReportDateFilter = {
     startDate: null,
     endDate: null,
-    label: "Barcha sanalar"
+    label: "Sanani tanlash"
   };
   updateAdminReportsDateDisplay();
   loadAdminReports();
@@ -2216,7 +2216,7 @@ function applyDateRangeFilterFromModal() {
   } else if (e) {
     adminReportDateFilter.label = `${formatDateOnly(e)} gacha`;
   } else {
-    adminReportDateFilter.label = "Barcha sanalar";
+    adminReportDateFilter.label = "Sanani tanlash";
   }
 
   updateAdminReportsDateDisplay();
@@ -4918,10 +4918,17 @@ async function sendGeneratedXlsxToTelegram(wb, filename, caption) {
 
 // 1. Kunlik hisobotlarni Excelga (.xlsx) eksport qilish va Rahbar shaxsiy Telegramiga yuborish
 async function exportAdminReportsToExcel() {
-  const s = adminReportDateFilter?.startDate;
-  const e = adminReportDateFilter?.endDate;
+  let s = adminReportDateFilter?.startDate;
+  let e = adminReportDateFilter?.endDate;
 
-  showToast("Excel hisoboti tayyorlanmoqda va Telegramingizga yuborilmoqda...", "info");
+  // Agar sana tanlanmagan bo'lsa, bugungi sana bo'yicha amal qiladi
+  if (!s) {
+    const today = getTashkentTodayIso();
+    s = today;
+    e = today;
+  }
+
+  showToast(`Excel hisoboti (${formatDateOnly(s)}) tayyorlanmoqda va Telegramingizga yuborilmoqda...`, "info");
 
   try {
     const token = authToken || localStorage.getItem("crm_token") || localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -5007,7 +5014,7 @@ async function exportAdminReportsToExcel() {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Kunlik Hisobotlar");
-  const dateLabel = adminReportDateFilter?.startDate || "barcha";
+  const dateLabel = adminReportDateFilter?.startDate || getTashkentTodayIso();
   const fileName = `Hisobotlar_${dateLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, fileName);
   sendGeneratedXlsxToTelegram(wb, fileName, `📥 <b>KUNLIK HISOBOTLAR (${dateLabel})</b>\n\n📎 <i>Excel fayli biriktirildi.</i>`);
