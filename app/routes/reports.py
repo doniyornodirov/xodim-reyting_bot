@@ -390,7 +390,7 @@ async def trigger_daily_digest(
 ):
     """
     Firma Rahbari tomonidan bugungi yoki belgilangan sana/davr bo'yicha hisobot svodkasini
-    o'zining shaxsiy Telegram lichkasiga (va agar sozlangan bo'lsa guruhga) yuborish
+    faqat o'zining shaxsiy Telegram lichkasiga yuborish (Telegram guruhlarga yuborilmaydi)
     """
     from app.bot import send_daily_digest_for_company
     comp_id = user.get("company_id") or 1
@@ -481,29 +481,33 @@ async def export_reports_excel_endpoint(
     # Excel baytlarini generatsiya qilish
     excel_bytes = generate_reports_excel(comp_name, reports_list, date_display)
 
-    # Rahbar shaxsiy Telegram lichkasiga hujjat sifatida yuborish
+    # FAQAT Rahbar shaxsiy Telegram lichkasiga hujjat sifatida yuborish (guruhlarga yuborish qat'iy taqiqlangan)
     if send_telegram and owner_tg:
-        total_count = len(reports_list)
-        total_net = sum((r.get("net_amount") or 0) for r in reports_list)
-        total_sims = sum((r.get("sim_cards_count") or 0) for r in reports_list)
-        total_net_fmt = f"{int(total_net):,}".replace(",", " ")
-
-        caption = (
-            f"📥 <b>KUNLIK HISOBOTLAR (EXCEL)</b>\n"
-            f"🏢 <b>{comp_name}</b>\n"
-            f"📅 <b>Sana / Davr:</b> {date_display}\n"
-            f"👥 <b>Jami hisobotlar soni:</b> {total_count} ta\n"
-            f"💰 <b>Jami sof kassa (Net):</b> <b>{total_net_fmt} so'm</b>\n"
-            f"📱 <b>Sotilgan sim-kartalar:</b> {total_sims} dona\n\n"
-            f"📎 <i>Belgilangan davr bo'yicha Excel (.xlsx) hisoboti biriktirildi.</i>"
-        )
         try:
-            asyncio.create_task(send_document_to_telegram(
-                chat_id=int(owner_tg),
-                file_bytes=excel_bytes,
-                filename=filename,
-                caption=caption
-            ))
+            owner_int = int(owner_tg)
+            if owner_int > 0:
+                total_count = len(reports_list)
+                total_net = sum((r.get("net_amount") or 0) for r in reports_list)
+                total_sims = sum((r.get("sim_cards_count") or 0) for r in reports_list)
+                total_net_fmt = f"{int(total_net):,}".replace(",", " ")
+
+                caption = (
+                    f"📥 <b>KUNLIK HISOBOTLAR (EXCEL)</b>\n"
+                    f"🏢 <b>{comp_name}</b>\n"
+                    f"📅 <b>Sana / Davr:</b> {date_display}\n"
+                    f"👥 <b>Jami hisobotlar soni:</b> {total_count} ta\n"
+                    f"💰 <b>Jami sof kassa (Net):</b> <b>{total_net_fmt} so'm</b>\n"
+                    f"📱 <b>Sotilgan sim-kartalar:</b> {total_sims} dona\n\n"
+                    f"📎 <i>Belgilangan davr bo'yicha Excel (.xlsx) hisoboti biriktirildi.</i>"
+                )
+                asyncio.create_task(send_document_to_telegram(
+                    chat_id=owner_int,
+                    file_bytes=excel_bytes,
+                    filename=filename,
+                    caption=caption
+                ))
+            else:
+                logger.warning(f"Excel faylini guruhga ({owner_int}) yuborish rad etildi! Faqat rahbar shaxsiy lichkasiga ruxsat berilgan.")
         except Exception as e:
             logger.warning(f"Excel faylini telegramga yuborishda task xatosi: {e}")
 
@@ -522,7 +526,7 @@ async def send_excel_telegram_endpoint(
     user: dict = Depends(require_role(["ADMIN"]))
 ):
     """
-    Frontendda yaratilgan har qanday Excel faylini rahbarning shaxsiy Telegram lichkasiga yuborish
+    Frontendda yaratilgan har qanday Excel faylini FAQAT rahbarning shaxsiy Telegram lichkasiga yuborish (guruhlarga yuborilmaydi)
     """
     import base64
     from app.bot import send_document_to_telegram
@@ -540,13 +544,20 @@ async def send_excel_telegram_endpoint(
         return {"success": False, "message": "Rahbar Telegram ID si topilmadi"}
 
     try:
+        owner_int = int(owner_tg)
+        if owner_int <= 0:
+            return {"success": False, "message": "Excel faylini guruhga yuborish taqiqlangan! Faqat rahbar shaxsiy lichkasiga yuboriladi."}
+    except Exception:
+        return {"success": False, "message": "Noto'g'ri Telegram ID formati"}
+
+    try:
         file_bytes = base64.b64decode(req.file_base64)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Base64 dekodlashda xatolik: {e}")
 
     caption = req.caption or f"📥 <b>{req.filename}</b>\n\n📎 <i>Excel hisoboti biriktirildi.</i>"
     success = await send_document_to_telegram(
-        chat_id=int(owner_tg),
+        chat_id=owner_int,
         file_bytes=file_bytes,
         filename=req.filename,
         caption=caption
@@ -554,5 +565,5 @@ async def send_excel_telegram_endpoint(
 
     return {
         "success": success,
-        "message": "Excel fayli shaxsiy Telegramingizga (@xodim_reyting_bot) yuborildi!" if success else "Telegramga yuborib bo'lmadi (Bot bilan chat boshlanmagan bo'lishi mumkin)."
+        "message": "Excel fayli rahbar shaxsiy Telegramingizga (@xodim_reyting_bot) yuborildi!" if success else "Telegramga yuborib bo'lmadi (Bot bilan chat boshlanmagan bo'lishi mumkin)."
     }

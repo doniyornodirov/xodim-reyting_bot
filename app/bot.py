@@ -775,7 +775,7 @@ async def send_daily_digest_for_company(
 ) -> dict:
     """
     Kompaniya uchun bugungi yoki belgilangan sana/davr bo'yicha yakuniy svodkani hisoblash va
-    Rahbar shaxsiy lichkasiga (va agar sozlangan bo'lsa Telegram guruhiga) yuborish
+    FAQAT Rahbar shaxsiy lichkasiga yuborish (Telegram guruhlarga yuborilmaydi)
     """
     if not bot:
         return {"success": False, "message": "Bot faol emas"}
@@ -821,7 +821,6 @@ async def send_daily_digest_for_company(
             return {"success": False, "message": "Kompaniya topilmadi"}
 
         comp_name = comp["name"]
-        target_group = comp["telegram_group_id"] or TELEGRAM_GROUP_ID
         owner_tg = comp["owner_telegram_id"]
 
         # 2. Xodimlar soni va ro'yxati
@@ -959,50 +958,27 @@ async def send_daily_digest_for_company(
         "✨ <i>Xodim-Reyting CRM tahlili</i>"
     )
 
-    # Qayerga yuborish: Rahbar shaxsiy lichkasiga (birinchi va kafolatli) va guruhga
+    # Qayerga yuborish: FAQAT Rahbar shaxsiy lichkasiga (Telegram guruhlarga yuborish qat'iy taqiqlangan)
     sent_owner = False
-    sent_group = False
-    delivery_targets = []
-
     target_owner_id = owner_override_tg or owner_tg
+
     if send_to_owner and target_owner_id:
         try:
             target_owner_int = int(target_owner_id)
-            await asyncio.wait_for(
-                bot.send_message(chat_id=target_owner_int, text=text, parse_mode="HTML"),
-                timeout=5.0
-            )
-            sent_owner = True
-            delivery_targets.append(f"Rahbar lichkasiga (TG: {target_owner_int})")
+            # Faqat musbat (shaxsiy profil) ID larga yuboriladi, guruh ID lari (manfiy) qat'iy cheklangan
+            if target_owner_int > 0:
+                await asyncio.wait_for(
+                    bot.send_message(chat_id=target_owner_int, text=text, parse_mode="HTML"),
+                    timeout=5.0
+                )
+                sent_owner = True
+            else:
+                logger.warning(f"Svodkani guruhga ({target_owner_int}) yuborish rad etildi! Faqat rahbar shaxsiy lichkasiga yuboriladi.")
         except Exception as e:
             logger.warning(f"Svodkani rahbar lichkasiga ({target_owner_id}) yuborishda xatolik: {e}")
 
-    # Agar guruh ham sozlangan bo'lsa, guruhga ham nusxasini yuborish
-    if target_group and str(target_group).strip():
-        raw_grp = str(target_group).strip()
-        group_cid = None
-        try:
-            group_cid = int(raw_grp)
-        except Exception:
-            if raw_grp.startswith("-") and not raw_grp.startswith("-100"):
-                try:
-                    group_cid = int("-100" + raw_grp[1:])
-                except Exception:
-                    pass
-        if group_cid:
-            try:
-                await asyncio.wait_for(
-                    bot.send_message(chat_id=group_cid, text=text, parse_mode="HTML"),
-                    timeout=5.0
-                )
-                sent_group = True
-                delivery_targets.append("Telegram guruhiga")
-            except Exception as e:
-                logger.warning(f"Svodkani guruhga ({group_cid}) yuborishda xatolik: {e}")
-
-    sent = sent_owner or sent_group
-    dest_str = " va ".join(delivery_targets) if delivery_targets else "Telegramga"
-    msg = f"Svodka {dest_str} muvaffaqiyatli yuborildi! 🚀" if sent else "Telegramga yuborib bo'lmadi (Bot bilan chat boshlanmagan yoki guruhga qo'shilmagan bo'lishi mumkin)."
+    sent = sent_owner
+    msg = "Svodka rahbar shaxsiy Telegram lichkasiga muvaffaqiyatli yuborildi! 🚀" if sent else "Telegramga yuborib bo'lmadi (Rahbar bot bilan shaxsiy chat boshlamagan bo'lishi mumkin)."
 
     return {
         "success": sent,
@@ -1023,19 +999,25 @@ async def send_document_to_telegram(
     filename: str,
     caption: str = ""
 ) -> bool:
-    """Excel yoki boshqa hujjatni Telegram chatiga (rahbar lichkasiga) yuborish"""
+    """Excel yoki boshqa hujjatni FAQAT rahbar shaxsiy lichkasiga yuborish (guruhlarga yuborish qat'iy taqiqlangan)"""
     if not bot or not chat_id:
         return False
     try:
+        target_chat = int(chat_id)
+        # Guruh ID lari manfiy (< 0) bo'ladi. Excel hech qachon guruhga yuborilmaydi!
+        if target_chat < 0:
+            logger.warning(f"Excel faylini guruhga ({target_chat}) yuborish rad etildi! Faqat rahbar shaxsiy lichkasiga yuboriladi.")
+            return False
+
         from aiogram.types import BufferedInputFile
         doc = BufferedInputFile(file_bytes, filename=filename)
         await asyncio.wait_for(
-            bot.send_document(chat_id=int(chat_id), document=doc, caption=caption, parse_mode="HTML"),
+            bot.send_document(chat_id=target_chat, document=doc, caption=caption, parse_mode="HTML"),
             timeout=10.0
         )
         return True
     except Exception as e:
-        logger.warning(f"Hujjatni Telegramga ({chat_id}) yuborishda xatolik: {e}")
+        logger.warning(f"Hujjatni rahbar shaxsiy lichkasiga ({chat_id}) yuborishda xatolik: {e}")
         return False
 
 async def send_subscription_expiry_alert(company_id: int, days_left: int) -> bool:
