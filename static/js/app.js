@@ -5107,6 +5107,319 @@ function exportRatingToExcel() {
   showToast("Reyting jadvali Excelga yuklandi va Telegramingizga yuborildi! 📥", "success");
 }
 
+// ============================================================
+// MAXSUS CHIROYLI VA IXCHAM VAQT TANLAGICH (TIME PICKER)
+// ============================================================
+let activeTimePickerTarget = null;
+let currentPickerHour = "09";
+let currentPickerMinute = "00";
+let activePickerTab = "hour";
+
+function openCompactTimePicker(inputEl, label = "Vaqt") {
+  if (!inputEl) return;
+  activeTimePickerTarget = inputEl;
+
+  let val = inputEl.value || "09:00";
+  if (!val.includes(":")) val = "09:00";
+  const parts = val.split(":");
+  currentPickerHour = parts[0].padStart(2, "0");
+  currentPickerMinute = (parts[1] || "00").padStart(2, "0");
+  activePickerTab = "hour";
+
+  const popover = document.getElementById("compact-time-picker-popover");
+  if (!popover) return;
+
+  const titleEl = document.getElementById("time-picker-label");
+  if (titleEl) {
+    titleEl.textContent = label === "start" ? "Ish boshlanishi" : (label === "end" ? "Ish tugashi" : label);
+  }
+
+  renderTimePickerDisplay();
+  renderTimePickerColumns();
+  renderTimePickerPresets();
+
+  popover.style.display = "block";
+  const rect = inputEl.getBoundingClientRect();
+  const popoverWidth = 280;
+  let top = window.scrollY + rect.bottom + 6;
+  let left = window.scrollX + rect.left;
+
+  if (left + popoverWidth > window.innerWidth - 10) {
+    left = window.innerWidth - popoverWidth - 15;
+  }
+  if (left < 10) left = 10;
+
+  popover.style.top = `${top}px`;
+  popover.style.left = `${left}px`;
+}
+
+function closeCompactTimePicker() {
+  const popover = document.getElementById("compact-time-picker-popover");
+  if (popover) popover.style.display = "none";
+  activeTimePickerTarget = null;
+}
+
+function renderTimePickerDisplay() {
+  const hEl = document.getElementById("time-display-hour");
+  const mEl = document.getElementById("time-display-minute");
+  if (hEl) {
+    hEl.textContent = currentPickerHour;
+    hEl.classList.toggle("active", activePickerTab === "hour");
+  }
+  if (mEl) {
+    mEl.textContent = currentPickerMinute;
+    mEl.classList.toggle("active", activePickerTab === "minute");
+  }
+}
+
+function setTimePickerTab(tab) {
+  activePickerTab = tab;
+  renderTimePickerDisplay();
+}
+
+function renderTimePickerColumns() {
+  const hoursCol = document.getElementById("time-col-hours");
+  const minsCol = document.getElementById("time-col-minutes");
+
+  if (hoursCol) {
+    hoursCol.innerHTML = "";
+    for (let h = 0; h < 24; h++) {
+      const hStr = String(h).padStart(2, "0");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `time-pill-btn ${hStr === currentPickerHour ? 'active' : ''}`;
+      btn.textContent = hStr;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        currentPickerHour = hStr;
+        activePickerTab = "minute";
+        renderTimePickerDisplay();
+        renderTimePickerColumns();
+      };
+      hoursCol.appendChild(btn);
+    }
+  }
+
+  if (minsCol) {
+    minsCol.innerHTML = "";
+    for (let m = 0; m < 60; m += 5) {
+      const mStr = String(m).padStart(2, "0");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `time-pill-btn ${mStr === currentPickerMinute ? 'active' : ''}`;
+      btn.textContent = mStr;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        currentPickerMinute = mStr;
+        renderTimePickerDisplay();
+        renderTimePickerColumns();
+      };
+      minsCol.appendChild(btn);
+    }
+  }
+}
+
+function renderTimePickerPresets() {
+  const presetsBox = document.getElementById("time-quick-presets");
+  if (!presetsBox) return;
+  const presets = ["08:00", "09:00", "10:00", "18:00", "19:00", "20:00", "21:00"];
+  presetsBox.innerHTML = "";
+  presets.forEach(p => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "time-chip-btn";
+    btn.textContent = p;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const parts = p.split(":");
+      currentPickerHour = parts[0];
+      currentPickerMinute = parts[1];
+      applyCompactTimePicker();
+    };
+    presetsBox.appendChild(btn);
+  });
+}
+
+function applyCompactTimePicker() {
+  if (activeTimePickerTarget) {
+    const timeVal = `${currentPickerHour}:${currentPickerMinute}`;
+    activeTimePickerTarget.value = timeVal;
+    activeTimePickerTarget.dispatchEvent(new Event("change"));
+  }
+  closeCompactTimePicker();
+}
+
+// ============================================================
+// DASTURCHI ADMIN UCHUN MAXSUS SAAS SANA TANLAGICH (DATE PICKER)
+// ============================================================
+let activeSaasDateTarget = null;
+let saasCalYear = new Date().getFullYear();
+let saasCalMonth = new Date().getMonth();
+let selectedSaasDateIso = null;
+
+function openCompactSaasDatePicker(inputEl, title = "Sanani tanlash") {
+  if (!inputEl) return;
+  activeSaasDateTarget = inputEl;
+
+  const curVal = inputEl.value;
+  if (curVal && curVal.includes("-")) {
+    const parts = curVal.split("-");
+    saasCalYear = parseInt(parts[0], 10);
+    saasCalMonth = parseInt(parts[1], 10) - 1;
+    selectedSaasDateIso = curVal;
+  } else {
+    const d = new Date();
+    saasCalYear = d.getFullYear();
+    saasCalMonth = d.getMonth();
+    selectedSaasDateIso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  const popover = document.getElementById("compact-saas-datepicker-popover");
+  if (!popover) return;
+
+  const titleEl = document.getElementById("saas-datepicker-title");
+  if (titleEl) titleEl.textContent = title;
+
+  renderCompactSaasCalendar();
+
+  popover.style.display = "block";
+  const rect = inputEl.getBoundingClientRect();
+  const popoverWidth = 310;
+  let top = window.scrollY + rect.bottom + 6;
+  let left = window.scrollX + rect.left;
+
+  if (left + popoverWidth > window.innerWidth - 10) {
+    left = window.innerWidth - popoverWidth - 15;
+  }
+  if (left < 10) left = 10;
+
+  popover.style.top = `${top}px`;
+  popover.style.left = `${left}px`;
+}
+
+function closeCompactSaasDatePicker() {
+  const popover = document.getElementById("compact-saas-datepicker-popover");
+  if (popover) popover.style.display = "none";
+  activeSaasDateTarget = null;
+}
+
+function navigateSaasCalMonth(direction) {
+  saasCalMonth += direction;
+  if (saasCalMonth < 0) {
+    saasCalMonth = 11;
+    saasCalYear -= 1;
+  } else if (saasCalMonth > 11) {
+    saasCalMonth = 0;
+    saasCalYear += 1;
+  }
+  renderCompactSaasCalendar();
+}
+
+function applySaasPresetDays(days) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  saasCalYear = d.getFullYear();
+  saasCalMonth = d.getMonth();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  selectedSaasDateIso = `${y}-${m}-${day}`;
+  renderCompactSaasCalendar();
+}
+
+function renderCompactSaasCalendar() {
+  const monthYearLabel = document.getElementById("saas-cal-month-year-text");
+  const grid = document.getElementById("saas-cal-days-grid");
+  const summaryEl = document.getElementById("saas-cal-summary-text");
+
+  if (monthYearLabel) {
+    monthYearLabel.textContent = `${uzbekMonths[saasCalMonth]} ${saasCalYear}`;
+  }
+
+  if (grid) {
+    grid.innerHTML = "";
+    const dayNames = ["D", "S", "Ch", "P", "J", "Sh", "Y"];
+    dayNames.forEach(dn => {
+      const el = document.createElement("div");
+      el.className = "saas-cal-day-name";
+      el.textContent = dn;
+      grid.appendChild(el);
+    });
+
+    const firstDayObj = new Date(saasCalYear, saasCalMonth, 1);
+    let firstDayIndex = firstDayObj.getDay();
+    if (firstDayIndex === 0) firstDayIndex = 7;
+
+    const daysInMonth = new Date(saasCalYear, saasCalMonth + 1, 0).getDate();
+    const prevMonthDays = new Date(saasCalYear, saasCalMonth, 0).getDate();
+
+    const todayD = new Date();
+    const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+
+    for (let i = firstDayIndex - 1; i >= 1; i--) {
+      const cell = document.createElement("div");
+      cell.className = "saas-cal-day-cell empty-day";
+      cell.textContent = prevMonthDays - i + 1;
+      grid.appendChild(cell);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement("div");
+      const mStr = String(saasCalMonth + 1).padStart(2, "0");
+      const dStr = String(d).padStart(2, "0");
+      const currentIso = `${saasCalYear}-${mStr}-${dStr}`;
+
+      let classes = "saas-cal-day-cell";
+      if (currentIso === selectedSaasDateIso) classes += " is-selected";
+      if (currentIso === todayIso) classes += " is-today";
+
+      cell.className = classes;
+      cell.textContent = d;
+      cell.onclick = (e) => {
+        e.stopPropagation();
+        selectedSaasDateIso = currentIso;
+        renderCompactSaasCalendar();
+      };
+      grid.appendChild(cell);
+    }
+  }
+
+  if (summaryEl && selectedSaasDateIso) {
+    const parts = selectedSaasDateIso.split("-");
+    const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
+    const targetD = new Date(selectedSaasDateIso);
+    const nowD = new Date();
+    const diffDays = Math.ceil((targetD - nowD) / (1000 * 3600 * 24));
+    const daysLabel = diffDays > 0 ? `(${diffDays} kun qoladi)` : "";
+    summaryEl.innerHTML = `<span>📅</span> Tanlandi: <b>${dFmt}</b> <span style="opacity: 0.8; font-size: 0.72rem;">${daysLabel}</span>`;
+  }
+}
+
+function applyCompactSaasDatePicker() {
+  if (activeSaasDateTarget && selectedSaasDateIso) {
+    activeSaasDateTarget.value = selectedSaasDateIso;
+    activeSaasDateTarget.dispatchEvent(new Event("change"));
+  }
+  closeCompactSaasDatePicker();
+}
+
+// Tashqariga bosilganda popoverlarni yopish
+window.addEventListener("click", (e) => {
+  const timePopover = document.getElementById("compact-time-picker-popover");
+  if (timePopover && timePopover.style.display !== "none") {
+    if (!timePopover.contains(e.target) && !e.target.closest(".custom-time-input") && !e.target.closest(".time-input-icon")) {
+      closeCompactTimePicker();
+    }
+  }
+
+  const saasPopover = document.getElementById("compact-saas-datepicker-popover");
+  if (saasPopover && saasPopover.style.display !== "none") {
+    if (!saasPopover.contains(e.target) && !e.target.closest(".custom-date-input") && !e.target.closest(".date-input-icon")) {
+      closeCompactSaasDatePicker();
+    }
+  }
+});
+
 // Window load init
 window.addEventListener("DOMContentLoaded", () => {
   initTheme();

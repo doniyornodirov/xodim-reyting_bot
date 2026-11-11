@@ -4069,3 +4069,326 @@ body.theme-light .stat-num-indigo { color: #4338ca !important; }
 body.theme-light .stat-num-blue { color: #1d4ed8 !important; }
 body.theme-light .stat-num-green { color: #059669 !important; }
 body.theme-light .stat-num-red { color: #dc2626 !important; }
+
+/* ============================================================ */
+/* 9. MAXSUS CHIROYLI VA IXCHAM VAQT TANLAGICH (TIME PICKER)    */
+/* ============================================================ */
+.compact-picker-popover {
+  position: absolute;
+  z-index: 1050;
+  width: 280px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.55), 0 0 15px rgba(99, 102, 241, 0.15);
+  padding: 0.85rem;
+  animation: pickerPopIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pickerPopIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+body.theme-light .compact-picker-popover {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15) !important;
+}
+
+.picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+body.theme-light .picker-header {
+  border-color: #e2e8f0;
+}
+
+.picker-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+body.theme-light .picker-title {
+  color: #0f172a;
+}
+
+.picker-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.picker-close-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Time Digital Display */
+.time-digital-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  background: var(--bg-primary);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+}
+
+body.theme-light .time-digital-display {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.time-dig-box {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: monospace;
+  color: var(--text-muted);
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+body.theme-light .time-dig-box {
+  color: #475569;
+}
+
+.time-dig-box.active {
+  background: linear-gradient(135deg, #6366f1, #3b82f6) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+}
+
+.time-dig-colon {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+body.theme-light .time-dig-colon {
+  color: #64748b;
+}
+
+/* Time Selector Columns */
+.time-selector-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.time-column-box {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.35rem;
+}
+
+body.theme-light .time-column-box {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.time-col-header {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.5px;
+}
+
+body.theme-light .time-col-header {
+  color: #64748b;
+}
+
+.time-col-scroll {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-right: 2px;
+}
+
+.time-col-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.time-col-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.4);
+  border-radius: 4px;
+}
+
+.time-pill-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0;
+  text-align: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+body.theme-light .time-pill-btn {
+  color: #1e293b;
+}
+
+.time-pill-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.time-pill-btn.active {
+  background: linear-gradient(135deg, #6366f1, #3b82f6) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+}
+
+/* Quick chips */
+.time-quick-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.75rem;
+}
+
+.time-chip-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+body.theme-light .time-chip-btn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.time-chip-btn:hover {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #ffffff;
+}
+
+.picker-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+body.theme-light .picker-footer {
+  border-color: #e2e8f0;
+}
+
+/* ============================================================ */
+/* 10. DASTURCHI ADMIN UCHUN SAAS SANA KALENDARI (POPOVER)      */
+/* ============================================================ */
+.compact-saas-datepicker-popover {
+  position: absolute;
+  z-index: 1060;
+  width: 310px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.6), 0 0 15px rgba(236, 72, 153, 0.15);
+  padding: 0.85rem;
+  animation: pickerPopIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.theme-light .compact-saas-datepicker-popover {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15) !important;
+}
+
+.saas-cal-days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 0.5rem;
+}
+
+.saas-cal-day-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: center;
+  padding-bottom: 0.25rem;
+}
+
+body.theme-light .saas-cal-day-name {
+  color: #64748b;
+}
+
+.saas-cal-day-cell {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: all 0.1s ease;
+}
+
+body.theme-light .saas-cal-day-cell {
+  color: #1e293b;
+}
+
+.saas-cal-day-cell:hover:not(.empty-day) {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f472b6;
+}
+
+body.theme-light .saas-cal-day-cell:hover:not(.empty-day) {
+  background: #fdf2f8;
+  color: #db2777;
+}
+
+.saas-cal-day-cell.empty-day {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.saas-cal-day-cell.is-selected {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.45);
+}
+
+.saas-cal-day-cell.is-today:not(.is-selected) {
+  border: 1px dashed #f472b6;
+  font-weight: 700;
+}
