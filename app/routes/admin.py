@@ -68,7 +68,7 @@ async def create_user(req: CreateUserRequest, admin: dict = Depends(require_role
         )
         curr_emp_count = (await cur_cnt.fetchone())[0]
 
-        if curr_emp_count >= max_emp:
+        if role not in ('ADMIN', 'DEVELOPER') and curr_emp_count >= max_emp:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Kompaniyangiz tarifidagi faol xodimlar limiti ({max_emp} ta) to'ldi! Yangi xodim qo'shish uchun tarifni oshiring yoki Dasturchi Admin bilan bog'laning."
@@ -118,7 +118,7 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
             )
             curr_emp_count = (await cur_cnt.fetchone())[0]
 
-            if curr_emp_count >= max_emp:
+            if user["role"] not in ('ADMIN', 'DEVELOPER') and curr_emp_count >= max_emp:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Kompaniyangiz tarifidagi faol xodimlar limiti ({max_emp} ta) to'ldi! Xodimni qayta faollashtirish uchun tarifni oshiring yoki boshqa xodimlarni boshqaring."

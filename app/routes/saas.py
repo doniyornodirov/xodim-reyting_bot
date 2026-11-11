@@ -55,9 +55,9 @@ async def list_companies(super_admin: dict = Depends(require_super_admin)):
         for c in companies_raw:
             c_id = c["id"]
 
-            # Statistika: Faol xodimlar soni
+            # Statistika: Faol xodimlar soni (Rahbarlar va Dasturchilar bundan mustasno)
             cur_users = await conn.execute(
-                "SELECT COUNT(*) FROM users WHERE company_id = ? AND is_active = 1", (c_id,)
+                "SELECT COUNT(*) FROM users WHERE company_id = ? AND is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER')", (c_id,)
             )
             users_count = (await cur_users.fetchone())[0]
 
