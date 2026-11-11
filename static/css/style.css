@@ -84,13 +84,19 @@ body.theme-light {
   /* Slate 200 Border */
   --border-subtle: #cbd5e1;
   /* Slate 300 Control Border */
-  --border-focus: #6366f1;
+  --border-focus: #4f46e5;
   --text-main: #0f172a;
   /* Slate 900 Primary Text */
   --text-muted: #475569;
   /* Slate 600 Secondary Text */
   --text-sub: #64748b;
   /* Slate 500 Muted / Hints */
+  --accent-primary: #4f46e5;
+  --accent-primary-hover: #4338ca;
+  --accent-success: #059669;
+  --accent-warning: #b45309;
+  --accent-danger: #dc2626;
+  --accent-info: #0284c7;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
@@ -1119,14 +1125,18 @@ body.theme-light .card-box {
 }
 
 .card-title {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.85rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   color: var(--text-main);
+}
+
+.card-title:has(+ .card-desc) {
+  margin-bottom: 0.25rem;
 }
 
 body.theme-light .card-title {
@@ -1142,16 +1152,6 @@ body.theme-light .card-title {
 
 body.theme-light .card-desc {
   color: #64748b;
-}
-
-.card-title {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  color: var(--text-main);
 }
 
 .card-desc {
@@ -3913,3 +3913,107 @@ body.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
 body.theme-light input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
+
+/* 6. Kassir Tayinlash Bloki (Kunduzgi va Tungi Rejimda Aniq Ko'rinadigan) */
+.cashier-appoint-box {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.cashier-appoint-title {
+  margin-bottom: 0.35rem;
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.cashier-appoint-desc {
+  font-size: 0.85rem;
+  color: #fef3c7;
+  opacity: 0.9;
+  line-height: 1.55;
+  margin-bottom: 0.85rem;
+}
+
+.cashier-appoint-desc b {
+  color: #ffffff;
+}
+
+body.theme-light .cashier-appoint-box {
+  background: #fffbeb !important;
+  border: 1.5px solid #fde68a !important;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.08) !important;
+}
+
+body.theme-light .cashier-appoint-title {
+  color: #92400e !important; /* To'q amber/jigarrang - 100% o'qiluvchan */
+  font-weight: 800 !important;
+}
+
+body.theme-light .cashier-appoint-desc {
+  color: #78350f !important; /* To'q o'qiluvchan matn */
+  opacity: 1 !important;
+  font-weight: 500 !important;
+}
+
+body.theme-light .cashier-appoint-desc b {
+  color: #451a03 !important;
+  font-weight: 800 !important;
+}
+
+/* 7. Xodim Damda Banner */
+.resting-banner-box {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.resting-banner-title {
+  font-size: 0.95rem;
+  display: block;
+  color: #fef3c7;
+  margin-bottom: 0.2rem;
+}
+
+.resting-banner-desc {
+  font-size: 0.82rem;
+  color: #fde68a;
+  line-height: 1.4;
+  display: block;
+}
+
+body.theme-light .resting-banner-box {
+  background: #fffbeb !important;
+  border: 1.5px solid #fde68a !important;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.08) !important;
+}
+
+body.theme-light .resting-banner-title {
+  color: #92400e !important;
+  font-weight: 800 !important;
+}
+
+body.theme-light .resting-banner-desc {
+  color: #78350f !important;
+  font-weight: 500 !important;
+}
+
+/* 8. Statistika Ranglari */
+.stat-num-indigo { color: #818cf8 !important; }
+.stat-num-blue { color: #60a5fa !important; }
+.stat-num-green { color: #34d399 !important; }
+.stat-num-red { color: #f87171 !important; }
+
+body.theme-light .stat-num-indigo { color: #4338ca !important; }
+body.theme-light .stat-num-blue { color: #1d4ed8 !important; }
+body.theme-light .stat-num-green { color: #059669 !important; }
+body.theme-light .stat-num-red { color: #dc2626 !important; }
