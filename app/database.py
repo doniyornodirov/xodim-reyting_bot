@@ -5,6 +5,7 @@ from app.security import hash_password
 async def get_db():
     conn = await aiosqlite.connect(DB_PATH)
     conn.row_factory = aiosqlite.Row
+    await conn.execute("PRAGMA busy_timeout = 10000;")
     try:
         yield conn
     finally:
@@ -14,6 +15,14 @@ async def init_db():
     """Baza sxemasini yaratish va boshlang'ich ma'lumotlarni kiritish"""
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
+
+        # Yuqori yuklama (High-Load) va bloklanishlarga qarshi PRAGMA sozlamalari
+        # WAL (Write-Ahead Logging): o'qish va yozish amallari bir-birini bloklamaydi
+        await conn.execute("PRAGMA journal_mode = WAL;")
+        await conn.execute("PRAGMA busy_timeout = 10000;")
+        await conn.execute("PRAGMA synchronous = NORMAL;")
+        await conn.execute("PRAGMA cache_size = -64000;")
+        await conn.execute("PRAGMA temp_store = MEMORY;")
 
         # 0. Firmalar (Companies / Tenants) jadvali — SaaS arxitekturasi
         await conn.execute("""
