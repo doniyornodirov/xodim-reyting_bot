@@ -3872,43 +3872,21 @@ async function loadAdminLocationTab(showToastNotice = false) {
     const confEl = document.getElementById("geo-stat-configured");
     const inEl = document.getElementById("geo-stat-inside");
     const outEl = document.getElementById("geo-stat-outside");
-    const frozenEl = document.getElementById("geo-stat-frozen");
-    const offlineEl = document.getElementById("geo-stat-offline");
-
-    const frozenCount = res.frozen_count ?? adminEmployeesLocationCache.filter(e => e.stillness_code === "FROZEN_ALERT").length;
-    const offlineCount = res.offline_count ?? adminEmployeesLocationCache.filter(e => e.is_signal_lost).length;
 
     if (totalEl) totalEl.innerText = total;
     if (confEl) confEl.innerText = configured;
     if (inEl) inEl.innerText = inside;
     if (outEl) outEl.innerText = outside;
-    if (frozenEl) frozenEl.innerText = frozenCount;
-    if (offlineEl) offlineEl.innerText = offlineCount;
 
-    // Smart Anti-Fraud Ogohlantirish paneli
-    const alertBox = document.getElementById("geo-fraud-alert-box");
-    const alertText = document.getElementById("geo-fraud-alert-text");
-    const frozenEmployees = adminEmployeesLocationCache.filter(e => e.stillness_code === "FROZEN_ALERT");
-    const offlineEmployees = adminEmployeesLocationCache.filter(e => e.is_signal_lost);
-
-    if (alertBox && alertText) {
-      const alertParts = [];
-      if (offlineEmployees.length > 0) {
-        const offNames = offlineEmployees.map(e => `<b>${escapeHtml(e.full_name)}</b> (${e.loc_lag_minutes || 0} daqiqadan beri aloqa yo'q)`).join(", ");
-        alertParts.push(`📵 <b>SIGNAL KELMAYAPTI (INTERNETI O'CHIQ):</b> ${offlineEmployees.length} ta xodimdan signal to'xtagan: ${offNames}. Mobil internet o'chirilgan bo'lishi mumkin!`);
+    // Saralash: Oxirgi aniqlangan vaqti eng uzoq bo'lganlar (eskilar yoki umuman kordinata kiritilmaganlar) tepada bo'ladi
+    adminEmployeesLocationCache.sort((a, b) => {
+      const timeA = a.last_location_updated_at ? new Date(a.last_location_updated_at).getTime() : 0;
+      const timeB = b.last_location_updated_at ? new Date(b.last_location_updated_at).getTime() : 0;
+      if (timeA === timeB) {
+        return (a.full_name || '').localeCompare(b.full_name || '');
       }
-      if (frozenEmployees.length > 0) {
-        const empNames = frozenEmployees.map(e => `<b>${escapeHtml(e.full_name)}</b> (${e.stillness_minutes} daqiqa 0 harakat)`).join(", ");
-        alertParts.push(`⚠️ <b>SOXTA LOKATSIYA (0 HARAKAT):</b> ${frozenEmployees.length} ta xodimning telefoni stolda mutlaqo qimirlamay qotib qolgan: ${empNames}. Xodim ish joyini tark etgan bo'lishi mumkin!`);
-      }
-
-      if (alertParts.length > 0) {
-        alertBox.style.display = "flex";
-        alertText.innerHTML = alertParts.join("<br><br>");
-      } else {
-        alertBox.style.display = "none";
-      }
-    }
+      return timeA - timeB;
+    });
 
     // 2. Jadval
     const tbody = document.getElementById("admin-location-tbody");
@@ -3916,7 +3894,7 @@ async function loadAdminLocationTab(showToastNotice = false) {
     tbody.innerHTML = "";
 
     if (adminEmployeesLocationCache.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
       return;
     }
 
@@ -4014,7 +3992,6 @@ async function loadAdminLocationTab(showToastNotice = false) {
           <td>${wpRadius}</td>
           <td>${distCell}</td>
           <td>${statusBadge}</td>
-          <td>${stillnessBadge}</td>
           <td>${timeCell}</td>
           <td>
             <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">

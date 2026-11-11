@@ -2156,7 +2156,45 @@ body.theme-light .card-box:has(#saas-companies-tbody) .table-container thead th 
   color: #0f172a !important;
 }
 
+/* ========================================================= */
+/* LOKATSIYA JADVALI: HAR 10 TAdan KEYIN TO'LIB QOLSA SCROLL QILISH */
+/* ========================================================= */
+.table-scroll-10,
+.table-container.table-scroll-10,
+.card-box:has(#admin-location-tbody) .table-container {
+  max-height: 520px;
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+}
+
+.table-scroll-10 thead th,
+.table-container.table-scroll-10 thead th,
+.card-box:has(#admin-location-tbody) .table-container thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  background: var(--bg-surface-elevated, #1e293b) !important;
+  box-shadow: 0 1px 0 var(--border-color, rgba(255, 255, 255, 0.1)) !important;
+}
+
+body.theme-light .table-scroll-10 thead th,
+body.theme-light .table-container.table-scroll-10 thead th,
+body.theme-light .card-box:has(#admin-location-tbody) .table-container thead th {
+  background: #f1f5f9 !important;
+  box-shadow: 0 1px 0 #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
 @media (max-width: 640px) {
+  .table-scroll-10,
+  .table-container.table-scroll-10,
+  .card-box:has(#admin-location-tbody) .table-container {
+    max-height: 440px !important;
+  }
   .table-scroll-5,
   .table-container.table-scroll-5,
   .history-table-container,

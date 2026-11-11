@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=835">
+  <link rel="stylesheet" href="/static/css/style.css?v=836">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -655,7 +655,7 @@
         </div>
 
         <!-- Statistika KPI kartochkalari -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 1.5rem; gap: 0.75rem;">
+        <div class="grid-4" style="margin-bottom: 1.5rem; gap: 0.75rem;">
           <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #6366f1; margin-bottom: 0;">
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">👥 Jami xodimlar</div>
             <div id="geo-stat-total" class="stat-num-indigo" style="font-size: 1.5rem; font-weight: 800;">0</div>
@@ -672,24 +672,10 @@
             <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">🔴 Ish joyidan tashqarida</div>
             <div id="geo-stat-outside" class="stat-num-red" style="font-size: 1.5rem; font-weight: 800;">0</div>
           </div>
-          <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #f59e0b; margin-bottom: 0;">
-            <div style="font-size: 0.72rem; color: #fbbf24; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">⚠️ Qotib qolgan (0 harakat)</div>
-            <div id="geo-stat-frozen" style="font-size: 1.5rem; font-weight: 800; color: #fbbf24;">0</div>
-          </div>
-          <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #f43f5e; margin-bottom: 0;">
-            <div style="font-size: 0.72rem; color: #fb7185; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">📵 Signal kelmayapti (Interneti o'chiq)</div>
-            <div id="geo-stat-offline" style="font-size: 1.5rem; font-weight: 800; color: #fb7185;">0</div>
-          </div>
         </div>
 
-        <!-- Smart Anti-Fraud Ogohlantirish Paneli -->
-        <div id="geo-fraud-alert-box" style="display: none; margin-bottom: 1.25rem; padding: 0.85rem 1.15rem; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 10px; color: #fca5a5; font-size: 0.88rem; align-items: center; gap: 0.75rem;">
-          <span style="font-size: 1.35rem;">🚨</span>
-          <div id="geo-fraud-alert-text" style="flex: 1; line-height: 1.4;"></div>
-        </div>
-
-        <!-- Xodimlar geolokatsiyasi jadvali -->
-        <div class="table-container">
+        <!-- Xodimlar geolokatsiyasi jadvali (Har 10 tadan keyin scroll bo'ladi) -->
+        <div class="table-container table-scroll-10">
           <table class="custom-table">
             <thead>
               <tr>
@@ -702,7 +688,6 @@
                 <th>Radius</th>
                 <th>Ish joyigacha masofa</th>
                 <th>Holati</th>
-                <th>Harakat (Anti-Fraud)</th>
                 <th>Oxirgi aniqlangan vaqt</th>
                 <th>Amallar (Rahbar)</th>
               </tr>
@@ -2197,6 +2182,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=378"></script>
+  <script src="/static/js/app.js?v=379"></script>
 </body>
 </html>

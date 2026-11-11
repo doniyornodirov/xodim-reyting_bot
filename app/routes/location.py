@@ -399,9 +399,8 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
             FROM users
             WHERE is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER') AND company_id = ?
             ORDER BY 
-                CASE WHEN workplace_latitude IS NULL THEN 1 ELSE 0 END,
-                CASE WHEN last_distance_meters IS NULL THEN 1 ELSE 0 END,
-                last_distance_meters ASC,
+                CASE WHEN last_location_updated_at IS NULL THEN 0 ELSE 1 END,
+                last_location_updated_at ASC,
                 full_name ASC
         """, (comp_id,))
         rows = await cur.fetchall()
