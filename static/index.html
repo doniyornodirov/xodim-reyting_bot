@@ -14,6 +14,13 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
+        .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
+    }
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -181,6 +188,9 @@
       <div class="sidebar-footer-item" id="sidebar-usd-rate-item" onclick="handleUsdRateClick()">
         <span>💵 Dollar kursi:</span>
         <b id="sidebar-usd-rate-text" style="color: #34d399;">1$ = 12 000 so'm</b>
+      </div>
+      <div class="sidebar-footer-item" id="sidebar-install-app-btn" onclick="triggerPwaInstall()" style="cursor: pointer; display: flex; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.3); color: #34d399; font-weight: 600; justify-content: center; gap: 0.5rem; margin-top: 0.5rem;">
+        <span>📲</span> Ilovani telefonga o'rnatish
       </div>
       <button type="button" class="btn-logout" style="width: 100%; margin-top: 0.65rem; justify-content: center; display: flex; gap: 0.5rem; align-items: center;" onclick="logout()">
         <span>🚪</span> Tizimdan chiqish
@@ -1522,6 +1532,9 @@
           <button type="submit" id="btn-login-submit" class="btn-primary" style="width: 100%; margin-top: 0.25rem;">
             Kirish ➡️
           </button>
+          <button type="button" id="btn-login-install-pwa" onclick="triggerPwaInstall()" class="btn-secondary" style="width: 100%; margin-top: 0.65rem; display: flex; font-size: 0.8rem; padding: 0.45rem 0.75rem; justify-content: center; align-items: center; gap: 0.4rem; background: rgba(99, 102, 241, 0.12); color: #818cf8; border: 1px dashed rgba(99, 102, 241, 0.35);">
+            <span>📲</span> Ilovani telefonga o'rnatish (PWA)
+          </button>
         </form>
       </div>
 
@@ -2004,6 +2017,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=372"></script>
+  <script src="/static/js/app.js?v=373"></script>
 </body>
 </html>

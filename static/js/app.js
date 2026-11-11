@@ -854,22 +854,22 @@ function updateSidebarContent() {
   if (nameEl) {
     if (currentUser.role === "DEVELOPER") {
       nameEl.innerText = "💻 Dasturchi Admin";
-      if (roleEl) {
-        roleEl.style.display = "inline-flex";
-        roleEl.className = "badge badge-developer";
-        roleEl.innerText = "Dasturchi";
-      }
-    } else if (currentUser.role === "ADMIN" && (currentUser.full_name === "Bosh Rahbar" || !currentUser.full_name)) {
-      nameEl.innerText = isRahbarCashierMode ? "💼 Kassir (Rejim)" : "👑 Bosh Rahbar";
-      if (roleEl) roleEl.style.display = "none";
+    } else if (currentUser.role === "ADMIN") {
+      nameEl.innerText = isRahbarCashierMode ? "💼 Kassir (Rejim)" : (currentUser.full_name || "Rahbar");
     } else {
-      nameEl.innerText = currentUser.full_name;
-      if (roleEl) roleEl.style.display = "inline-flex";
+      nameEl.innerText = currentUser.full_name || "Foydalanuvchi";
     }
   }
 
-  if (roleEl && currentUser.role !== "ADMIN" && currentUser.role !== "DEVELOPER") {
-    if (currentUser.role === "CASHIER") {
+  if (roleEl) {
+    roleEl.style.display = "inline-flex";
+    if (currentUser.role === "DEVELOPER") {
+      roleEl.className = "badge badge-developer";
+      roleEl.innerText = "💻 Dasturchi";
+    } else if (currentUser.role === "ADMIN") {
+      roleEl.className = "badge badge-admin";
+      roleEl.innerText = (currentUser.company_id === 1) ? "👑 Bosh Rahbar" : "👑 Rahbar";
+    } else if (currentUser.role === "CASHIER") {
       roleEl.className = "badge badge-cashier";
       roleEl.innerText = "💼 Kassir";
     } else {
@@ -1051,7 +1051,7 @@ function renderApp() {
     switchAdminTab("saas");
   } else if (currentUser.role === "ADMIN") {
     roleBadge.className = "badge badge-admin";
-    roleBadge.innerText = "👑 Bosh Rahbar";
+    roleBadge.innerText = (currentUser.company_id === 1) ? "👑 Bosh Rahbar" : "👑 Rahbar";
     debtBadge.style.display = "none";
     if (usdRateBadge) {
       usdRateBadge.style.display = "inline-flex";
@@ -3718,11 +3718,59 @@ function setupUsdRateInput() {
 }
 
 // ==========================================
-// PROGRESSIVE WEB APP (PWA) SERVICE WORKER
+// PROGRESSIVE WEB APP (PWA) & SERVICE WORKER
 // ==========================================
+let deferredPwaPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPwaPrompt = e;
+  console.log("PWA beforeinstallprompt hodisasi tutib olindi");
+
+  const sidebarInstallBtn = document.getElementById("sidebar-install-app-btn");
+  if (sidebarInstallBtn) sidebarInstallBtn.style.display = "flex";
+
+  const loginInstallBtn = document.getElementById("btn-login-install-pwa");
+  if (loginInstallBtn) loginInstallBtn.style.display = "flex";
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredPwaPrompt = null;
+  console.log("PWA ilovasi muvaffaqiyatli o'rnatildi!");
+  const sidebarInstallBtn = document.getElementById("sidebar-install-app-btn");
+  if (sidebarInstallBtn) sidebarInstallBtn.style.display = "none";
+  const loginInstallBtn = document.getElementById("btn-login-install-pwa");
+  if (loginInstallBtn) loginInstallBtn.style.display = "none";
+  showToast("Ilova telefoningizga muvaffaqiyatli o'rnatildi! 🎉", "success");
+});
+
+async function triggerPwaInstall() {
+  if (deferredPwaPrompt) {
+    try {
+      deferredPwaPrompt.prompt();
+      const choice = await deferredPwaPrompt.userChoice;
+      console.log("PWA o'rnatish natijasi:", choice);
+      if (choice.outcome === 'accepted') {
+        deferredPwaPrompt = null;
+      }
+    } catch (e) {
+      console.warn("PWA prompt xatosi:", e);
+    }
+  } else {
+    // Brauzer yoki qurilma turi bo'yicha yo'riqnoma ko'rsatish
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isIos = /iphone|ipad|ipod/.test(ua);
+    if (isIos) {
+      alert("📱 iPhone / iPad qurilmasida ilovani o'rnatish:\n\n1. Safari brauzerining pastki qismidagi 'Ulashish' (📤 Share) tugmasini bosing.\n2. Ro'yxatdan 'Asosiy ekranga qo'shish' (+ Add to Home Screen) tugmasini bosing.\n3. 'Qo'shish' (Add) tugmasini bosing.");
+    } else {
+      alert("📱 Android / Chrome qurilmasida ilovani o'rnatish:\n\n1. Brauzeringizning yuqori o'ng burchagidagi uch nuqta (⋮) tugmasini bosing.\n2. 'Ilovani o'rnatish' yoki 'Asosiy ekranga qo'shish' (Install app / Add to Home screen) ni tanlang.\n3. Tasdiqlang va ilova telefoningiz ekraniga tushadi.");
+    }
+  }
+}
+
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    const doRegister = () => {
       navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .then((reg) => {
           console.log('PWA ServiceWorker muvaffaqiyatli ro\'yxatdan o\'tdi:', reg.scope);
@@ -3730,7 +3778,13 @@ function registerServiceWorker() {
         .catch((err) => {
           console.warn('PWA ServiceWorker ro\'yxatdan o\'tishida ogohlantirish:', err);
         });
-    });
+    };
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      doRegister();
+    } else {
+      window.addEventListener('DOMContentLoaded', doRegister);
+    }
   }
 }
 
