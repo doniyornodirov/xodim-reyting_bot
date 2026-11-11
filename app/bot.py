@@ -114,7 +114,7 @@ if dp:
                     ]
                 )
                 await message.answer(
-                    f"Assalomu alaykum, Hurmatli <b>{user['full_name']}</b>!\n\n"
+                    f"Assalomu alaykum, Hurmatli <b>{comp_name} Rahbari</b>!\n\n"
                     f"🏢 <b>Tashkilot:</b> {comp_name}\n"
                     f"🎖 <b>Maqomingiz:</b> {role_title}\n"
                     f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"

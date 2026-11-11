@@ -2955,6 +2955,12 @@ button:active,
     display: none !important;
   }
 
+  /* Xodimlarning ilovani telefonda ochganda dollar kursi yoki belgilar ko'rinmasin (faqat [Menyu] ochilganda ko'rinsa bo'laveradi) */
+  body.role-employee #nav-user-area,
+  body.role-cashier #nav-user-area {
+    display: none !important;
+  }
+
   /* Asosiy maydon */
   .main-wrapper {
     margin: 0.65rem auto 2.5rem;

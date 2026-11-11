@@ -855,24 +855,29 @@ function updateSidebarContent() {
     if (currentUser.role === "DEVELOPER") {
       nameEl.innerText = "💻 Dasturchi Admin";
     } else if (currentUser.role === "ADMIN") {
-      nameEl.innerText = isRahbarCashierMode ? "💼 Kassir (Rejim)" : (currentUser.full_name || "Rahbar");
+      // Rahbar ism-familiyasi o'zining displeyida ham, xodimlarning displeyida ham ko'rinishi shart emas
+      nameEl.innerText = isRahbarCashierMode 
+        ? "💼 Kassir (Rejim)" 
+        : ((currentUser.company_id === 1) ? "👑 Bosh Rahbar" : "👑 Rahbar");
     } else {
       nameEl.innerText = currentUser.full_name || "Foydalanuvchi";
     }
   }
 
   if (roleEl) {
-    roleEl.style.display = "inline-flex";
     if (currentUser.role === "DEVELOPER") {
+      roleEl.style.display = "inline-flex";
       roleEl.className = "badge badge-developer";
       roleEl.innerText = "💻 Dasturchi";
     } else if (currentUser.role === "ADMIN") {
-      roleEl.className = "badge badge-admin";
-      roleEl.innerText = (currentUser.company_id === 1) ? "👑 Bosh Rahbar" : "👑 Rahbar";
+      // Ism o'rniga allaqachon "👑 Rahbar" chiqqanligi sababli, rolni pastda takrorlash shart emas
+      roleEl.style.display = "none";
     } else if (currentUser.role === "CASHIER") {
+      roleEl.style.display = "inline-flex";
       roleEl.className = "badge badge-cashier";
       roleEl.innerText = "💼 Kassir";
     } else {
+      roleEl.style.display = "inline-flex";
       roleEl.className = "badge badge-employee";
       roleEl.innerText = "👤 Xodim";
     }
@@ -981,14 +986,26 @@ function renderApp() {
   document.getElementById("login-modal").style.display = "none";
   document.getElementById("app-content").style.display = "block";
 
+  // Body ga foydalanuvchi roli klassini biriktiramiz
+  document.body.classList.remove("role-admin", "role-developer", "role-cashier", "role-employee");
+  if (currentUser.role === "ADMIN") document.body.classList.add("role-admin");
+  else if (currentUser.role === "DEVELOPER") document.body.classList.add("role-developer");
+  else if (currentUser.role === "CASHIER") document.body.classList.add("role-cashier");
+  else document.body.classList.add("role-employee");
+
   // Navbar user details
   const userNameEl = document.getElementById("nav-user-name");
   const roleBadge = document.getElementById("nav-user-role");
   const debtBadge = document.getElementById("nav-user-debt");
 
-  const isAdminDuplicateName = (currentUser.role === "ADMIN" && (currentUser.full_name === "Bosh Rahbar" || !currentUser.full_name));
-  userNameEl.innerText = isAdminDuplicateName ? "" : currentUser.full_name;
-  userNameEl.style.display = isAdminDuplicateName ? "none" : "";
+  // Rahbar va Dasturchining shaxsiy ism-familiyasi displeyda ko'rinishi shart emas
+  if (currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") {
+    userNameEl.innerText = "";
+    userNameEl.style.display = "none";
+  } else {
+    userNameEl.innerText = currentUser.full_name || "";
+    userNameEl.style.display = "";
+  }
 
   const adminNav = document.getElementById("nav-tabs-admin");
   const employeeNav = document.getElementById("nav-tabs-employee");
