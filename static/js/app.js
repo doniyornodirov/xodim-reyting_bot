@@ -15,6 +15,23 @@ let growthChartInstance = null;
 let operatorChartInstance = null;
 
 // ==========================================
+// Yordamchi Xavfsizlik Funksiyalari (HTML Escape)
+// ==========================================
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatTashkentDate(dateStr) {
+  return formatDateOnly(dateStr);
+}
+
+// ==========================================
 // Mavzu (Dark / Day rejim) Boshqaruvi
 // ==========================================
 function getAppTheme() {
@@ -4291,10 +4308,11 @@ async function loadSaasCompanies() {
       }
 
       // Amallar tugmalari
+      const safeCompName = (c.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       let actionsHtml = `<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">`;
       if (!isMain && c.plan !== "UNLIMITED") {
         actionsHtml += `
-          <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600;" onclick="openSaasExtendModal(${c.id}, '${escapeHtml(c.name).replace(/'/g, "\\'")}', '${c.subscription_expires_at || ''}')" title="Sanani belgilash">
+          <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Sanani belgilash">
             📅 Sanani uzaytirish
           </button>
           <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem;" onclick="extendCompanySubscription(${c.id}, 30)" title="+30 kun qo'shish">
