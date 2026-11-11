@@ -100,6 +100,14 @@ class UpdateCompanySettingsRequest(BaseModel):
     telegram_group_id: Optional[str] = Field(None, description="Telegram Guruh ID si")
     max_employees: Optional[int] = Field(None, ge=1, le=10000, description="Maksimal ruxsat etilgan faol xodimlar soni")
 
+class UpdateCompanyAdminDetailsRequest(BaseModel):
+    name: Optional[str] = Field(None, min_length=2, max_length=100, description="Firma nomi")
+    owner_name: Optional[str] = Field(None, min_length=2, max_length=100, description="Rahbar to'liq ismi")
+    owner_telegram_id: Optional[int] = Field(None, description="Rahbar Telegram ID si")
+    new_password: Optional[str] = Field(None, description="Yangi parol (ixtiyoriy)")
+    telegram_group_id: Optional[str] = Field(None, description="Telegram Guruh ID si")
+    max_employees: Optional[int] = Field(None, ge=1, le=10000, description="Maksimal xodimlar soni")
+
 class SendExcelTelegramRequest(BaseModel):
     filename: str = Field(..., min_length=3, max_length=150, description="Fayl nomi (.xlsx)")
     file_base64: str = Field(..., description="Base64 formatidagi Excel fayl baytlari")

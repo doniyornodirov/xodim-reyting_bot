@@ -3726,21 +3726,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPwaPrompt = e;
   console.log("PWA beforeinstallprompt hodisasi tutib olindi");
-
-  const sidebarInstallBtn = document.getElementById("sidebar-install-app-btn");
-  if (sidebarInstallBtn) sidebarInstallBtn.style.display = "flex";
-
-  const loginInstallBtn = document.getElementById("btn-login-install-pwa");
-  if (loginInstallBtn) loginInstallBtn.style.display = "flex";
 });
 
 window.addEventListener('appinstalled', () => {
   deferredPwaPrompt = null;
   console.log("PWA ilovasi muvaffaqiyatli o'rnatildi!");
-  const sidebarInstallBtn = document.getElementById("sidebar-install-app-btn");
-  if (sidebarInstallBtn) sidebarInstallBtn.style.display = "none";
-  const loginInstallBtn = document.getElementById("btn-login-install-pwa");
-  if (loginInstallBtn) loginInstallBtn.style.display = "none";
   showToast("Ilova telefoningizga muvaffaqiyatli o'rnatildi! 🎉", "success");
 });
 
@@ -4287,6 +4277,8 @@ document.addEventListener("visibilitychange", () => {
 // SAAS MULTI-TENANT MANAGEMENT (Dasturchi Admin)
 // ==========================================
 
+let saasCompaniesData = [];
+
 async function loadSaasCompanies() {
   if (!currentUser || (!currentUser.is_super_admin && currentUser.role !== "DEVELOPER")) return;
 
@@ -4305,6 +4297,7 @@ async function loadSaasCompanies() {
     }
 
     const companies = res.data;
+    saasCompaniesData = companies;
 
     // Statistikalar
     const totalCompanies = companies.length;
@@ -4363,7 +4356,14 @@ async function loadSaasCompanies() {
 
       // Amallar tugmalari
       const safeCompName = (c.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      let actionsHtml = `<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">`;
+      let actionsHtml = `<div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">`;
+      if (!isMain) {
+        actionsHtml += `
+          <button type="button" class="btn btn-secondary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 600;" onclick="openSaasEditCompanyModal(${c.id})" title="Firma va Rahbar ma'lumotlarini tahrirlash">
+            ✏️ Tahrirlash
+          </button>
+        `;
+      }
       if (!isMain && c.plan !== "UNLIMITED") {
         actionsHtml += `
           <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.25rem 0.5rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Sanani belgilash">
@@ -4397,19 +4397,32 @@ async function loadSaasCompanies() {
         <tr>
           <td><b>#${c.id}</b></td>
           <td>
-            <b style="color: var(--text-main); font-size: 0.95rem; display: block;">${escapeHtml(c.name)}</b>
-            <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+              <div>
+                <b style="color: var(--text-main); font-size: 0.95rem; display: block;">${escapeHtml(c.name)}</b>
+                <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
+              </div>
+              ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Nomni tahrirlash">✏️</button>` : ''}
+            </div>
           </td>
           <td>
-            <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(c.owner_name)}</div>
-            <code style="font-size: 0.75rem; color: #6366f1;">TG: ${c.owner_telegram_id || '-'}</code>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+              <div>
+                <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(c.owner_name)}</div>
+                <code style="font-size: 0.75rem; color: #6366f1;">TG: ${c.owner_telegram_id || '-'}</code>
+              </div>
+              ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va parolni tahrirlash">✏️</button>` : ''}
+            </div>
           </td>
           <td>
-            <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+              <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
+              ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Guruh ID tahrirlash">✏️</button>` : ''}
+            </div>
           </td>
           <td>
             ${planBadge}
-            ${!isMain ? `<button type="button" onclick="promptChangeCompanyPlan(${c.id}, '${c.plan}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">🔄 Tarifni o'zgartirish</button>` : ''}
+            ${!isMain ? `<button type="button" onclick="openSaasPlanModal(${c.id}, '${c.plan}', '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">🔄 Tarifni o'zgartirish</button>` : ''}
           </td>
           <td>
             <div>${expiryText}</div>
@@ -4418,7 +4431,7 @@ async function loadSaasCompanies() {
           <td>
             <b style="color: #6366f1;">${c.employees_count || 0} / ${c.max_employees || 20} ta</b>
             ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #f59e0b; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
-            ${!isMain ? `<button type="button" onclick="promptChangeCompanyLimit(${c.id}, ${c.max_employees || 20})" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">⚙️ Limitni o'zgartirish</button>` : ''}
+            ${!isMain ? `<button type="button" onclick="openSaasLimitModal(${c.id}, ${c.max_employees || 20}, '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">⚙️ Limitni o'zgartirish</button>` : ''}
           </td>
           <td><b>${c.reports_count || 0} ta</b></td>
           <td>${statusBadge}</td>
@@ -4831,19 +4844,120 @@ async function handleCompanySettingsSubmit(event) {
 // TIJORIY & B2B EXCEL EKSPORTI VA BOSHQARUV QUROLLARI
 // =========================================================
 
-// Super Admin: Firmaning xodimlar limitini o'zgartirish
-async function promptChangeCompanyLimit(companyId, currentLimit) {
-  const newLimitStr = prompt("Ushbu firma uchun xodimlar limitini kiriting (soni):", currentLimit);
-  if (!newLimitStr) return;
-  const newLimit = parseInt(newLimitStr.trim());
-  if (isNaN(newLimit) || newLimit < 1 || newLimit > 10000) {
-    showToast("Noto'g'ri son kiritildi (1 dan 10000 gacha)! ", "error");
+// ==========================================
+// SAAS KOMPANIYA & RAHBAR MA'LUMOTLARINI TAHRIRLASH MODALI
+// ==========================================
+function openSaasEditCompanyModal(companyId) {
+  const comp = (saasCompaniesData || []).find(c => c.id === companyId);
+  if (!comp) {
+    showToast("Firma ma'lumotlari topilmadi!", "error");
     return;
   }
+  const modal = document.getElementById("saas-edit-company-modal");
+  const idInput = document.getElementById("saas-edit-company-id");
+  const nameInput = document.getElementById("saas-edit-name");
+  const ownerNameInput = document.getElementById("saas-edit-owner-name");
+  const ownerTgInput = document.getElementById("saas-edit-owner-tg");
+  const passwordInput = document.getElementById("saas-edit-password");
+  const groupIdInput = document.getElementById("saas-edit-group-id");
+  const maxEmpInput = document.getElementById("saas-edit-max-employees");
+
+  if (idInput) idInput.value = comp.id;
+  if (nameInput) nameInput.value = comp.name || "";
+  if (ownerNameInput) ownerNameInput.value = comp.owner_name === "Belgilanmagan" ? "" : (comp.owner_name || "");
+  if (ownerTgInput) ownerTgInput.value = comp.owner_telegram_id || "";
+  if (passwordInput) passwordInput.value = "";
+  if (groupIdInput) groupIdInput.value = comp.telegram_group_id || "";
+  if (maxEmpInput) maxEmpInput.value = comp.max_employees || 20;
+
+  if (modal) modal.style.display = "flex";
+}
+
+function closeSaasEditCompanyModal() {
+  const modal = document.getElementById("saas-edit-company-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function handleSaasEditCompanySubmit(event) {
+  event.preventDefault();
+  const companyId = parseInt(document.getElementById("saas-edit-company-id")?.value);
+  if (!companyId) return;
+
+  const name = document.getElementById("saas-edit-name")?.value.trim();
+  const ownerName = document.getElementById("saas-edit-owner-name")?.value.trim();
+  const ownerTg = parseInt(document.getElementById("saas-edit-owner-tg")?.value);
+  const password = document.getElementById("saas-edit-password")?.value.trim() || null;
+  const groupId = document.getElementById("saas-edit-group-id")?.value.trim() || null;
+  const maxEmp = parseInt(document.getElementById("saas-edit-max-employees")?.value || "20");
+
+  if (!name || !ownerName || !ownerTg) {
+    showToast("Firma nomi, Rahbar ismi va Telegram ID kiritilishi shart!", "warning");
+    return;
+  }
+
   try {
-    const res = await api(`/api/saas/companies/${companyId}/update-limit?max_employees=${newLimit}`, "POST");
+    const res = await api(`/api/saas/companies/${companyId}/edit-details`, "POST", {
+      name: name,
+      owner_name: ownerName,
+      owner_telegram_id: ownerTg,
+      new_password: password,
+      telegram_group_id: groupId,
+      max_employees: maxEmp
+    });
+
     if (res.success) {
-      showToast(res.message || "Limit muvaffaqiyatli o'zgartirildi!", "success");
+      showToast(res.message || "Firma ma'lumotlari muvaffaqiyatli yangilandi!", "success");
+      closeSaasEditCompanyModal();
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server bilan aloqa xatosi!", "error");
+  }
+}
+
+// ==========================================
+// SAAS TARIF REJASINI O'ZGARTIRISH MODALI
+// ==========================================
+function openSaasPlanModal(companyId, currentPlan, companyName) {
+  const modal = document.getElementById("saas-plan-modal");
+  const idInput = document.getElementById("saas-plan-company-id");
+  const nameEl = document.getElementById("saas-plan-modal-comp-name");
+
+  if (idInput) idInput.value = companyId;
+  if (nameEl) nameEl.innerText = `${companyName || 'Firma'} (Hozirgi tarif: ${currentPlan})`;
+
+  const radios = document.querySelectorAll('input[name="saas-plan-option"]');
+  radios.forEach(r => {
+    r.checked = (r.value === currentPlan);
+  });
+
+  if (modal) modal.style.display = "flex";
+}
+
+function closeSaasPlanModal() {
+  const modal = document.getElementById("saas-plan-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function handleSaasPlanFormSubmit(event) {
+  event.preventDefault();
+  const companyId = parseInt(document.getElementById("saas-plan-company-id")?.value);
+  if (!companyId) return;
+
+  const chosenRadio = document.querySelector('input[name="saas-plan-option"]:checked');
+  if (!chosenRadio) {
+    showToast("Iltimos, tarifni tanlang!", "warning");
+    return;
+  }
+  const newPlan = chosenRadio.value;
+
+  try {
+    const res = await api(`/api/saas/companies/${companyId}/update-plan?new_plan=${newPlan}`, "POST");
+    if (res.success) {
+      showToast(res.message || "Firma tarifi yangilandi!", "success");
+      closeSaasPlanModal();
       loadSaasCompanies();
     } else {
       showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
@@ -4853,38 +4967,49 @@ async function promptChangeCompanyLimit(companyId, currentLimit) {
   }
 }
 
-// Super Admin: Firmaning tarif rejasini o'zgartirish (STANDARD, 5_YEARS, UNLIMITED)
-async function promptChangeCompanyPlan(companyId, currentPlan) {
-  const chosen = prompt(
-    `Firma uchun yangi tarifni tanlang yoki kiriting:\n1 = STANDARD (Sana bo'yicha)\n2 = 5_YEARS (5 yillik obuna)\n3 = UNLIMITED (Cheksiz)`,
-    currentPlan
-  );
-  if (!chosen) return;
+// Fallback compatibility
+function promptChangeCompanyPlan(companyId, currentPlan) {
+  const comp = (saasCompaniesData || []).find(c => c.id === companyId);
+  openSaasPlanModal(companyId, currentPlan, comp?.name || "");
+}
 
-  let newPlan = chosen.trim().toUpperCase();
-  if (newPlan === "1" || newPlan === "STANDARD") newPlan = "STANDARD";
-  else if (newPlan === "2" || newPlan === "5_YEARS" || newPlan === "5 YIL" || newPlan === "5") newPlan = "5_YEARS";
-  else if (newPlan === "3" || newPlan === "UNLIMITED") newPlan = "UNLIMITED";
-  else {
-    alert("Noto'g'ri tarif kiritildi! Qabul qilinadigan variantlar: STANDARD, 5_YEARS, UNLIMITED");
+// ==========================================
+// SAAS XODIMLAR LIMITINI O'ZGARTIRISH MODALI
+// ==========================================
+function openSaasLimitModal(companyId, currentLimit, companyName) {
+  const modal = document.getElementById("saas-limit-modal");
+  const idInput = document.getElementById("saas-limit-company-id");
+  const nameEl = document.getElementById("saas-limit-modal-comp-name");
+  const limitInput = document.getElementById("saas-limit-input");
+
+  if (idInput) idInput.value = companyId;
+  if (nameEl) nameEl.innerText = `${companyName || 'Firma'} (Hozirgi limit: ${currentLimit} ta)`;
+  if (limitInput) limitInput.value = currentLimit;
+
+  if (modal) modal.style.display = "flex";
+}
+
+function closeSaasLimitModal() {
+  const modal = document.getElementById("saas-limit-modal");
+  if (modal) modal.style.display = "none";
+}
+
+async function handleSaasLimitFormSubmit(event) {
+  event.preventDefault();
+  const companyId = parseInt(document.getElementById("saas-limit-company-id")?.value);
+  if (!companyId) return;
+
+  const limitVal = parseInt(document.getElementById("saas-limit-input")?.value);
+  if (isNaN(limitVal) || limitVal < 1 || limitVal > 10000) {
+    showToast("Xodimlar soni 1 dan 10000 gacha bo'lishi kerak!", "warning");
     return;
   }
-
-  if (newPlan === currentPlan) {
-    showToast("Tanlangan tarif hozirgi tarif bilan bir xil.", "info");
-    return;
-  }
-
-  const confirmMsg = newPlan === "5_YEARS" 
-    ? `Haqiqatan ham ushbu firma tarifini '5_YEARS' (bugungi kundan boshlab rosa 5 yil) ga o'zgartirmoqchimisiz?`
-    : `Haqiqatan ham ushbu firma tarifini '${newPlan}' ga o'zgartirmoqchimisiz?`;
-
-  if (!confirm(confirmMsg)) return;
 
   try {
-    const res = await api(`/api/saas/companies/${companyId}/update-plan?new_plan=${newPlan}`, "POST");
+    const res = await api(`/api/saas/companies/${companyId}/update-limit?max_employees=${limitVal}`, "POST");
     if (res.success) {
-      showToast(res.message || "Firma tarifi muvaffaqiyatli yangilandi!", "success");
+      showToast(res.message || "Limit muvaffaqiyatli saqlandi!", "success");
+      closeSaasLimitModal();
       loadSaasCompanies();
     } else {
       showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
@@ -4892,6 +5017,12 @@ async function promptChangeCompanyPlan(companyId, currentPlan) {
   } catch (e) {
     showToast(e.message || "Server xatosi!", "error");
   }
+}
+
+// Fallback compatibility
+function promptChangeCompanyLimit(companyId, currentLimit) {
+  const comp = (saasCompaniesData || []).find(c => c.id === companyId);
+  openSaasLimitModal(companyId, currentLimit, comp?.name || "");
 }
 
 // Baza zaxira nusxasini (Snapshot .db) yuklab olish

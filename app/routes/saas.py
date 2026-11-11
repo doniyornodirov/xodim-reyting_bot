@@ -9,6 +9,7 @@ from app.models import (
     CreateCompanyRequest,
     ExtendSubscriptionRequest,
     UpdateCompanySettingsRequest,
+    UpdateCompanyAdminDetailsRequest,
 )
 from app.dependencies import get_current_user, require_super_admin, require_role
 from app.security import hash_password
@@ -274,6 +275,132 @@ async def update_company_limit(
         "success": True,
         "message": f"'{comp['name']}' firmasi xodimlar limiti {max_employees} taga muvaffaqiyatli o'zgartirildi!",
         "max_employees": max_employees
+    }
+
+@router.post("/companies/{company_id}/edit-details")
+async def edit_company_details(
+    company_id: int,
+    req: UpdateCompanyAdminDetailsRequest,
+    super_admin: dict = Depends(require_super_admin)
+):
+    """Super Admin tomonidan firma nomi, guruh ID, limit va Rahbar ma'lumotlarini (F.I.SH, TG ID, Parol) tahrirlash"""
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+
+        cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
+        comp = await cur.fetchone()
+        if not comp:
+            raise HTTPException(status_code=404, detail="Firma topilmadi!")
+
+        comp_updates = []
+        comp_params = []
+
+        if req.name and req.name.strip():
+            comp_updates.append("name = ?")
+            comp_params.append(req.name.strip())
+
+        if req.telegram_group_id is not None:
+            clean_grp = req.telegram_group_id.strip() if req.telegram_group_id.strip() else None
+            comp_updates.append("telegram_group_id = ?")
+            comp_params.append(clean_grp)
+
+        if req.max_employees is not None:
+            if req.max_employees < 1 or req.max_employees > 10000:
+                raise HTTPException(status_code=400, detail="Xodimlar limiti 1 dan 10000 gacha bo'lishi kerak!")
+            comp_updates.append("max_employees = ?")
+            comp_params.append(req.max_employees)
+
+        old_owner_tg = comp["owner_telegram_id"]
+
+        # Rahbar (ADMIN) foydalanuvchini topish
+        cur_user = await conn.execute(
+            "SELECT * FROM users WHERE company_id = ? AND role = 'ADMIN' LIMIT 1",
+            (company_id,)
+        )
+        owner_user = await cur_user.fetchone()
+        if not owner_user and old_owner_tg:
+            cur_user = await conn.execute(
+                "SELECT * FROM users WHERE telegram_id = ? AND company_id = ? LIMIT 1",
+                (old_owner_tg, company_id)
+            )
+            owner_user = await cur_user.fetchone()
+
+        if req.owner_telegram_id is not None:
+            new_owner_tg = req.owner_telegram_id
+            if new_owner_tg != old_owner_tg:
+                cur_exist = await conn.execute(
+                    "SELECT id, full_name, company_id FROM users WHERE telegram_id = ?",
+                    (new_owner_tg,)
+                )
+                existing = await cur_exist.fetchone()
+                if existing and (owner_user is None or existing["id"] != owner_user["id"]):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Telegram ID {new_owner_tg} boshqa foydalanuvchi ({existing['full_name']}) tomonidan band!"
+                    )
+                comp_updates.append("owner_telegram_id = ?")
+                comp_params.append(new_owner_tg)
+
+        if comp_updates:
+            comp_params.append(company_id)
+            await conn.execute(
+                f"UPDATE companies SET {', '.join(comp_updates)} WHERE id = ?",
+                tuple(comp_params)
+            )
+
+        # Rahbar ma'lumotlarini yangilash
+        if owner_user:
+            user_updates = []
+            user_params = []
+
+            if req.owner_telegram_id is not None:
+                user_updates.append("telegram_id = ?")
+                user_params.append(req.owner_telegram_id)
+
+            if req.owner_name and req.owner_name.strip():
+                user_updates.append("full_name = ?")
+                user_params.append(req.owner_name.strip())
+
+            if req.new_password and req.new_password.strip():
+                pwd_hash = hash_password(req.new_password.strip())
+                user_updates.append("password_hash = ?")
+                user_params.append(pwd_hash)
+
+            if user_updates:
+                user_params.append(owner_user["id"])
+                await conn.execute(
+                    f"UPDATE users SET {', '.join(user_updates)} WHERE id = ?",
+                    tuple(user_params)
+                )
+        elif req.owner_telegram_id and req.owner_name:
+            pwd = req.new_password.strip() if (req.new_password and req.new_password.strip()) else str(req.owner_telegram_id)
+            pwd_hash = hash_password(pwd)
+            await conn.execute("""
+                INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
+                VALUES (?, ?, ?, 'ADMIN', ?, 0, 1)
+            """, (company_id, req.owner_telegram_id, req.owner_name.strip(), pwd_hash))
+
+        # Audit log
+        details = (
+            f"Firma #{company_id} tahrirlandi: "
+            f"Nomi: '{req.name or comp['name']}', "
+            f"Rahbar: '{req.owner_name or (owner_user['full_name'] if owner_user else '-')}' "
+            f"(TG: {req.owner_telegram_id or old_owner_tg}), "
+            f"Guruh: '{req.telegram_group_id if req.telegram_group_id is not None else comp['telegram_group_id']}'"
+        )
+        if req.new_password and req.new_password.strip():
+            details += ", Yangi parol o'rnatildi."
+
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (1, 'COMPANY', ?, 'EDIT_DETAILS', ?, ?)
+        """, (company_id, super_admin["full_name"], details))
+
+        await conn.commit()
+
+    return {
+        "success": True,
+        "message": f"'{req.name or comp['name']}' firmasi ma'lumotlari muvaffaqiyatli saqlandi!"
     }
 
 @router.post("/companies/{company_id}/update-plan")
