@@ -4783,7 +4783,10 @@ async function downloadDatabaseBackup() {
   }
   showToast("Baza zaxira nusxasi tayyorlanmoqda, iltimos kuting...", "info");
   try {
-    const response = await fetch("/api/admin/backup-db", {
+    const backupUrl = (currentUser && (currentUser.is_super_admin || currentUser.role === "DEVELOPER"))
+      ? "/api/saas/backup-db"
+      : "/api/admin/backup-db";
+    const response = await fetch(backupUrl, {
       headers: {
         "Authorization": `Bearer ${token}`
       }

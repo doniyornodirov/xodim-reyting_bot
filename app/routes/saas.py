@@ -406,3 +406,33 @@ async def update_my_company_settings(
         await conn.commit()
 
     return {"success": True, "message": "Firma sozlamalari muvaffaqiyatli yangilandi!"}
+
+@router.get("/backup-db")
+async def download_saas_database_backup(super_admin: dict = Depends(require_super_admin)):
+    """Dasturchi Admin (Super Admin) uchun butun platforma bazasining to'liq zaxirasini (.db) yuklab olish"""
+    import sqlite3
+    import tempfile
+    import os
+    from fastapi.responses import FileResponse
+    from app.security import get_tashkent_now
+
+    now_str = get_tashkent_now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"full_backup_saas_{now_str}.db"
+    temp_dir = tempfile.gettempdir()
+    backup_filepath = os.path.join(temp_dir, backup_filename)
+
+    try:
+        src_conn = sqlite3.connect(DB_PATH)
+        dest_conn = sqlite3.connect(backup_filepath)
+        src_conn.backup(dest_conn)
+        dest_conn.close()
+        src_conn.close()
+
+        return FileResponse(
+            backup_filepath,
+            media_type="application/x-sqlite3",
+            filename=backup_filename,
+            headers={"Content-Disposition": f'attachment; filename="{backup_filename}"'}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Baza zaxirasini olishda xatolik: {e}")
