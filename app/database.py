@@ -161,7 +161,12 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN workplace_radius_meters INTEGER DEFAULT 50",
             "ALTER TABLE users ADD COLUMN work_start_time TEXT DEFAULT '09:00'",
             "ALTER TABLE users ADD COLUMN work_end_time TEXT DEFAULT '19:00'",
-            "ALTER TABLE users ADD COLUMN shift_status TEXT DEFAULT 'WORKING'"
+            "ALTER TABLE users ADD COLUMN shift_status TEXT DEFAULT 'WORKING'",
+            "ALTER TABLE users ADD COLUMN last_motion_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN stillness_state TEXT DEFAULT 'ACTIVE'",
+            "ALTER TABLE users ADD COLUMN is_charging INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN last_motion_lat REAL",
+            "ALTER TABLE users ADD COLUMN last_motion_lon REAL"
         ]:
             try:
                 await conn.execute(col_sql)
@@ -386,7 +391,7 @@ async def init_db():
             await conn.execute("""
                 UPDATE users 
                 SET role = 'ADMIN' 
-                WHERE telegram_id IN (SELECT owner_telegram_id FROM companies WHERE owner_telegram_id IS NOT NULL AND id != 1)
+                WHERE telegram_id IN (SELECT owner_telegram_id FROM companies WHERE owner_telegram_id IS NOT NULL)
                   AND role != 'DEVELOPER';
             """)
         except Exception:

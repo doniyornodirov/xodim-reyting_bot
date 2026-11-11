@@ -5,7 +5,7 @@ import aiosqlite
 
 from app.config import DB_PATH
 from app.dependencies import get_current_user, require_role
-from app.models import LocationPingRequest, SetEmployeeWorkplaceRequest
+from app.models import LocationPingRequest, SetEmployeeWorkplaceRequest, DeviceTelemetryRequest
 
 router = APIRouter(prefix="/api/location", tags=["Location & Geofencing"])
 
@@ -317,10 +317,45 @@ async def clear_employee_workplace(
             "message": f"'{target_user['full_name']}' ish joyi lokatsiyasi tozalandi"
         }
 
+@router.post("/telemetry")
+async def report_device_telemetry(
+    req: DeviceTelemetryRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Xodim telefoni (Web/PWA) tomonidan fonda yuboriladigan passiv harakat va zaryadka telemetriyasi.
+    Xodimni hech qanday bezovta qilmaydi.
+    """
+    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    async with aiosqlite.connect(DB_PATH) as conn:
+        if req.has_motion:
+            await conn.execute("""
+                UPDATE users 
+                SET last_motion_at = ?,
+                    is_charging = CASE WHEN ? IS NOT NULL THEN ? ELSE is_charging END,
+                    stillness_state = 'ACTIVE'
+                WHERE id = ?
+            """, (
+                now_utc,
+                1 if req.is_charging is True else (0 if req.is_charging is False else None),
+                1 if req.is_charging is True else (0 if req.is_charging is False else None),
+                current_user["id"]
+            ))
+        else:
+            if req.is_charging is not None:
+                await conn.execute("""
+                    UPDATE users 
+                    SET is_charging = ?
+                    WHERE id = ?
+                """, (1 if req.is_charging else 0, current_user["id"]))
+        await conn.commit()
+    return {"success": True}
+
 @router.get("/employees")
 async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"]))):
     """
-    Barcha xodimlarning alohida biriktirilgan ish joylari, ish vaqti soatlari va ularning jonli holati.
+    Barcha xodimlarning alohida biriktirilgan ish joylari, ish vaqti soatlari,
+    jonli holati hamda Smart Anti-Fraud (Absolyut 0 harakat va stolda qotib qolganlik) holati.
     Faqat Rahbar ko'ra oladi (o'z firmasi bo'yicha).
     """
     comp_id = admin.get("company_id") or 1
@@ -331,7 +366,8 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
             SELECT id, telegram_id, full_name, role, is_active,
                    workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
                    work_start_time, work_end_time, shift_status,
-                   last_latitude, last_longitude, last_distance_meters, last_location_updated_at
+                   last_latitude, last_longitude, last_distance_meters, last_location_updated_at,
+                   last_motion_at, last_motion_lat, last_motion_lon, stillness_state, is_charging
             FROM users
             WHERE is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER') AND company_id = ?
             ORDER BY 
@@ -343,7 +379,10 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
         rows = await cur.fetchall()
 
         current_hm = get_current_tashkent_hm()
+        now_dt = datetime.now(timezone.utc)
         employees = []
+        frozen_count = 0
+
         for r in rows:
             w_lat = r["workplace_latitude"]
             w_lon = r["workplace_longitude"]
@@ -362,6 +401,54 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
             norm_updated_at = raw_updated_at
             if norm_updated_at and not norm_updated_at.endswith("Z") and "+" not in norm_updated_at:
                 norm_updated_at = norm_updated_at.replace(" ", "T") + "Z"
+
+            # SMART ANTI-FRAUD: Harakatsizlik va Absolyut 0 harakat tahlili
+            stillness_code = r["stillness_state"] if ("stillness_state" in r.keys() and r["stillness_state"]) else "ACTIVE"
+            stillness_minutes = 0
+
+            motion_at_val = r["last_motion_at"] if ("last_motion_at" in r.keys() and r["last_motion_at"]) else norm_updated_at
+            if motion_at_val:
+                try:
+                    mot_clean = str(motion_at_val).replace("Z", "+00:00")
+                    mot_dt = datetime.fromisoformat(mot_clean)
+                    if mot_dt.tzinfo is None:
+                        mot_dt = mot_dt.replace(tzinfo=timezone.utc)
+                    stillness_minutes = max(0, int((now_dt - mot_dt).total_seconds() / 60))
+                except Exception:
+                    stillness_minutes = 0
+
+            # Telegramning o'zi stolda harakatsiz yotgani sababli uxlab qolgan vaqt oralig'i:
+            loc_lag_minutes = 0
+            if norm_updated_at:
+                try:
+                    loc_clean = str(norm_updated_at).replace("Z", "+00:00")
+                    loc_dt = datetime.fromisoformat(loc_clean)
+                    if loc_dt.tzinfo is None:
+                        loc_dt = loc_dt.replace(tzinfo=timezone.utc)
+                    loc_lag_minutes = max(0, int((now_dt - loc_dt).total_seconds() / 60))
+                except Exception:
+                    loc_lag_minutes = 0
+
+            effective_still_min = max(stillness_minutes, loc_lag_minutes)
+            is_charging = bool(r["is_charging"]) if ("is_charging" in r.keys() and r["is_charging"]) else False
+
+            if is_within_hours and emp_shift == "WORKING" and is_configured and norm_updated_at:
+                if effective_still_min >= 90:
+                    stillness_code = "FROZEN_ALERT"
+                    stillness_label = f"🔴 ⚠️ Qotib qolgan ({effective_still_min} daq 0 harakat!)"
+                    frozen_count += 1
+                elif effective_still_min >= 45:
+                    stillness_code = "STILL_WARN"
+                    stillness_label = f"🟡 Tinch ({effective_still_min} daq)"
+                else:
+                    stillness_code = "ACTIVE"
+                    stillness_label = "🟢 Jonli harakatda"
+            elif not is_within_hours:
+                stillness_code = "OFF_HOURS"
+                stillness_label = "🌙 Ish vaqti emas"
+            else:
+                stillness_code = "WAITING"
+                stillness_label = "⏳ Kutilmoqda"
 
             employees.append({
                 "id": r["id"],
@@ -382,11 +469,16 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                 "last_longitude": r["last_longitude"],
                 "last_distance_meters": dist,
                 "last_location_updated_at": norm_updated_at,
-                "is_inside": is_inside
+                "is_inside": is_inside,
+                "stillness_code": stillness_code,
+                "stillness_label": stillness_label,
+                "stillness_minutes": effective_still_min,
+                "is_charging": is_charging
             })
 
         return {
             "success": True,
             "current_server_time": current_hm,
+            "frozen_count": frozen_count,
             "employees": employees
         }

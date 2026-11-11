@@ -3865,11 +3865,30 @@ async function loadAdminLocationTab(showToastNotice = false) {
     const confEl = document.getElementById("geo-stat-configured");
     const inEl = document.getElementById("geo-stat-inside");
     const outEl = document.getElementById("geo-stat-outside");
+    const frozenEl = document.getElementById("geo-stat-frozen");
+
+    const frozenCount = res.frozen_count ?? adminEmployeesLocationCache.filter(e => e.stillness_code === "FROZEN_ALERT").length;
 
     if (totalEl) totalEl.innerText = total;
     if (confEl) confEl.innerText = configured;
     if (inEl) inEl.innerText = inside;
     if (outEl) outEl.innerText = outside;
+    if (frozenEl) frozenEl.innerText = frozenCount;
+
+    // Smart Anti-Fraud Ogohlantirish paneli
+    const alertBox = document.getElementById("geo-fraud-alert-box");
+    const alertText = document.getElementById("geo-fraud-alert-text");
+    const frozenEmployees = adminEmployeesLocationCache.filter(e => e.stillness_code === "FROZEN_ALERT");
+
+    if (alertBox && alertText) {
+      if (frozenEmployees.length > 0) {
+        alertBox.style.display = "flex";
+        const empNames = frozenEmployees.map(e => `<b>${escapeHtml(e.full_name)}</b> (${e.stillness_minutes} daqiqa 0 harakat)`).join(", ");
+        alertText.innerHTML = `<b>SOXTA LOKATSIYA / HARAKATSIZLIK OGOHLANTIRISHI:</b> ${frozenEmployees.length} ta xodimning telefoni stolda mutlaqo qimirlamay qotib qolgan: ${empNames}. Xodim ish joyini tark etgan bo'lishi mumkin!`;
+      } else {
+        alertBox.style.display = "none";
+      }
+    }
 
     // 2. Jadval
     const tbody = document.getElementById("admin-location-tbody");
@@ -3877,7 +3896,7 @@ async function loadAdminLocationTab(showToastNotice = false) {
     tbody.innerHTML = "";
 
     if (adminEmployeesLocationCache.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
       return;
     }
 
@@ -3919,6 +3938,18 @@ async function loadAdminLocationTab(showToastNotice = false) {
         statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size: 0.75rem;">⏳ Aniqlanmoqda</span>`;
       }
 
+      // Smart Anti-Fraud Harakat Indikatori
+      let stillnessBadge = "";
+      if (emp.stillness_code === "FROZEN_ALERT") {
+        stillnessBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; font-size: 0.73rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Diqqat: Telefon ${emp.stillness_minutes} daqiqadan beri mutlaqo qimirlamay stolda yotibdi (Absolyut 0 harakat!)">🔴 ⚠️ Stolda qotgan (${emp.stillness_minutes} daq)</span>`;
+      } else if (emp.stillness_code === "STILL_WARN") {
+        stillnessBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.73rem; display: inline-flex; align-items: center; gap: 3px;" title="Oxirgi 45-90 daqiqadan beri harakat qayd etilmadi">🟡 Qimirlamayapti (${emp.stillness_minutes} daq)</span>`;
+      } else if (emp.stillness_code === "ACTIVE") {
+        stillnessBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 0.73rem; display: inline-flex; align-items: center; gap: 3px;" title="Jonli tabiiy harakat mavjud (Xodim telefon bilan harakatda)">🟢 Jonli harakatda</span>`;
+      } else {
+        stillnessBadge = `<span style="opacity: 0.5; font-size: 0.75rem;">🌙 Dam olishda</span>`;
+      }
+
       const timeAgo = formatLocationTimeAgo(emp.last_location_updated_at);
       const exactTime = formatTashkentDateTime(emp.last_location_updated_at, true);
       const timeCell = timeAgo 
@@ -3951,6 +3982,7 @@ async function loadAdminLocationTab(showToastNotice = false) {
           <td>${wpRadius}</td>
           <td>${distCell}</td>
           <td>${statusBadge}</td>
+          <td>${stillnessBadge}</td>
           <td>${timeCell}</td>
           <td>
             <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
@@ -5730,6 +5762,53 @@ window.addEventListener("click", (e) => {
     }
   }
 });
+
+// ==========================================
+// SMART ANTI-FRAUD: PWA & BRAUZER TELEMETRIYASI
+// ==========================================
+let pwaLastMotionReport = 0;
+let pwaDeviceIsCharging = false;
+let pwaHasRecentMotion = false;
+
+if (window.DeviceMotionEvent) {
+  window.addEventListener("devicemotion", (e) => {
+    const acc = e.acceleration || e.accelerationIncludingGravity;
+    if (acc) {
+      const delta = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
+      if (delta > 2.0) {
+        pwaHasRecentMotion = true;
+      }
+    }
+  }, { passive: true });
+}
+
+window.addEventListener("touchstart", () => { pwaHasRecentMotion = true; }, { passive: true });
+window.addEventListener("click", () => { pwaHasRecentMotion = true; }, { passive: true });
+
+if (navigator.getBattery) {
+  navigator.getBattery().then(b => {
+    pwaDeviceIsCharging = b.charging;
+    b.addEventListener("chargingchange", () => { pwaDeviceIsCharging = b.charging; });
+  }).catch(() => {});
+}
+
+async function sendDeviceTelemetryIfDue() {
+  if (!authToken || !currentUser || currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") return;
+  const now = Date.now();
+  if (now - pwaLastMotionReport > 240000) {
+    pwaLastMotionReport = now;
+    try {
+      await api("/api/location/telemetry", "POST", {
+        has_motion: pwaHasRecentMotion,
+        is_charging: pwaDeviceIsCharging
+      });
+      pwaHasRecentMotion = false;
+    } catch (e) {
+      // Fonda jimjit ishlaydi
+    }
+  }
+}
+setInterval(sendDeviceTelemetryIfDue, 60000);
 
 // Window load init
 window.addEventListener("DOMContentLoaded", () => {

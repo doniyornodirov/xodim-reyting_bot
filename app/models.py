@@ -80,6 +80,10 @@ class LocationPingRequest(BaseModel):
     latitude: float = Field(..., ge=-90.0, le=90.0, description="Xodim kengligi")
     longitude: float = Field(..., ge=-180.0, le=180.0, description="Xodim uzunligi")
 
+class DeviceTelemetryRequest(BaseModel):
+    has_motion: bool = Field(default=False, description="Harakat yoki tebranish qayd etilganligi")
+    is_charging: Optional[bool] = Field(default=None, description="Qurilma tokka ulanganligi")
+
 class CreateCompanyRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, description="Firma / Tashkilot nomi")
     owner_telegram_id: int = Field(..., description="Firma Rahbarining Telegram ID si")

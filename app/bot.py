@@ -287,7 +287,8 @@ if dp:
             cur = await conn.execute("""
                 SELECT id, full_name, role, is_active, company_id,
                        workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
-                       work_start_time, work_end_time, shift_status
+                       work_start_time, work_end_time, shift_status,
+                       last_latitude, last_longitude, last_motion_at, last_motion_lat, last_motion_lon
                 FROM users WHERE telegram_id = ?
             """, (user_tg_id,))
             user = await cur.fetchone()
@@ -328,7 +329,11 @@ if dp:
                             last_latitude = ?,
                             last_longitude = ?,
                             last_distance_meters = 0.0,
-                            last_location_updated_at = ?
+                            last_location_updated_at = ?,
+                            last_motion_at = ?,
+                            last_motion_lat = ?,
+                            last_motion_lon = ?,
+                            stillness_state = 'ACTIVE'
                         WHERE id = ?
                     """, (
                         round(lat, 7),
@@ -336,6 +341,9 @@ if dp:
                         round(lat, 7),
                         round(lon, 7),
                         now_utc,
+                        now_utc,
+                        round(lat, 7),
+                        round(lon, 7),
                         user["id"]
                     ))
                     await conn.commit()
@@ -366,13 +374,20 @@ if dp:
                         SET last_latitude = ?,
                             last_longitude = ?,
                             last_distance_meters = ?,
-                            last_location_updated_at = ?
+                            last_location_updated_at = ?,
+                            last_motion_at = ?,
+                            last_motion_lat = ?,
+                            last_motion_lon = ?,
+                            stillness_state = 'ACTIVE'
                         WHERE id = ?
                     """, (
                         round(lat, 7),
                         round(lon, 7),
                         distance_meters,
                         now_utc,
+                        now_utc,
+                        round(lat, 7),
+                        round(lon, 7),
                         user["id"]
                     ))
                     await conn.commit()
@@ -399,18 +414,64 @@ if dp:
                 distance_meters = calculate_haversine_meters(w_lat, w_lon, lat, lon)
                 is_inside = (distance_meters <= w_radius)
 
+            # SMART ANTI-FRAUD: Harakat siljishini hisoblash (Absolyut 0 harakat detektori)
+            motion_ref_lat = user["last_motion_lat"] if ("last_motion_lat" in user.keys() and user["last_motion_lat"]) else user["last_latitude"]
+            motion_ref_lon = user["last_motion_lon"] if ("last_motion_lon" in user.keys() and user["last_motion_lon"]) else user["last_longitude"]
+            prev_motion_at = user["last_motion_at"] if ("last_motion_at" in user.keys() and user["last_motion_at"]) else None
+
+            displacement = 0.0
+            if motion_ref_lat is not None and motion_ref_lon is not None:
+                displacement = calculate_haversine_meters(motion_ref_lat, motion_ref_lon, lat, lon)
+
+            # Agar telefon 3 metrdan ko'proq siljigan bo'lsa (haqiqiy tirik harakat, qadam, tabiiy GPS jitter):
+            if displacement >= 3.0 or prev_motion_at is None:
+                new_motion_at = now_utc
+                new_motion_lat = round(lat, 7)
+                new_motion_lon = round(lon, 7)
+                new_stillness_state = "ACTIVE"
+            else:
+                # Absolyut 0 harakat yoki 3 metrdan kam qimirlagan (stolda yotgan telefon)
+                new_motion_at = prev_motion_at or now_utc
+                new_motion_lat = motion_ref_lat or round(lat, 7)
+                new_motion_lon = motion_ref_lon or round(lon, 7)
+                
+                try:
+                    mot_clean = str(new_motion_at).replace("Z", "+00:00")
+                    mot_dt = datetime.fromisoformat(mot_clean)
+                    if mot_dt.tzinfo is None:
+                        mot_dt = mot_dt.replace(tzinfo=timezone.utc)
+                    now_dt = datetime.now(timezone.utc)
+                    diff_min = (now_dt - mot_dt).total_seconds() / 60.0
+                except Exception:
+                    diff_min = 0.0
+
+                if diff_min >= 90:
+                    new_stillness_state = "FROZEN_ALERT"
+                elif diff_min >= 45:
+                    new_stillness_state = "STILL_WARN"
+                else:
+                    new_stillness_state = "ACTIVE"
+
             await conn.execute("""
                 UPDATE users
                 SET last_latitude = ?,
                     last_longitude = ?,
                     last_distance_meters = ?,
-                    last_location_updated_at = ?
+                    last_location_updated_at = ?,
+                    last_motion_at = ?,
+                    last_motion_lat = ?,
+                    last_motion_lon = ?,
+                    stillness_state = ?
                 WHERE id = ?
             """, (
                 round(lat, 7),
                 round(lon, 7),
                 distance_meters,
                 now_utc,
+                new_motion_at,
+                new_motion_lat,
+                new_motion_lon,
+                new_stillness_state,
                 user["id"]
             ))
             await conn.commit()
