@@ -5,7 +5,7 @@ import aiosqlite
 
 from app.config import DB_PATH
 from app.dependencies import get_current_user, require_role
-from app.models import LocationPingRequest, SetEmployeeWorkplaceRequest, DeviceTelemetryRequest
+from app.models import LocationPingRequest, SetEmployeeWorkplaceRequest, DeviceTelemetryRequest, VerifiedCheckinRequest
 
 router = APIRouter(prefix="/api/location", tags=["Location & Geofencing"])
 
@@ -523,4 +523,190 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
             "frozen_count": frozen_count,
             "offline_count": offline_count,
             "employees": employees
+        }
+
+@router.post("/device-checkin")
+async def location_device_checkin(payload: VerifiedCheckinRequest):
+    """
+    Telegram WebApp orqali ishni boshlashda xodim apparatini tekshirish yoki biriktirish.
+    """
+    tg_id = payload.telegram_id
+    incoming_token = (payload.device_token or "").strip()
+    incoming_dev_name = (payload.device_name or "Mobil telefon").strip()[:100]
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("""
+            SELECT id, full_name, telegram_id, role, company_id,
+                   workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
+                   work_start_time, work_end_time, shift_status,
+                   bound_device_token, bound_device_name, device_bound_at, allow_device_reset
+            FROM users WHERE telegram_id = ?
+        """, (tg_id,))
+        user = await cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="Xodim topilmadi!")
+
+        # Rahbar va Dasturchiga cheklov qo'yilmaydi
+        if user["role"] in ("ADMIN", "DEVELOPER"):
+            return {
+                "success": True,
+                "is_trusted": True,
+                "action": "ADMIN_EXEMPT",
+                "device_token": incoming_token or "admin_token",
+                "device_name": "Rahbar qurilmasi",
+                "user": dict(user)
+            }
+
+        bound_token = user["bound_device_token"]
+        allow_reset = bool(user["allow_device_reset"])
+        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # 1. Hali apparat biriktirilmagan yoki Rahbar yangi telefon biriktirishga ruxsat bergan bo'lsa:
+        if not bound_token or allow_reset:
+            import secrets
+            new_token = secrets.token_hex(32)
+            await conn.execute("""
+                UPDATE users
+                SET bound_device_token = ?,
+                    bound_device_name = ?,
+                    device_bound_at = ?,
+                    allow_device_reset = 0
+                WHERE id = ?
+            """, (new_token, incoming_dev_name, now_utc, user["id"]))
+
+            details = f"Xodim '{user['full_name']}' ga yangi telefon ({incoming_dev_name}) biriktirildi."
+            await conn.execute("""
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'DEVICE', ?, 'BIND_DEVICE_WEBAPP', ?, ?)
+            """, (user["company_id"] or 1, user["id"], user["full_name"], details))
+            await conn.commit()
+
+            return {
+                "success": True,
+                "is_trusted": True,
+                "action": "BOUND",
+                "device_token": new_token,
+                "device_name": incoming_dev_name,
+                "user": dict(user),
+                "message": f"Ushbu telefon ({incoming_dev_name}) rasmiy qurilmangiz sifatida muhrlandi!"
+            }
+
+        # 2. Mavjud apparat tokeni bilan solishtirish:
+        if incoming_token and incoming_token == bound_token:
+            return {
+                "success": True,
+                "is_trusted": True,
+                "action": "VERIFIED",
+                "device_token": bound_token,
+                "device_name": user["bound_device_name"] or "Tasdiqlangan telefon",
+                "user": dict(user),
+                "message": "Apparat tasdiqlandi."
+            }
+        else:
+            # Begona apparat!
+            orig_name = user["bound_device_name"] or "Boshqa telefon apparati"
+            details = f"Xodim '{user['full_name']}' hisobiga begona qurilmadan ({incoming_dev_name}) lokatsiya topshirishga urinish bo'ldi!"
+            await conn.execute("""
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'SECURITY', ?, 'UNTRUSTED_DEVICE_ATTEMPT', ?, ?)
+            """, (user["company_id"] or 1, user["id"], user["full_name"], details))
+            await conn.commit()
+
+            return {
+                "success": False,
+                "is_trusted": False,
+                "action": "REJECTED",
+                "error_code": "UNTRUSTED_DEVICE",
+                "bound_device_name": orig_name,
+                "message": f"⛔ Begona qurilma! Ushbu hisob faqat «{orig_name}» apparatiga biriktirilgan. Yangi telefon biriktirish uchun Rahbarga murojaat qiling."
+            }
+
+@router.post("/verified-checkin")
+async def record_verified_checkin(payload: VerifiedCheckinRequest):
+    """
+    Tasdiqlangan apparatdan yuborilgan haqiqiy GPS koordinatalarini qabul qilish va geofencing masofasini hisoblash.
+    """
+    tg_id = payload.telegram_id
+    incoming_token = (payload.device_token or "").strip()
+    lat = payload.latitude
+    lon = payload.longitude
+
+    if lat is None or lon is None:
+        raise HTTPException(status_code=400, detail="GPS koordinatalari taqdim etilmadi!")
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("""
+            SELECT id, full_name, telegram_id, role, company_id,
+                   workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
+                   work_start_time, work_end_time, shift_status,
+                   bound_device_token, bound_device_name
+            FROM users WHERE telegram_id = ?
+        """, (tg_id,))
+        user = await cur.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="Xodim topilmadi!")
+
+        # Token tekshiruvi (faqat oddiy xodimlar uchun)
+        if user["role"] not in ("ADMIN", "DEVELOPER"):
+            bound_token = user["bound_device_token"]
+            if not bound_token or bound_token != incoming_token:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"⛔ Begona qurilma! Lokatsiya faqat «{user['bound_device_name'] or 'biriktirilgan telefon'}» orqali qabul qilinadi."
+                )
+
+        w_lat = user["workplace_latitude"]
+        w_lon = user["workplace_longitude"]
+        w_radius = user["workplace_radius_meters"] or 50
+        w_name = user["workplace_name"] or "Ish joyi"
+        is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
+
+        distance_meters = None
+        is_inside = None
+        if is_configured:
+            distance_meters = calculate_haversine_meters(w_lat, w_lon, lat, lon)
+            is_inside = (distance_meters <= w_radius)
+
+        now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        await conn.execute("""
+            UPDATE users
+            SET last_latitude = ?,
+                last_longitude = ?,
+                last_distance_meters = ?,
+                last_location_updated_at = ?,
+                last_motion_at = ?,
+                last_motion_lat = ?,
+                last_motion_lon = ?,
+                stillness_state = 'ACTIVE'
+            WHERE id = ?
+        """, (
+            round(lat, 7),
+            round(lon, 7),
+            distance_meters,
+            now_utc,
+            now_utc,
+            round(lat, 7),
+            round(lon, 7),
+            user["id"]
+        ))
+        await conn.commit()
+
+        dist_str = f"{int(distance_meters)} m" if distance_meters and distance_meters < 1000 else f"{distance_meters/1000:.1f} km" if distance_meters else "Noma'lum"
+
+        return {
+            "success": True,
+            "user_id": user["id"],
+            "full_name": user["full_name"],
+            "device_name": user["bound_device_name"] or "Mobil telefon",
+            "workplace_name": w_name,
+            "is_configured": is_configured,
+            "is_inside": is_inside,
+            "distance_meters": distance_meters,
+            "distance_text": dist_str,
+            "radius_meters": w_radius,
+            "updated_at": now_utc,
+            "message": f"Davomat muvaffaqiyatli qayd etildi! Masofa: {dist_str}"
         }

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Ishni Boshlash — Jonli Lokatsiya</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: rgba(22, 30, 49, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-blue: #38bdf8;
+      --accent-amber: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .header-box {
+      text-align: center;
+    }
+
+    .header-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 0.35rem;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .icon-badge {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .icon-loading {
+      background: rgba(56, 189, 248, 0.15);
+      border: 2px solid var(--accent-blue);
+      animation: pulse 1.5s infinite;
+    }
+
+    .icon-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 2px solid var(--accent-green);
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+    }
+
+    .icon-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 2px solid var(--accent-red);
+      box-shadow: 0 0 25px rgba(239, 68, 68, 0.35);
+    }
+
+    .status-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1.25rem;
+    }
+
+    .info-list {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      text-align: left;
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .info-label {
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .info-val {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 0.9rem 1.25rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border: 1px solid var(--border-color);
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.85; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header-box">
+      <div class="header-title">📍 Ishni Boshlash & Davomat</div>
+      <div class="header-subtitle">Xodim-Reyting Avtomatlashtirilgan Xavfsizlik Tizimi</div>
+    </div>
+
+    <!-- 1. Tekshirilmoqda holati -->
+    <div id="card-loading" class="card">
+      <div class="icon-badge icon-loading">
+        <div class="spinner" style="width: 32px; height: 32px; border-width: 3px;"></div>
+      </div>
+      <div class="status-title" style="color: var(--accent-blue);">Qurilma Tekshirilmoqda...</div>
+      <div class="status-desc">
+        Telefon apparatingizning xavfsizlik tokeni va GPS kordinatalari o'rganilmoqda. Iltimos, kuting.
+      </div>
+    </div>
+
+    <!-- 2. Begona qurilma aniqlandi (Blok holati) -->
+    <div id="card-untrusted" class="card" style="display: none; border-color: rgba(239, 68, 68, 0.4);">
+      <div class="icon-badge icon-danger">⛔</div>
+      <div class="status-title" style="color: var(--accent-red);">BEGONA QURILMA!</div>
+      <div class="status-desc" id="untrusted-desc">
+        Sizning hisobingiz rasmiy ravishda boshqa telefon apparatiga biriktirilgan. Ushbu telefondan ishni boshlay olmaysiz!
+      </div>
+      <div class="info-list">
+        <div class="info-row">
+          <span class="info-label">📱 Biriktirilgan telefon:</span>
+          <span class="info-val" id="untrusted-bound-device" style="color: var(--accent-blue);">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">🔒 Xavfsizlik qoidasi:</span>
+          <span class="info-val" style="color: #fca5a5;">Begona apparat taqiqlangan</span>
+        </div>
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.4;">
+        💡 Agar telefoningizni almashtirgan bo'lsangiz, <b>Rahbarga murojaat qiling</b>. Rahbar yangi apparat biriktirishga ruxsat bergach, ushbu telefoningiz orqali kira olasiz.
+      </div>
+      <button type="button" class="btn btn-danger" onclick="closeWebApp()">✕ Yopish</button>
+    </div>
+
+    <!-- 3. Muvaffaqiyatli Davomat va Jonli Holat -->
+    <div id="card-success" class="card" style="display: none; border-color: rgba(16, 185, 129, 0.4);">
+      <div class="icon-badge icon-success" id="success-icon">🟢</div>
+      <div class="status-title" id="success-title" style="color: var(--accent-green);">Davomat Qayd Etildi!</div>
+      <div class="status-desc" id="success-desc">
+        Qurilmangiz muvaffaqiyatli tasdiqlandi va ish joyingiz kordinatasi yangilandi.
+      </div>
+
+      <div class="info-list">
+        <div class="info-row">
+          <span class="info-label">👤 Xodim:</span>
+          <span class="info-val" id="val-user-name">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">📱 Telefon apparati:</span>
+          <span class="info-val" id="val-device-name" style="color: var(--accent-blue);">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">🏢 Filial:</span>
+          <span class="info-val" id="val-workplace">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">📍 Masofa:</span>
+          <span class="info-val" id="val-distance">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">🕒 Yangilangan vaqt:</span>
+          <span class="info-val" id="val-updated-at">-</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 0.6rem; width: 100%;">
+        <button type="button" class="btn btn-primary" id="btn-refresh" onclick="refreshCheckinLocation()">
+          <span>🔄</span> Qayta Yangilash
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="closeWebApp()">
+          Yopish
+        </button>
+      </div>
+
+      <div style="margin-top: 0.85rem; font-size: 0.75rem; color: #64748b; line-height: 1.4;">
+        🛰 Ushbu oyna ochiq turganda kordinatangiz har 30 soniyada avtomatik yangilanib turadi.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) {
+      try {
+        tg.ready();
+        tg.expand();
+      } catch (e) {}
+    }
+
+    let currentTgId = null;
+    let currentUserData = null;
+    let autoRefreshTimer = null;
+
+    function getDeviceModelName() {
+      const ua = navigator.userAgent || "";
+      const androidMatch = ua.match(/Android[^;]+;\s*([^;)]+)\s*Build/i) || ua.match(/Android[^;]+;\s*([^;)]+)\)/i);
+      if (androidMatch && androidMatch[1]) {
+        let raw = androidMatch[1].trim();
+        if (raw.includes("ANY-NX1") || raw.includes("Honor") || raw.includes("HONOR")) {
+          return "Honor X9b (Android)";
+        }
+        return raw;
+      }
+      if (/iPhone/i.test(ua)) return "Apple iPhone (iOS)";
+      if (/iPad/i.test(ua)) return "Apple iPad (iOS)";
+      if (/Android/i.test(ua)) return "Android telefon";
+      if (/Windows/i.test(ua)) return "Windows kompyuter";
+      if (/Macintosh/i.test(ua)) return "Mac kompyuter";
+      return "Mobil telefon";
+    }
+
+    function getTelegramUserId() {
+      // 1. Telegram WebApp initDataUnsafe orqali
+      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+        return tg.initDataUnsafe.user.id;
+      }
+      // 2. URL parametr orqali (?user_id=123)
+      const params = new URLSearchParams(window.location.search);
+      const uid = params.get("user_id") || params.get("tg_id");
+      if (uid) return parseInt(uid, 10);
+
+      // 3. Xotirada saqlangan bo'lsa
+      const cached = localStorage.getItem("crm_cached_tg_id");
+      if (cached) return parseInt(cached, 10);
+
+      return null;
+    }
+
+    async function initCheckinProcess() {
+      currentTgId = getTelegramUserId();
+      if (!currentTgId) {
+        document.getElementById("card-loading").style.display = "none";
+        document.getElementById("card-untrusted").style.display = "flex";
+        document.getElementById("untrusted-desc").innerText = "Telegram profilingiz ma'lumotlari aniqlanmadi. Iltimos, bot orqali qayta kiring.";
+        return;
+      }
+
+      localStorage.setItem("crm_cached_tg_id", currentTgId.toString());
+
+      const savedToken = localStorage.getItem("crm_trusted_device_token") || "";
+      const devName = getDeviceModelName();
+
+      try {
+        // 1. Apparatni tekshirish yoki yangi telefon bo'lsa biriktirish
+        const checkRes = await fetch("/api/location/device-checkin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            telegram_id: currentTgId,
+            device_token: savedToken,
+            device_name: devName
+          })
+        });
+
+        const checkData = await checkRes.json();
+
+        if (!checkRes.ok || !checkData.success || !checkData.is_trusted) {
+          // Begona qurilma!
+          document.getElementById("card-loading").style.display = "none";
+          document.getElementById("card-success").style.display = "none";
+          document.getElementById("card-untrusted").style.display = "flex";
+          document.getElementById("untrusted-bound-device").innerText = checkData.bound_device_name || "Biriktirilgan telefon";
+          if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("error");
+          return;
+        }
+
+        // Tasdiqlangan apparat!
+        if (checkData.device_token) {
+          localStorage.setItem("crm_trusted_device_token", checkData.device_token);
+        }
+        currentUserData = checkData.user || {};
+
+        // 2. GPS kordinatani olish va jo'natish
+        await fetchAndSendGpsLocation();
+
+      } catch (err) {
+        console.error("Checkin init xatosi:", err);
+        document.getElementById("card-loading").style.display = "none";
+        document.getElementById("card-untrusted").style.display = "flex";
+        document.getElementById("untrusted-desc").innerText = "Server bilan bog'lanishda xatolik yuz berdi: " + (err.message || "");
+      }
+    }
+
+    function fetchAndSendGpsLocation() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          alert("Qurilmangizda Geopozitsiya (GPS) qo'llab-quvvatlanmaydi!");
+          resolve();
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const acc = pos.coords.accuracy;
+            const savedToken = localStorage.getItem("crm_trusted_device_token") || "";
+            const devName = getDeviceModelName();
+
+            try {
+              const recRes = await fetch("/api/location/verified-checkin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  telegram_id: currentTgId,
+                  device_token: savedToken,
+                  device_name: devName,
+                  latitude: lat,
+                  longitude: lon,
+                  accuracy_meters: acc
+                })
+              });
+
+              const recData = await recRes.json();
+
+              document.getElementById("card-loading").style.display = "none";
+              document.getElementById("card-untrusted").style.display = "none";
+              document.getElementById("card-success").style.display = "flex";
+
+              const isInside = recData.is_inside;
+              const distText = recData.distance_text || (Math.round(recData.distance_meters || 0) + " m");
+
+              document.getElementById("val-user-name").innerText = recData.full_name || (currentUserData && currentUserData.full_name) || "Xodim";
+              document.getElementById("val-device-name").innerText = recData.device_name || devName;
+              document.getElementById("val-workplace").innerText = recData.workplace_name || "Ish joyi";
+
+              const distEl = document.getElementById("val-distance");
+              const iconEl = document.getElementById("success-icon");
+              const titleEl = document.getElementById("success-title");
+
+              if (isInside) {
+                distEl.innerHTML = `<span style="color: var(--accent-green);">🟢 Ish joyida (${distText})</span>`;
+                iconEl.innerText = "🟢";
+                titleEl.innerText = "Siz Ish Joyidasiz!";
+                titleEl.style.color = "var(--accent-green)";
+              } else {
+                distEl.innerHTML = `<span style="color: var(--accent-red);">🔴 Tashqarida (${distText})</span>`;
+                iconEl.innerText = "🔴";
+                titleEl.innerText = "Ish Joyidan Tashqarida!";
+                titleEl.style.color = "var(--accent-red)";
+              }
+
+              const now = new Date();
+              const timeStr = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0") + ":" + String(now.getSeconds()).padStart(2, "0");
+              document.getElementById("val-updated-at").innerText = timeStr;
+
+              if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+
+              // Avtomatik qayta yangilab turish (har 30 soniyada)
+              if (!autoRefreshTimer) {
+                autoRefreshTimer = setInterval(fetchAndSendGpsLocation, 30000);
+              }
+
+              resolve();
+            } catch (err) {
+              console.error("Kordinata yuborishda xatolik:", err);
+              resolve();
+            }
+          },
+          (err) => {
+            console.warn("GPS olishda xatolik:", err);
+            let msg = "GPS kordinata olinmadi.";
+            if (err.code === 1) msg = "Iltimos, brauzerga Geopozitsiya (GPS) ruxsatini bering!";
+            else if (err.code === 2) msg = "GPS signali topilmadi. Telefoningizda Geolokatsiyani yoqing!";
+            alert(msg);
+            resolve();
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      });
+    }
+
+    async function refreshCheckinLocation() {
+      const btn = document.getElementById("btn-refresh");
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<div class="spinner"></div> Yangilanmoqda...`;
+      }
+      await fetchAndSendGpsLocation();
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>🔄</span> Qayta Yangilash`;
+      }
+    }
+
+    function closeWebApp() {
+      if (tg) tg.close();
+      else window.close();
+    }
+
+    // Ishga tushirish
+    window.addEventListener("DOMContentLoaded", initCheckinProcess);
+  </script>
+</body>
+</html>

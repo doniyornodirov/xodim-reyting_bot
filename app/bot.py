@@ -4,11 +4,10 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery,
-    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove,
+    WebAppInfo
 )
-from app.config import BOT_TOKEN, TELEGRAM_GROUP_ID
-import aiosqlite
-from app.config import DB_PATH
+from app.config import BOT_TOKEN, TELEGRAM_GROUP_ID, DB_PATH, FRONTEND_URL
 
 logger = logging.getLogger("telegram_bot")
 
@@ -190,6 +189,14 @@ if dp:
                     else:
                         device_line = "📱 <b>Telefon holati:</b> ⚪ Hali biriktirilmagan (CRMga kirganda avtomatik muhrlanadi)\n"
 
+                    checkin_url = f"{FRONTEND_URL}/static/location_checkin.html"
+                    kb_checkin = ReplyKeyboardMarkup(
+                        keyboard=[
+                            [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+                        ],
+                        resize_keyboard=True
+                    )
+
                     await message.answer(
                         f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
                         f"🏢 <b>Tashkilot:</b> {comp_name}\n"
@@ -200,11 +207,11 @@ if dp:
                         f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
                         f"{signal_line}"
                         f"✅ <b>Ish joyingiz koordinatasi belgilangan.</b>\n\n"
-                        f"🛰 <b>KUNLIK JONLI JOYLASHUV (LIVE LOCATION):</b>\n"
-                        f"Har kuni ishga kelganingizda <b>jonli joylashuv</b> yuborib qo'ying:\n"
-                        f"Pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...' (Jonli joylashuv)</i> ni tanlab <b>8 soat</b> qilib yuboring.\n\n"
+                        f"🛰 <b>KUNLIK DAVOMAT VA JONLI JOYLASHUV:</b>\n"
+                        f"Har kuni ishga kelganingizda pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasini bosing.\n"
+                        f"<i>(Xavfsizlik talabi: faqat rasmiy biriktirilgan telefon apparatingiz orqali qabul qilinadi)</i>\n\n"
                         f"<i>(Signal holatini tekshirish: /status | Yangi filialga o'tgan bo'lsangiz: /qayta_sozlash)</i>",
-                        reply_markup=ReplyKeyboardRemove(),
+                        reply_markup=kb_checkin,
                         parse_mode="HTML"
                     )
         else:
@@ -617,6 +624,35 @@ if dp:
         loc = message.location
         if not loc:
             return
+
+        # Skrepka (📎) orqali yuborilgan lokatsiyani tekshirish
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT role, workplace_latitude, workplace_longitude FROM users WHERE telegram_id = ?", (user_tg_id,))
+            u_check = await cur.fetchone()
+
+        if u_check and u_check["role"] not in ("ADMIN", "DEVELOPER"):
+            w_lat = u_check["workplace_latitude"]
+            w_lon = u_check["workplace_longitude"]
+            is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
+            if is_configured:
+                # Ish joyi avvalroq belgilangan: Telegram skrepkasi rad etiladi!
+                checkin_url = f"{FRONTEND_URL}/static/location_checkin.html"
+                kb_checkin = ReplyKeyboardMarkup(
+                    keyboard=[
+                        [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+                    ],
+                    resize_keyboard=True
+                )
+                await message.reply(
+                    "⚠️ <b>Diqqat!</b> Telegram skrepkasi (📎) orqali yuborilgan lokatsiya qabul qilinmaydi.\n\n"
+                    "Xavfsizlik talablariga ko'ra, davomat faqat sizning rasmiy biriktirilgan telefon apparatingiz orqali qayd etiladi.\n\n"
+                    "Iltimos, pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasidan foydalaning!",
+                    reply_markup=kb_checkin,
+                    parse_mode="HTML"
+                )
+                return
+
         lat = loc.latitude
         lon = loc.longitude
         live_period = getattr(loc, "live_period", None)
@@ -639,6 +675,21 @@ if dp:
     async def handle_location_edited(message: types.Message):
         """Xodim harakatlanganda Telegram tomonidan fonda uzatiladigan jonli koordinata yangilanishlari"""
         user_tg_id = message.from_user.id
+
+        # Skrepka orqali yuborilgan jonli tahrirlarni tekshirish: xodimlar uchun bloklanadi
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT role, workplace_latitude, workplace_longitude FROM users WHERE telegram_id = ?", (user_tg_id,))
+            u_check = await cur.fetchone()
+
+        if u_check and u_check["role"] not in ("ADMIN", "DEVELOPER"):
+            w_lat = u_check["workplace_latitude"]
+            w_lon = u_check["workplace_longitude"]
+            is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
+            if is_configured:
+                # Skrepka jonli uzatmasi e'tiborga olinmaydi
+                return
+
         loc = message.location
         if not loc:
             return
