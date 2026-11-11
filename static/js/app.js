@@ -5225,14 +5225,33 @@ function openCompactTimePicker(inputEl, label = "Vaqt") {
 
   popover.style.display = "block";
   const rect = inputEl.getBoundingClientRect();
-  const popoverWidth = 280;
-  let top = window.scrollY + rect.bottom + 6;
-  let left = window.scrollX + rect.left;
+  const popoverWidth = 235;
+  const popoverHeight = 245;
 
+  // O'rtaroqda ochilishi: modal ichida bo'lsa modalning gorizontal markaziga,
+  // aks holda kiritish maydonining gorizontal markaziga tekislanadi
+  const modal = inputEl.closest(".modal-content");
+  let left;
+  if (modal) {
+    const modalRect = modal.getBoundingClientRect();
+    left = window.scrollX + modalRect.left + (modalRect.width - popoverWidth) / 2;
+  } else {
+    left = window.scrollX + rect.left + (rect.width - popoverWidth) / 2;
+  }
+
+  // Ekran chetlaridan chiqib ketmaslik tekshiruvi
   if (left + popoverWidth > window.innerWidth - 10) {
-    left = window.innerWidth - popoverWidth - 15;
+    left = window.innerWidth - popoverWidth - 12;
   }
   if (left < 10) left = 10;
+
+  // Vertikal joylashuv: pastda joy yetarli bo'lsa input tagida, aks holda input tepasida
+  let top;
+  if (rect.bottom + popoverHeight + 15 > window.innerHeight && rect.top > popoverHeight + 20) {
+    top = window.scrollY + rect.top - popoverHeight - 4;
+  } else {
+    top = window.scrollY + rect.bottom + 4;
+  }
 
   popover.style.top = `${top}px`;
   popover.style.left = `${left}px`;
@@ -5369,14 +5388,29 @@ function openCompactSaasDatePicker(inputEl, title = "Sanani tanlash") {
 
   popover.style.display = "block";
   const rect = inputEl.getBoundingClientRect();
-  const popoverWidth = 310;
-  let top = window.scrollY + rect.bottom + 6;
-  let left = window.scrollX + rect.left;
+  const popoverWidth = 280;
+  const popoverHeight = 310;
+
+  const modal = inputEl.closest(".modal-content");
+  let left;
+  if (modal) {
+    const modalRect = modal.getBoundingClientRect();
+    left = window.scrollX + modalRect.left + (modalRect.width - popoverWidth) / 2;
+  } else {
+    left = window.scrollX + rect.left + (rect.width - popoverWidth) / 2;
+  }
 
   if (left + popoverWidth > window.innerWidth - 10) {
-    left = window.innerWidth - popoverWidth - 15;
+    left = window.innerWidth - popoverWidth - 12;
   }
   if (left < 10) left = 10;
+
+  let top;
+  if (rect.bottom + popoverHeight + 15 > window.innerHeight && rect.top > popoverHeight + 20) {
+    top = window.scrollY + rect.top - popoverHeight - 4;
+  } else {
+    top = window.scrollY + rect.bottom + 4;
+  }
 
   popover.style.top = `${top}px`;
   popover.style.left = `${left}px`;
