@@ -92,6 +92,7 @@ async def list_companies(super_admin: dict = Depends(require_super_admin)):
                 "days_left": days_left,
                 "is_active": bool(c["is_active"]),
                 "created_at": c["created_at"],
+                "max_employees": c["max_employees"] if ("max_employees" in c.keys() and c["max_employees"]) else 20,
                 "employees_count": users_count,
                 "cashiers_count": cashiers_count,
                 "reports_count": reports_count,
@@ -148,11 +149,12 @@ async def create_company(
                 expires_at = exp_dt.isoformat()
 
         # 4. Kompaniyani yaratish
+        max_emp = req.max_employees or 20
         cur_c = await conn.execute("""
-            INSERT INTO companies (name, slug, telegram_group_id, owner_telegram_id, plan, subscription_expires_at, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
+            INSERT INTO companies (name, slug, telegram_group_id, owner_telegram_id, plan, subscription_expires_at, max_employees, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         """, (req.name.strip(), slug, req.telegram_group_id.strip() if req.telegram_group_id else None,
-              req.owner_telegram_id, req.plan, expires_at))
+              req.owner_telegram_id, req.plan, expires_at, max_emp))
         company_id = cur_c.lastrowid
 
         # 5. Firma Rahbarini (Admin) yaratish
@@ -234,6 +236,36 @@ async def toggle_company_active(
         "success": True,
         "message": f"'{comp['name']}' firmasi muvaffaqiyatli {status_text}!",
         "is_active": bool(new_status)
+    }
+
+@router.post("/companies/{company_id}/update-limit")
+async def update_company_limit(
+    company_id: int,
+    max_employees: int,
+    super_admin: dict = Depends(require_super_admin)
+):
+    """Super Admin tomonidan firmaning ruxsat etilgan xodimlar limitini o'zgartirish"""
+    if max_employees < 1 or max_employees > 10000:
+        raise HTTPException(status_code=400, detail="Xodimlar limiti 1 dan 10000 gacha bo'lishi kerak!")
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
+        comp = await cur.fetchone()
+        if not comp:
+            raise HTTPException(status_code=404, detail="Firma topilmadi!")
+
+        await conn.execute("UPDATE companies SET max_employees = ? WHERE id = ?", (max_employees, company_id))
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (1, 'COMPANY', ?, 'UPDATE_LIMIT', ?, ?)
+        """, (company_id, super_admin["full_name"], f"Firma '{comp['name']}' xodimlar limiti {max_employees} taga o'zgartirildi"))
+        await conn.commit()
+
+    return {
+        "success": True,
+        "message": f"'{comp['name']}' firmasi xodimlar limiti {max_employees} taga muvaffaqiyatli o'zgartirildi!",
+        "max_employees": max_employees
     }
 
 @router.post("/companies/{company_id}/extend")

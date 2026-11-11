@@ -34,6 +34,7 @@ async def init_db():
             owner_telegram_id INTEGER,
             plan TEXT DEFAULT 'STANDARD',
             subscription_expires_at TIMESTAMP,
+            max_employees INTEGER NOT NULL DEFAULT 20,
             is_active INTEGER NOT NULL DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -339,6 +340,16 @@ async def init_db():
                 await conn.execute(f"UPDATE {tbl} SET company_id = 1 WHERE company_id IS NULL OR company_id = 0;")
             except Exception:
                 pass
+
+        # SaaS: companies jadvaliga max_employees ustunini qo'shish
+        try:
+            await conn.execute("ALTER TABLE companies ADD COLUMN max_employees INTEGER NOT NULL DEFAULT 20;")
+        except Exception:
+            pass
+        try:
+            await conn.execute("UPDATE companies SET max_employees = 9999 WHERE id = 1;")
+        except Exception:
+            pass
 
         # RAHBAR_ID foydalanuvchisini ADMIN va company_id = 1 sifatida tekshirish va yaratish
         from app.config import RAHBAR_ID, DEVELOPER_ID

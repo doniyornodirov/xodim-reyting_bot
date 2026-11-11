@@ -188,19 +188,80 @@ async def get_retention_stats(retention_days: int = RETENTION_DAYS) -> dict:
     }
 
 
+async def send_daily_digest_for_all_companies():
+    """Barcha faol kompaniyalar uchun kechki yakuniy svodkani avtomatik yuborish"""
+    from app.bot import send_daily_digest_for_company
+    try:
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT id, name FROM companies WHERE is_active = 1")
+            comps = await cur.fetchall()
+
+        for c in comps:
+            try:
+                await send_daily_digest_for_company(c["id"])
+                await asyncio.sleep(1.0)  # Telegram flood control
+            except Exception as e:
+                logger.warning(f"Kompaniya {c['id']} svodkasida xatolik: {e}")
+    except Exception as e:
+        logger.error(f"send_daily_digest_for_all_companies xatolik: {e}")
+
+async def check_and_send_expiry_alerts_all():
+    """Obunasi 3 kun yoki 1 kun qolgan firmalarga ogohlantirish yuborish"""
+    from app.bot import send_subscription_expiry_alert
+    from app.routes.saas import calculate_days_left
+    try:
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT id, name, plan, subscription_expires_at FROM companies WHERE is_active = 1 AND plan != 'UNLIMITED'")
+            comps = await cur.fetchall()
+
+        for c in comps:
+            days_left = calculate_days_left(c["plan"], c["subscription_expires_at"])
+            if days_left in [1, 2, 3]:
+                try:
+                    await send_subscription_expiry_alert(c["id"], days_left)
+                    await asyncio.sleep(1.0)
+                except Exception as e:
+                    logger.warning(f"Kompaniya {c['id']} obuna ogohlantirishida xatolik: {e}")
+    except Exception as e:
+        logger.error(f"check_and_send_expiry_alerts_all xatolik: {e}")
+
 async def start_retention_scheduler(interval_hours: int = 24):
-    """Fonda har 24 soatda avtomatik ishlab turuvchi fon jarayoni"""
-    logger.info(f"Avtomatik ma'lumotlar tozalash jarayoni (har {interval_hours} soatda) boshlandi.")
+    """Fonda har daqiqada tekshirib, Toshkent vaqti bilan kerakli soatlarda vazifalarni bajaruvchi fon jarayoni"""
+    logger.info("Markaziy fon scheduleri (Retention, Digest, Obuna ogohlantirishi) ishga tushdi.")
+    last_digest_date = None
+    last_expiry_check_date = None
+    last_retention_date = None
+
     while True:
         try:
-            # Kutish: 24 soat
-            await asyncio.sleep(interval_hours * 3600)
-            logger.info("Rejali 90 kunlik tarix tozalash vazifasi boshlandi...")
-            result = await run_data_retention_cleanup()
-            logger.info(f"Rejali tozalash yakunlandi. O'chirildi: {result['total_deleted']} ta yozuv.")
+            now_t = get_tashkent_now()
+            today_str = now_t.strftime("%Y-%m-%d")
+
+            # 1. Soat 20:00 da kunlik svodka
+            if now_t.hour == 20 and now_t.minute >= 0 and last_digest_date != today_str:
+                last_digest_date = today_str
+                logger.info("Kechki 20:00 avtomatik kunlik hisobot svodkasi vazifasi boshlandi...")
+                asyncio.create_task(send_daily_digest_for_all_companies())
+
+            # 2. Soat 10:00 da obuna ogohlantirishlari
+            if now_t.hour == 10 and now_t.minute >= 0 and last_expiry_check_date != today_str:
+                last_expiry_check_date = today_str
+                logger.info("Ertalabki 10:00 obuna muddati ogohlantirishlari vazifasi boshlandi...")
+                asyncio.create_task(check_and_send_expiry_alerts_all())
+
+            # 3. Soat 03:00 da 90 kunlik tozalash
+            if now_t.hour == 3 and now_t.minute >= 0 and last_retention_date != today_str:
+                last_retention_date = today_str
+                logger.info("Tungi 03:00 ma'lumotlar saqlanish tozalashi boshlandi...")
+                asyncio.create_task(run_data_retention_cleanup())
+
+            # Har 30 soniyada tekshirish
+            await asyncio.sleep(30)
         except asyncio.CancelledError:
-            logger.info("Retention scheduler to'xtatildi.")
+            logger.info("Fon scheduleri to'xtatildi.")
             break
         except Exception as e:
-            logger.error(f"Retention scheduler jarayonida kutilmagan xatolik: {e}")
-            await asyncio.sleep(60)  # Xatolik bo'lsa 1 daqiqadan so'ng qayta urinish
+            logger.error(f"Fon schedulerida kutilmagan xatolik: {e}")
+            await asyncio.sleep(30)

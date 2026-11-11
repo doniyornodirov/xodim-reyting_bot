@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=826">
+  <link rel="stylesheet" href="/static/css/style.css?v=830">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -293,6 +293,12 @@
             </button>
             <button type="button" class="btn-primary-sm" onclick="setAdminReportsTodayFilter()">Bugun</button>
             <button type="button" class="btn-secondary-sm" onclick="resetAdminReportsFilter()">Barcha sanalar</button>
+            <button type="button" class="btn-success-sm" onclick="exportAdminReportsToExcel()" title="Hisobotlarni Excel formatida yuklab olish">
+              <span>📥</span> Excel (.xlsx)
+            </button>
+            <button type="button" class="btn-warning-sm" onclick="sendTodayDigestToTelegram()" title="Bugungi kun yakuniy svodkasini Telegram guruhga yuborish">
+              <span>📢</span> Telegram Svodka
+            </button>
           </div>
         </div>
 
@@ -508,7 +514,15 @@
     <!-- Rahbar 4: Taqqoslash (Xodim hisoboti vs Kassir qabul qilgan) -->
     <section class="tab-pane admin-pane" id="pane-admin-comparison" style="display: none;">
       <div class="card-box">
-        <h2 class="card-title">⚖️ Kassa taqqoslash</h2>
+        <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="card-title mb-0.5">⚖️ Kassa taqqoslash</h2>
+            <span class="card-desc text-xs block mb-0">Xodim topshirgan sof kassa va kassir qabul qilgan mablag'lar solishtirmasi</span>
+          </div>
+          <button type="button" class="btn-success-sm" onclick="exportComparisonToExcel()" title="Kassa taqqoslash jadvalini Excelga yuklash">
+            <span>📥</span> Excel (.xlsx)
+          </button>
+        </div>
         <div class="table-container">
           <table class="custom-table">
             <thead>
@@ -794,7 +808,12 @@
       <!-- 3. Xodimlar balansi va oxirgi tarqatilganlar -->
       <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
         <div class="card-box">
-          <h3 class="card-title" style="font-size: 1.1rem;">👥 Xodimlar sim-karta balansi</h3>
+          <div class="flex justify-between items-center flex-wrap gap-2 mb-2">
+            <h3 class="card-title mb-0" style="font-size: 1.1rem;">👥 Xodimlar sim-karta balansi</h3>
+            <button type="button" class="btn-success-sm" onclick="exportSimCardsToExcel()" title="Sim-karta balansini Excelga yuklash">
+              <span>📥</span> Excel (.xlsx)
+            </button>
+          </div>
           <div class="table-container">
             <table class="custom-table">
               <thead>
@@ -836,9 +855,12 @@
           <div>
             <h2 class="card-title" style="margin-bottom: 0.25rem;">🏆 Reyting & KPI</h2>
           </div>
-          <div style="display: flex; gap: 0.5rem;">
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
             <button class="btn-primary" id="btn-admin-rating-monthly" onclick="loadLeaderboard('monthly', 'admin')">Oylik reyting</button>
             <button class="btn-logout" id="btn-admin-rating-overall" onclick="loadLeaderboard('overall', 'admin')">Umumiy reyting</button>
+            <button type="button" class="btn-success-sm" onclick="exportRatingToExcel()" title="Reyting jadvalini Excelga yuklash">
+              <span>📥</span> Excel (.xlsx)
+            </button>
           </div>
         </div>
         <div class="table-container">
@@ -880,6 +902,9 @@
             <button class="btn btn-secondary" style="font-size: 0.8rem; padding: 0.4rem 0.85rem;" onclick="triggerManualRetentionCleanup()">
               🔄 Tozalashni tekshirish
             </button>
+            <button type="button" class="btn btn-primary-sm" style="background: #0284c7; border-color: #0284c7;" onclick="downloadDatabaseBackup()" title="Ma'lumotlar bazasining to'liq zaxira nusxasini (.db) yuklab olish">
+              💾 Baza zaxirasini yuklash (Backup)
+            </button>
             <button class="btn btn-danger" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" onclick="handleClearAllHistory()">
               🗑️ Tarixni tozalash
             </button>
@@ -918,9 +943,14 @@
               Ushbu platforma orqali tizimni boshqa firmalarga ijaraga berishingiz, yangi firma va ularning rahbarlarini ro'yxatga olishingiz hamda obuna muddatlarini boshqarishingiz mumkin.
             </p>
           </div>
-          <button type="button" class="btn btn-secondary" onclick="loadSaasCompanies()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;">
-            🔄 Ro'yxatni yangilash
-          </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-primary-sm" onclick="downloadDatabaseBackup()" style="background: #0284c7; border-color: #0284c7; color: #fff;" title="Barcha firmalar va tizimning to'liq zaxira nusxasini (.db) yuklab olish">
+              <span>💾</span> Barcha bazani zaxiralash (Full Backup)
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="loadSaasCompanies()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;">
+              🔄 Ro'yxatni yangilash
+            </button>
+          </div>
         </div>
       </div>
 
@@ -972,6 +1002,10 @@
               <input type="text" id="saas-new-group-id" class="form-input" placeholder="Masalan: -100123456789">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Xodimlar limiti (soni) *</label>
+              <input type="number" id="saas-new-max-employees" class="form-input" style="height: 42px;" value="20" min="1" max="10000" required>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Tarif rejasi *</label>
               <select id="saas-new-plan" class="form-input" style="height: 42px;" onchange="handleSaasPlanChange(this.value)">
                 <option value="STANDARD" selected>STANDARD</option>
@@ -1006,7 +1040,7 @@
                 <th>Telegram Guruh</th>
                 <th>Tarif</th>
                 <th>Obuna muddati</th>
-                <th>Xodimlar</th>
+                <th>Xodimlar (Faol / Limit)</th>
                 <th>Hisobotlar</th>
                 <th>Holati</th>
                 <th>Boshqaruv amallari</th>
@@ -1875,6 +1909,8 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=357"></script>
+  <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="/static/js/app.js?v=360"></script>
 </body>
 </html>

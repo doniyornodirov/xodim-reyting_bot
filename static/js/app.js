@@ -2958,9 +2958,12 @@ async function updateCardTopupStatus(id, status) {
 }
 
 // Admin 4: Kassir va Xodim summalarini solishtirish
+let adminComparisonCache = [];
+
 async function loadAdminComparison() {
   try {
     const res = await api("/api/cashier/comparison");
+    adminComparisonCache = res.data || [];
     const tbody = document.getElementById("admin-comparison-tbody");
     tbody.innerHTML = "";
 
@@ -3291,9 +3294,14 @@ async function handleAppointCashierSubmit() {
 }
 
 // 7. Reyting va Liderlar jadvali (Oylik va Umumiy, Admin va Xodim ko'rinishi)
+let adminLeaderboardCache = { period: "monthly", data: [] };
+
 async function loadLeaderboard(period = "monthly", viewType = "emp") {
   try {
     const res = await api(`/api/rating/leaderboard?period=${period}`);
+    if (viewType === "admin") {
+      adminLeaderboardCache = { period, data: res.data || [] };
+    }
     const tbodyId = viewType === "admin" ? "admin-rating-tbody" : "emp-rating-tbody";
     const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
@@ -3455,9 +3463,16 @@ async function loadSimEmployeesSelect(prefix) {
   }
 }
 
+let adminSimBalancesCache = [];
+let adminSimRecentCache = [];
+
 async function loadSimSummary(prefix) {
   try {
     const res = await api("/api/sim-cards/summary");
+    if (prefix === "admin") {
+      adminSimBalancesCache = res.balances || [];
+      adminSimRecentCache = res.recent || [];
+    }
     const balanceTbody = document.getElementById(`${prefix}-sim-balance-tbody`);
     if (balanceTbody) {
       balanceTbody.innerHTML = "";
@@ -4353,8 +4368,9 @@ async function loadSaasCompanies() {
             ${c.subscription_expires_at ? `<span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600; display: block; margin-top: 2px;">📅 ${formatDateOnly(c.subscription_expires_at)} gacha</span>` : ''}
           </td>
           <td>
-            <b style="color: #6366f1;">${c.employees_count || 0} ta</b>
+            <b style="color: #6366f1;">${c.employees_count || 0} / ${c.max_employees || 20} ta</b>
             ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #f59e0b; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
+            ${!isMain ? `<button type="button" onclick="promptChangeCompanyLimit(${c.id}, ${c.max_employees || 20})" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">⚙️ Limitni o'zgartirish</button>` : ''}
           </td>
           <td><b>${c.reports_count || 0} ta</b></td>
           <td>${statusBadge}</td>
@@ -4411,6 +4427,7 @@ async function handleCreateCompanySubmit(event) {
   const groupIdInput = document.getElementById("saas-new-group-id");
   const dateInput = document.getElementById("saas-new-expires-date");
   const planSelect = document.getElementById("saas-new-plan");
+  const maxEmpInput = document.getElementById("saas-new-max-employees");
 
   const name = nameInput?.value.trim();
   const ownerName = ownerNameInput?.value.trim();
@@ -4419,6 +4436,7 @@ async function handleCreateCompanySubmit(event) {
   const groupId = groupIdInput?.value.trim() || null;
   const plan = planSelect?.value || "STANDARD";
   const expiresDate = dateInput?.value || null;
+  const maxEmployees = parseInt(maxEmpInput?.value || "20") || 20;
 
   if (!name || !ownerName || !ownerTg) {
     showToast("Iltimos, barcha majburiy maydonlarni to'ldiring!", "error");
@@ -4438,7 +4456,8 @@ async function handleCreateCompanySubmit(event) {
       initial_password: initialPassword,
       telegram_group_id: groupId,
       expires_date: plan === "STANDARD" ? expiresDate : null,
-      plan: plan
+      plan: plan,
+      max_employees: maxEmployees
     });
 
     if (res.success) {
@@ -4727,6 +4746,284 @@ async function handleCompanySettingsSubmit(event) {
   } catch (e) {
     showToast(e.message || "Server xatosi!", "error");
   }
+}
+
+// =========================================================
+// TIJORIY & B2B EXCEL EKSPORTI VA BOSHQARUV QUROLLARI
+// =========================================================
+
+// Super Admin: Firmaning xodimlar limitini o'zgartirish
+async function promptChangeCompanyLimit(companyId, currentLimit) {
+  const newLimitStr = prompt("Ushbu firma uchun xodimlar limitini kiriting (soni):", currentLimit);
+  if (!newLimitStr) return;
+  const newLimit = parseInt(newLimitStr.trim());
+  if (isNaN(newLimit) || newLimit < 1 || newLimit > 10000) {
+    showToast("Noto'g'ri son kiritildi (1 dan 10000 gacha)! ", "error");
+    return;
+  }
+  try {
+    const res = await api(`/api/saas/companies/${companyId}/update-limit?max_employees=${newLimit}`, "POST");
+    if (res.success) {
+      showToast(res.message || "Limit muvaffaqiyatli o'zgartirildi!", "success");
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server xatosi!", "error");
+  }
+}
+
+// Baza zaxira nusxasini (Snapshot .db) yuklab olish
+async function downloadDatabaseBackup() {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    showToast("Avtorizatsiyadan o'tilmagan!", "error");
+    return;
+  }
+  showToast("Baza zaxira nusxasi tayyorlanmoqda, iltimos kuting...", "info");
+  try {
+    const response = await fetch("/api/admin/backup-db", {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    });
+    if (!response.ok) {
+      let errMsg = "Zaxira nusxasini yuklab olishda xatolik yuz berdi";
+      try {
+        const errJson = await response.json();
+        errMsg = errJson.detail || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    a.download = `backup_xodim_reyting_${dateStr}.db`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+    showToast("Baza zaxirasi (.db) muvaffaqiyatli yuklab olindi! Uni xavfsiz joyda saqlang.", "success");
+  } catch (e) {
+    showToast(e.message || "Zaxirani yuklashda xatolik yuz berdi", "error");
+  }
+}
+
+// Bugungi kunlik svodkani Telegram guruhga yuborish
+async function sendTodayDigestToTelegram() {
+  if (!confirm("Bugungi kun yakuniy hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?")) return;
+  showToast("Svodka hisoblanmoqda va Telegramga yuborilmoqda...", "info");
+  try {
+    const res = await api("/api/reports/send-daily-digest", "POST");
+    if (res.success) {
+      showToast(res.message || "Kunlik svodka Telegramga muvaffaqiyatli yuborildi!", "success");
+    } else {
+      showToast(res.message || res.detail || "Telegramga yuborib bo'lmadi", "warning");
+    }
+  } catch (e) {
+    showToast(e.message || "Xatolik yuz berdi!", "error");
+  }
+}
+
+// 1. Kunlik hisobotlarni Excelga (.xlsx) eksport qilish
+function exportAdminReportsToExcel() {
+  if (typeof XLSX === "undefined") {
+    showToast("Excel kutubxonasi yuklanmadi. Sahifani qayta yangilang!", "error");
+    return;
+  }
+  if (!adminReportsCache || adminReportsCache.length === 0) {
+    showToast("Eksport qilish uchun hisobotlar topilmadi!", "warning");
+    return;
+  }
+
+  const exportData = adminReportsCache.map((r, idx) => ({
+    "№": idx + 1,
+    "Sana": formatDateOnly(r.report_date),
+    "Xodim F.I.SH": r.employee_name || "-",
+    "Paynet (so'm)": r.paynet || 0,
+    "Karta (+3%) (so'm)": r.card_amount || 0,
+    "Leviy (so'm)": r.leviy || 0,
+    "Qarz to'lovi (so'm)": r.debt_paid || 0,
+    "Jami Kirim (so'm)": r.total_inflow || 0,
+    "Kunlik (so'm)": r.kunlik || 0,
+    "Terminal (so'm)": r.terminal || 0,
+    "Berilgan summa (so'm)": r.given_amount || 0,
+    "Skidka (so'm)": r.skidka || 0,
+    "Xarajat (so'm)": r.xarajat || 0,
+    "Jami Chiqim (so'm)": r.total_outflow || 0,
+    "Sof Kassa (Net) (so'm)": r.net_amount || 0,
+    "Sotilgan Sim-karta (dona)": r.sim_cards_count || 0,
+    "Status": r.status === "APPROVED" ? "Tasdiqlangan" : (r.status === "REJECTED" ? "Rad etilgan" : "Kutilmoqda"),
+    "Izoh": r.comment || ""
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  ws["!cols"] = [
+    { wch: 6 },
+    { wch: 12 },
+    { wch: 22 },
+    { wch: 15 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 18 },
+    { wch: 14 },
+    { wch: 14 },
+    { wch: 16 },
+    { wch: 18 },
+    { wch: 20 },
+    { wch: 15 },
+    { wch: 30 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Kunlik Hisobotlar");
+  const dateLabel = adminReportDateFilter?.startDate || "barcha";
+  const fileName = `Hisobotlar_${dateLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fileName);
+  showToast("Kunlik hisobotlar Excel (.xlsx) fayliga muvaffaqiyatli yuklandi!", "success");
+}
+
+// 2. Kassa taqqoslash jadvalini Excelga (.xlsx) eksport qilish
+function exportComparisonToExcel() {
+  if (typeof XLSX === "undefined") {
+    showToast("Excel kutubxonasi yuklanmadi!", "error");
+    return;
+  }
+  if (!adminComparisonCache || adminComparisonCache.length === 0) {
+    showToast("Eksport qilish uchun taqqoslash ma'lumotlari topilmadi!", "warning");
+    return;
+  }
+
+  const exportData = adminComparisonCache.map((row, idx) => ({
+    "№": idx + 1,
+    "Xodim F.I.SH": row.employee_name || "-",
+    "Xodim hisoboti (so'm)": row.report_amount || 0,
+    "Hisobot holati": row.report_status || "-",
+    "Kassir qabul qilgan (Jami ekvivalent so'm)": row.cashier_amount || 0,
+    "So'mda qabul (so'm)": row.cashier_amount_uzs || 0,
+    "Dollarda qabul ($)": row.cashier_amount_usd || 0,
+    "Tafovut / Farq (so'm)": row.difference || 0,
+    "Qabul qilgan Kassir": row.cashier_names || "-"
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  ws["!cols"] = [
+    { wch: 6 },
+    { wch: 22 },
+    { wch: 22 },
+    { wch: 18 },
+    { wch: 26 },
+    { wch: 18 },
+    { wch: 18 },
+    { wch: 20 },
+    { wch: 22 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Kassa Taqqoslash");
+  XLSX.writeFile(wb, `Kassa_Taqqoslash_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast("Kassa taqqoslash ma'lumotlari Excelga yuklandi!", "success");
+}
+
+// 3. Sim-kartalar hisobi va balansini Excelga (.xlsx) eksport qilish
+function exportSimCardsToExcel() {
+  if (typeof XLSX === "undefined") {
+    showToast("Excel kutubxonasi yuklanmadi!", "error");
+    return;
+  }
+  if (!adminSimBalancesCache || adminSimBalancesCache.length === 0) {
+    showToast("Eksport qilish uchun sim-karta balansi topilmadi!", "warning");
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // 1-varaqa: Balanslar
+  const balanceData = adminSimBalancesCache.map((b, idx) => ({
+    "№": idx + 1,
+    "Xodim F.I.SH": b.full_name || "-",
+    "Qo'lidagi zaxira (dona)": b.in_stock || 0,
+    "Sotilgan sim-kartalar (dona)": b.sold_count || 0,
+    "Jami biriktirilgan (dona)": (b.in_stock || 0) + (b.sold_count || 0)
+  }));
+  const ws1 = XLSX.utils.json_to_sheet(balanceData);
+  ws1["!cols"] = [{ wch: 6 }, { wch: 24 }, { wch: 22 }, { wch: 24 }, { wch: 24 }];
+  XLSX.utils.book_append_sheet(wb, ws1, "Xodimlar Balansi");
+
+  // 2-varaqa: Oxirgi Partiyalar
+  if (adminSimRecentCache && adminSimRecentCache.length > 0) {
+    const recentData = adminSimRecentCache.map((s, idx) => ({
+      "№": idx + 1,
+      "Operator": s.operator_type || "Uzmobile",
+      "Boshlang'ich seriya": s.start_serial || s.serial_number || "-",
+      "Tugash seriyasi": s.end_serial || s.serial_number || "-",
+      "Soni (dona)": s.total_count || 1,
+      "Biriktirilgan Xodim": s.employee_name || "-",
+      "Tarqatuvchi": s.distributor_name || "-",
+      "Holati": s.status === "GIVEN" ? "Xodimda" : "Sotilgan",
+      "Vaqti": s.created_at || s.distributed_at || "-"
+    }));
+    const ws2 = XLSX.utils.json_to_sheet(recentData);
+    ws2["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 22 }, { wch: 22 }, { wch: 14 }, { wch: 22 }, { wch: 20 }, { wch: 14 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws2, "Partiyalar Tarixi");
+  }
+
+  XLSX.writeFile(wb, `Sim_Kartalar_Hisobi_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast("Sim-kartalar hisobi Excel fayliga yuklandi!", "success");
+}
+
+// 4. Reyting va Liderlar jadvalini Excelga (.xlsx) eksport qilish
+function exportRatingToExcel() {
+  if (typeof XLSX === "undefined") {
+    showToast("Excel kutubxonasi yuklanmadi!", "error");
+    return;
+  }
+  const items = adminLeaderboardCache?.data || [];
+  if (items.length === 0) {
+    showToast("Eksport qilish uchun reyting ma'lumotlari mavjud emas!", "warning");
+    return;
+  }
+
+  const exportData = items.map(item => ({
+    "O'rin": item.rank,
+    "Nishon": item.badge,
+    "Xodim F.I.SH": item.employee_name,
+    "Lavozimi": item.role === "CASHIER" ? "Kassir" : "Xodim",
+    "Topshirgan summasi (so'm)": item.total_sum || 0,
+    "Summa balli": item.money_points || 0,
+    "Sotilgan Sim-karta (dona)": item.total_sim_cards || 0,
+    "Sim-karta balli": item.sim_points || 0,
+    "Jami KPI Ball": item.total_score || 0,
+    "Hisobot topshirgan kunlari": item.reports_count || 0
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  ws["!cols"] = [
+    { wch: 8 },
+    { wch: 10 },
+    { wch: 24 },
+    { wch: 14 },
+    { wch: 22 },
+    { wch: 14 },
+    { wch: 20 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 22 }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const periodLabel = adminLeaderboardCache.period === "monthly" ? "Oylik" : "Umumiy";
+  XLSX.utils.book_append_sheet(wb, ws, `Reyting_${periodLabel}`);
+  XLSX.writeFile(wb, `Reyting_${periodLabel}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast("Reyting jadvali Excelga muvaffaqiyatli yuklandi!", "success");
 }
 
 // Window load init

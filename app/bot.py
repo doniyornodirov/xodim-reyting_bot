@@ -568,6 +568,239 @@ async def send_report_status_to_telegram(employee_tg_id: int, report_date: str, 
         logger.warning(f"Hisobot statusini xodimga (TG: {employee_tg_id}) yuborishda xatolik: {e}")
         return False
 
+async def send_daily_digest_for_company(company_id: int) -> dict:
+    """
+    Kompaniya uchun bugungi kunlik yakuniy svodkani hisoblash va
+    Telegram guruhiga (yoki rahbar shaxsiyiga) yuborish
+    """
+    if not bot:
+        return {"success": False, "message": "Bot faol emas"}
+
+    from app.security import get_tashkent_now
+    now_tashkent = get_tashkent_now()
+    today_str = now_tashkent.strftime("%Y-%m-%d")
+    date_display = now_tashkent.strftime("%d.%m.%Y")
+    time_display = now_tashkent.strftime("%H:%M")
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+
+        # 1. Kompaniya ma'lumotlari
+        cur_c = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
+        comp = await cur_c.fetchone()
+        if not comp:
+            return {"success": False, "message": "Kompaniya topilmadi"}
+
+        comp_name = comp["name"]
+        target_group = comp["telegram_group_id"] or TELEGRAM_GROUP_ID
+        owner_tg = comp["owner_telegram_id"]
+
+        # 2. Xodimlar soni va ro'yxati
+        cur_u = await conn.execute(
+            "SELECT id, full_name, telegram_id FROM users WHERE company_id = ? AND is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER')",
+            (company_id,)
+        )
+        all_emps = await cur_u.fetchall()
+        total_emps = len(all_emps)
+        all_emp_ids = {u["id"]: u["full_name"] for u in all_emps}
+
+        # 3. Bugungi kunlik hisobotlar
+        cur_rep = await conn.execute("""
+            SELECT r.*, u.full_name
+            FROM daily_reports r
+            JOIN users u ON r.employee_id = u.id
+            WHERE r.company_id = ? AND r.report_date = ?
+        """, (company_id, today_str))
+        reports = await cur_rep.fetchall()
+
+        submitted_emp_ids = set()
+        total_paynet = 0
+        total_card_reports = 0
+        total_leviy = 0
+        total_net = 0
+        total_sims_reported = 0
+        total_debt_paid = 0
+
+        leader_name = "Hali hisobot topshirilmadi"
+        max_net = -1
+
+        for r in reports:
+            submitted_emp_ids.add(r["employee_id"])
+            total_paynet += (r["paynet"] or 0)
+            total_card_reports += (r["card_amount"] or 0)
+            total_leviy += (r["leviy"] or 0)
+            total_net += (r["net_amount"] or 0)
+            total_sims_reported += (r["sim_cards_count"] or 0)
+            total_debt_paid += (r["debt_paid"] or 0)
+
+            if (r["net_amount"] or 0) > max_net:
+                max_net = r["net_amount"]
+                leader_name = f"{r['full_name']} ({int(max_net):,} so'm)".replace(",", " ")
+
+        submitted_count = len(submitted_emp_ids)
+        not_submitted_count = max(0, total_emps - submitted_count)
+
+        # Topshirmaganlar ro'yxati (3 tagacha)
+        not_submitted_names = [name for uid, name in all_emp_ids.items() if uid not in submitted_emp_ids]
+        not_sub_text = ""
+        if not_submitted_names:
+            preview_not_sub = ", ".join(not_submitted_names[:3])
+            if len(not_submitted_names) > 3:
+                preview_not_sub += f" va yana {len(not_submitted_names) - 3} ta"
+            not_sub_text = f"\n⚠️ <b>Topshirmaganlar:</b> <i>{preview_not_sub}</i>"
+
+        # 4. Kassa qabul qilish
+        cur_cash = await conn.execute("""
+            SELECT SUM(amount_uzs) as sum_uzs, SUM(amount_usd) as sum_usd, SUM(amount) as sum_total
+            FROM cashier_handovers
+            WHERE company_id = ? AND handover_date = ?
+        """, (company_id, today_str))
+        cash_row = await cur_cash.fetchone()
+        kassa_uzs = int(cash_row["sum_uzs"] or 0) if cash_row else 0
+        kassa_usd = int(cash_row["sum_usd"] or 0) if cash_row else 0
+        kassa_total = int(cash_row["sum_total"] or 0) if cash_row else 0
+
+        # 5. Karta to'ldirish so'rovlari
+        cur_top = await conn.execute("""
+            SELECT COUNT(*) as cnt, SUM(amount) as sum_amount
+            FROM card_topups
+            WHERE company_id = ? AND DATE(created_at, '+5 hours') = ? AND status = 'APPROVED'
+        """, (company_id, today_str))
+        top_row = await cur_top.fetchone()
+        topup_cnt = top_row["cnt"] or 0 if top_row else 0
+        topup_sum = int(top_row["sum_amount"] or 0) if top_row else 0
+
+    # Telegram formatlangan xabar
+    total_net_fmt = f"{int(total_net):,}".replace(",", " ")
+    total_paynet_fmt = f"{int(total_paynet):,}".replace(",", " ")
+    topup_sum_fmt = f"{topup_sum:,}".replace(",", " ")
+
+    text = (
+        f"📊 <b>KUN YAKUNI HISOBOT SVODKASI</b>\n"
+        f"🏢 <b>{comp_name}</b>\n"
+        f"📅 <b>Sana:</b> {date_display} (⏰ {time_display})\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👥 <b>Xodimlar hisoboti:</b> {submitted_count}/{total_emps} ta topshirdi"
+        f"{not_sub_text}\n\n"
+        f"💰 <b>Jami sof kassa (Net):</b> <b>{total_net_fmt} so'm</b>\n"
+        f"📲 <b>Paynet tushumi:</b> {total_paynet_fmt} so'm\n"
+        f"💳 <b>Karta to'ldirish:</b> {topup_sum_fmt} so'm ({topup_cnt} ta)\n"
+        f"📱 <b>Sotilgan sim-kartalar:</b> {total_sims_reported} dona\n"
+    )
+
+    if total_debt_paid > 0:
+        debt_paid_fmt = f"{int(total_debt_paid):,}".replace(",", " ")
+        text += f"🤝 <b>Qarz uchun to'landi:</b> {debt_paid_fmt} so'm\n"
+
+    kassa_uzs_fmt = f"{kassa_uzs:,}".replace(",", " ")
+    kassa_total_fmt = f"{kassa_total:,}".replace(",", " ")
+    text += (
+        f"\n🏦 <b>Kassir qabul qilgan kassa:</b>\n"
+        f"• So'mda: {kassa_uzs_fmt} so'm\n"
+    )
+    if kassa_usd > 0:
+        kassa_usd_fmt = f"{kassa_usd:,}".replace(",", " ")
+        text += f"• Dollarda: ${kassa_usd_fmt}\n"
+    text += (
+        f"• <b>Jami ekvivalent:</b> <b>{kassa_total_fmt} so'm</b>\n\n"
+        f"🏆 <b>Kun yetakchisi:</b> {leader_name}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "✨ <i>Xodim-Reyting CRM tahlili</i>"
+    )
+
+    # Qayerga yuborish: Guruhga va rahbar shaxsiyiga
+    sent = False
+    targets = []
+    if target_group and str(target_group).strip():
+        raw_grp = str(target_group).strip()
+        try:
+            targets.append(int(raw_grp))
+        except Exception:
+            pass
+        if raw_grp.startswith("-") and not raw_grp.startswith("-100"):
+            try:
+                targets.append(int("-100" + raw_grp[1:]))
+            except Exception:
+                pass
+    if owner_tg:
+        try:
+            targets.append(int(owner_tg))
+        except Exception:
+            pass
+
+    for cid in targets:
+        try:
+            await asyncio.wait_for(
+                bot.send_message(chat_id=cid, text=text, parse_mode="HTML"),
+                timeout=4.0
+            )
+            sent = True
+            break
+        except Exception as e:
+            logger.warning(f"Svodkani {cid} ga yuborishda xatolik: {e}")
+
+    return {
+        "success": sent,
+        "message": "Bugungi kunlik svodka Telegramga muvaffaqiyatli yuborildi!" if sent else "Telegramga yuborib bo'lmadi (Bot guruhga qo'shilmagan bo'lishi mumkin).",
+        "data": {
+            "submitted_count": submitted_count,
+            "total_emps": total_emps,
+            "total_net": total_net,
+            "kassa_total": kassa_total,
+            "sim_cards_sold": total_sims_reported,
+            "leader": leader_name
+        }
+    }
+
+async def send_subscription_expiry_alert(company_id: int, days_left: int) -> bool:
+    """Obunasi tugashiga 3 kun yoki 1 kun qolgan firma rahbariga Telegram orqali ogohlantirish"""
+    if not bot:
+        return False
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
+        comp = await cur.fetchone()
+
+    if not comp or comp["plan"] == "UNLIMITED" or not comp["owner_telegram_id"]:
+        return False
+
+    owner_tg = int(comp["owner_telegram_id"])
+    comp_name = comp["name"]
+
+    try:
+        from datetime import datetime, timezone, timedelta
+        exp_raw = str(comp["subscription_expires_at"]).replace("Z", "+00:00")
+        exp_dt = datetime.fromisoformat(exp_raw)
+        tashkent_tz = timezone(timedelta(hours=5))
+        exp_display = exp_dt.astimezone(tashkent_tz).strftime("%d.%m.%Y")
+    except Exception:
+        exp_display = str(comp["subscription_expires_at"])
+
+    day_word = f"{days_left} kun" if days_left > 1 else "1 KUN (ERTANGA)"
+    icon = "⚠️" if days_left > 1 else "🚨"
+
+    text = (
+        f"{icon} <b>DIQQAT: OBUNA MUDDATI TUGAMOQDA!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"Hurmatli <b>{comp_name}</b> rahbari!\n\n"
+        f"Sizning <b>Xodim-Reyting CRM</b> tizimidan foydalanish ijara obunangiz tugashiga <b>{day_word}</b> qoldi.\n\n"
+        f"📅 <b>Tugash sanasi:</b> {exp_display}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "Xizmat to'xtab qolmasligi va tizimdan uzluksiz foydalanish uchun iltimos, o'z vaqtida obunani uzaytiring.\n\n"
+        "📞 <i>Dasturchi Admin bilan bog'lanish: @xodim_reyting_bot</i>"
+    )
+
+    try:
+        await asyncio.wait_for(
+            bot.send_message(chat_id=owner_tg, text=text, parse_mode="HTML"),
+            timeout=4.0
+        )
+        return True
+    except Exception as e:
+        logger.warning(f"Obuna ogohlantirishini yuborishda xatolik (TG: {owner_tg}): {e}")
+        return False
+
 async def start_bot_polling():
     """Botni fonda asinxron ishga tushirish"""
     if bot and dp:

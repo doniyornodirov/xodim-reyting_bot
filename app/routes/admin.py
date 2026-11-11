@@ -57,6 +57,23 @@ async def create_user(req: CreateUserRequest, admin: dict = Depends(require_role
         role = req.role if req.role in ["EMPLOYEE", "CASHIER", "ADMIN"] else "EMPLOYEE"
         comp_id = admin.get("company_id") or 1
 
+        # Kompaniyaning xodimlar limiti tekshiruvi (SaaS Tiered Monetization)
+        cur_comp = await conn.execute("SELECT max_employees FROM companies WHERE id = ?", (comp_id,))
+        comp_info = await cur_comp.fetchone()
+        max_emp = comp_info["max_employees"] if (comp_info and "max_employees" in comp_info.keys() and comp_info["max_employees"]) else 20
+
+        cur_cnt = await conn.execute(
+            "SELECT COUNT(*) FROM users WHERE company_id = ? AND is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER')",
+            (comp_id,)
+        )
+        curr_emp_count = (await cur_cnt.fetchone())[0]
+
+        if curr_emp_count >= max_emp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Kompaniyangiz tarifidagi faol xodimlar limiti ({max_emp} ta) to'ldi! Yangi xodim qo'shish uchun tarifni oshiring yoki Dasturchi Admin bilan bog'laning."
+            )
+
         cursor = await conn.execute("""
             INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
             VALUES (?, ?, ?, ?, ?, ?, 1)
@@ -89,6 +106,23 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
 
         new_status = 0 if user["is_active"] else 1
         status_name = "Faollashtirildi" if new_status else "Ishdan bo'shatildi"
+
+        if new_status == 1:
+            cur_comp = await conn.execute("SELECT max_employees FROM companies WHERE id = ?", (comp_id,))
+            comp_info = await cur_comp.fetchone()
+            max_emp = comp_info["max_employees"] if (comp_info and "max_employees" in comp_info.keys() and comp_info["max_employees"]) else 20
+
+            cur_cnt = await conn.execute(
+                "SELECT COUNT(*) FROM users WHERE company_id = ? AND is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER')",
+                (comp_id,)
+            )
+            curr_emp_count = (await cur_cnt.fetchone())[0]
+
+            if curr_emp_count >= max_emp:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Kompaniyangiz tarifidagi faol xodimlar limiti ({max_emp} ta) to'ldi! Xodimni qayta faollashtirish uchun tarifni oshiring yoki boshqa xodimlarni boshqaring."
+                )
 
         await conn.execute("UPDATE users SET is_active = ? WHERE id = ?", (new_status, user_id))
 
@@ -577,4 +611,42 @@ async def admin_clear_history(admin: dict = Depends(require_role(["ADMIN"]))):
             "message": "Firma operatsiyalari tarixi muvaffaqiyatli tozalandi va nollashtirildi!",
             "details": results
         }
+
+@router.get("/backup-db")
+async def download_database_backup(current_user: dict = Depends(get_current_user)):
+    """Ma'lumotlar bazasining to'liq xavfsiz zaxira nusxasini (Snapshot) yuklab olish"""
+    if current_user.get("role") not in ["ADMIN", "DEVELOPER"] and not current_user.get("is_super_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Faqat Rahbar yoki Dasturchi Admin baza zaxirasini yuklab olishi mumkin!"
+        )
+
+    import sqlite3
+    import tempfile
+    import os
+    from fastapi.responses import FileResponse
+    from app.security import get_tashkent_now
+
+    now_str = get_tashkent_now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"backup_xodim_reyting_{now_str}.db"
+    temp_dir = tempfile.gettempdir()
+    backup_filepath = os.path.join(temp_dir, backup_filename)
+
+    try:
+        # SQLite rasmiy Backup API orqali WAL holatidagi bazaning toza nusxasini olish
+        src_conn = sqlite3.connect(DB_PATH)
+        dest_conn = sqlite3.connect(backup_filepath)
+        src_conn.backup(dest_conn)
+        dest_conn.close()
+        src_conn.close()
+
+        return FileResponse(
+            backup_filepath,
+            media_type="application/x-sqlite3",
+            filename=backup_filename,
+            headers={"Content-Disposition": f'attachment; filename="{backup_filename}"'}
+        )
+    except Exception as e:
+        logger.error(f"Baza zaxirasini olishda xatolik: {e}")
+        raise HTTPException(status_code=500, detail=f"Baza zaxirasini yaratishda xatolik: {e}")
 

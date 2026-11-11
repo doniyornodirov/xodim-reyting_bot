@@ -381,3 +381,11 @@ async def update_report_status(
             logger.warning(f"Hisobot statusini telegramga yuborishda task xatosi: {e}")
 
     return {"success": True, "message": f"Hisobot muvaffaqiyatli {status_label} holatiga o'tkazildi!"}
+
+@router.post("/send-daily-digest")
+async def trigger_daily_digest(user: dict = Depends(require_role(["ADMIN"]))):
+    """Firma Rahbari tomonidan bugungi kunlik yakuniy hisobot svodkasini Telegram guruhiga yuborish"""
+    from app.bot import send_daily_digest_for_company
+    comp_id = user.get("company_id") or 1
+    res = await send_daily_digest_for_company(comp_id)
+    return res

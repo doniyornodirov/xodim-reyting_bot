@@ -89,6 +89,7 @@ class CreateCompanyRequest(BaseModel):
     subscription_days: Optional[int] = Field(default=30, ge=1, le=3650, description="Obuna muddati (kunlarda)")
     expires_date: Optional[str] = Field(None, description="Amal qilish sanasi (YYYY-MM-DD)")
     plan: str = Field(default="STANDARD", description="Tarif: STANDARD, UNLIMITED")
+    max_employees: Optional[int] = Field(default=20, ge=1, le=10000, description="Maksimal ruxsat etilgan faol xodimlar soni")
 
 class ExtendSubscriptionRequest(BaseModel):
     days: Optional[int] = Field(None, ge=1, le=3650, description="Uzatiladigan kunlar soni")
@@ -97,4 +98,5 @@ class ExtendSubscriptionRequest(BaseModel):
 class UpdateCompanySettingsRequest(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100, description="Firma nomi")
     telegram_group_id: Optional[str] = Field(None, description="Telegram Guruh ID si")
+    max_employees: Optional[int] = Field(None, ge=1, le=10000, description="Maksimal ruxsat etilgan faol xodimlar soni")
 
