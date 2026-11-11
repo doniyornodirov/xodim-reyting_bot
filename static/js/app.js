@@ -4306,6 +4306,9 @@ async function loadSaasCompanies() {
       } else if (c.days_left !== null && c.days_left !== undefined) {
         if (c.days_left <= 0) {
           expiryText = `<b style="color: #ef4444;">Tugagan ⚠️</b>`;
+        } else if (c.days_left > 365) {
+          const yearsLeft = (c.days_left / 365).toFixed(1);
+          expiryText = `<span style="color: #10b981; font-weight: 700;">${yearsLeft} yil qoldi (${c.days_left} kun) 🌟</span>`;
         } else if (c.days_left <= 5) {
           expiryText = `<b style="color: #f59e0b;">${c.days_left} kun qoldi ⏳</b>`;
         } else {
@@ -4315,7 +4318,14 @@ async function loadSaasCompanies() {
         expiryText = "-";
       }
 
-      const planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #db2777; border: 1px solid rgba(236, 72, 153, 0.35); font-weight: 700;">${c.plan}</span>`;
+      let planBadge = "";
+      if (c.plan === "UNLIMITED") {
+        planBadge = `<span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #a855f7; border: 1px solid rgba(147, 51, 234, 0.35); font-weight: 700;">UNLIMITED ♾️</span>`;
+      } else if (c.plan === "5_YEARS") {
+        planBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 700;">5 YIL 🌟</span>`;
+      } else {
+        planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #db2777; border: 1px solid rgba(236, 72, 153, 0.35); font-weight: 700;">${c.plan}</span>`;
+      }
 
       // Amallar tugmalari
       let actionsHtml = `<div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">`;
@@ -4362,7 +4372,10 @@ async function loadSaasCompanies() {
           <td>
             <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
           </td>
-          <td>${planBadge}</td>
+          <td>
+            ${planBadge}
+            ${!isMain ? `<button type="button" onclick="promptChangeCompanyPlan(${c.id}, '${c.plan}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">🔄 Tarifni o'zgartirish</button>` : ''}
+          </td>
           <td>
             <div>${expiryText}</div>
             ${c.subscription_expires_at ? `<span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600; display: block; margin-top: 2px;">📅 ${formatDateOnly(c.subscription_expires_at)} gacha</span>` : ''}
@@ -4395,12 +4408,24 @@ function handleSaasPlanChange(plan) {
     dateContainer.style.display = "none";
     dateInput.required = false;
     dateInput.value = "";
+  } else if (plan === "5_YEARS") {
+    dateContainer.style.display = "block";
+    dateInput.required = true;
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 5);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    dateInput.value = `${y}-${m}-${day}`;
   } else {
     dateContainer.style.display = "block";
     dateInput.required = true;
-    if (!dateInput.value) {
-      initSaasCreateFormDate();
-    }
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    dateInput.value = `${y}-${m}-${day}`;
   }
 }
 
@@ -4410,6 +4435,14 @@ function initSaasCreateFormDate() {
   const d = new Date();
   const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   dateInput.min = todayStr;
+
+  const planSelect = document.getElementById("saas-new-plan");
+  if (planSelect && planSelect.value === "5_YEARS") {
+    d.setFullYear(d.getFullYear() + 5);
+    const fiveYearStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    dateInput.value = fiveYearStr;
+    return;
+  }
 
   if (!dateInput.value) {
     d.setDate(d.getDate() + 30);
@@ -4529,6 +4562,17 @@ function setExtendModalDays(days) {
   if (!dateInput) return;
   const d = new Date();
   d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  dateInput.value = `${y}-${m}-${day}`;
+}
+
+function setExtendYears(years) {
+  const dateInput = document.getElementById("saas-extend-new-date");
+  if (!dateInput) return;
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + years);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -4765,6 +4809,47 @@ async function promptChangeCompanyLimit(companyId, currentLimit) {
     const res = await api(`/api/saas/companies/${companyId}/update-limit?max_employees=${newLimit}`, "POST");
     if (res.success) {
       showToast(res.message || "Limit muvaffaqiyatli o'zgartirildi!", "success");
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
+    }
+  } catch (e) {
+    showToast(e.message || "Server xatosi!", "error");
+  }
+}
+
+// Super Admin: Firmaning tarif rejasini o'zgartirish (STANDARD, 5_YEARS, UNLIMITED)
+async function promptChangeCompanyPlan(companyId, currentPlan) {
+  const chosen = prompt(
+    `Firma uchun yangi tarifni tanlang yoki kiriting:\n1 = STANDARD (Sana bo'yicha)\n2 = 5_YEARS (5 yillik obuna)\n3 = UNLIMITED (Cheksiz)`,
+    currentPlan
+  );
+  if (!chosen) return;
+
+  let newPlan = chosen.trim().toUpperCase();
+  if (newPlan === "1" || newPlan === "STANDARD") newPlan = "STANDARD";
+  else if (newPlan === "2" || newPlan === "5_YEARS" || newPlan === "5 YIL" || newPlan === "5") newPlan = "5_YEARS";
+  else if (newPlan === "3" || newPlan === "UNLIMITED") newPlan = "UNLIMITED";
+  else {
+    alert("Noto'g'ri tarif kiritildi! Qabul qilinadigan variantlar: STANDARD, 5_YEARS, UNLIMITED");
+    return;
+  }
+
+  if (newPlan === currentPlan) {
+    showToast("Tanlangan tarif hozirgi tarif bilan bir xil.", "info");
+    return;
+  }
+
+  const confirmMsg = newPlan === "5_YEARS" 
+    ? `Haqiqatan ham ushbu firma tarifini '5_YEARS' (bugungi kundan boshlab rosa 5 yil) ga o'zgartirmoqchimisiz?`
+    : `Haqiqatan ham ushbu firma tarifini '${newPlan}' ga o'zgartirmoqchimisiz?`;
+
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await api(`/api/saas/companies/${companyId}/update-plan?new_plan=${newPlan}`, "POST");
+    if (res.success) {
+      showToast(res.message || "Firma tarifi muvaffaqiyatli yangilandi!", "success");
       loadSaasCompanies();
     } else {
       showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
@@ -5318,6 +5403,18 @@ function navigateSaasCalMonth(direction) {
 function applySaasPresetDays(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
+  saasCalYear = d.getFullYear();
+  saasCalMonth = d.getMonth();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  selectedSaasDateIso = `${y}-${m}-${day}`;
+  renderCompactSaasCalendar();
+}
+
+function applySaasPresetYears(years) {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + years);
   saasCalYear = d.getFullYear();
   saasCalMonth = d.getMonth();
   const y = d.getFullYear();

@@ -1012,8 +1012,9 @@
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Tarif rejasi *</label>
               <select id="saas-new-plan" class="form-input" style="height: 42px;" onchange="handleSaasPlanChange(this.value)">
-                <option value="STANDARD" selected>STANDARD</option>
-                <option value="UNLIMITED">UNLIMITED</option>
+                <option value="STANDARD" selected>STANDARD (Sana bo'yicha)</option>
+                <option value="5_YEARS">5 YIL (5 yillik obuna)</option>
+                <option value="UNLIMITED">UNLIMITED (Cheksiz)</option>
               </select>
             </div>
             <div class="form-group" id="saas-new-date-container" style="margin-bottom: 0;">
@@ -1878,6 +1879,7 @@
             <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(90)">+3 oy</button>
             <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(180)">+6 oy</button>
             <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;" onclick="setExtendModalDays(365)">+1 yil</button>
+            <button type="button" class="btn btn-secondary" style="font-size: 0.75rem; padding: 0.3rem 0.6rem; color: #10b981; border-color: rgba(16, 185, 129, 0.4); font-weight: 700;" onclick="setExtendYears(5)">+5 yil 🌟</button>
           </div>
         </div>
 
@@ -1987,6 +1989,7 @@
       <button type="button" class="time-chip-btn" onclick="applySaasPresetDays(90)">+3 oy</button>
       <button type="button" class="time-chip-btn" onclick="applySaasPresetDays(180)">+6 oy</button>
       <button type="button" class="time-chip-btn" onclick="applySaasPresetDays(365)">+1 yil</button>
+      <button type="button" class="time-chip-btn" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.4); font-weight: 700;" onclick="applySaasPresetYears(5)">+5 yil 🌟</button>
     </div>
 
     <!-- 7 kunlik grid -->
@@ -2005,6 +2008,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=365"></script>
+  <script src="/static/js/app.js?v=366"></script>
 </body>
 </html>

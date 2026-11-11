@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 import aiosqlite
 
 from app.config import DB_PATH
@@ -143,6 +143,14 @@ async def create_company(
                     expires_at = exp_dt.astimezone(timezone.utc).isoformat()
                 except ValueError:
                     raise HTTPException(status_code=400, detail="Sana formati noto'g'ri! YYYY-MM-DD bo'lishi kerak.")
+            elif req.plan == "5_YEARS":
+                # 5 yil keyingi sana (Toshkent vaqti 23:59:59)
+                tashkent_now = datetime.now(tashkent_tz)
+                try:
+                    exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, hour=23, minute=59, second=59, microsecond=0)
+                except ValueError:
+                    exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, month=2, day=28, hour=23, minute=59, second=59, microsecond=0)
+                expires_at = exp_dt.astimezone(timezone.utc).isoformat()
             else:
                 days = req.subscription_days or 30
                 exp_dt = now_utc + timedelta(days=days)
@@ -266,6 +274,55 @@ async def update_company_limit(
         "success": True,
         "message": f"'{comp['name']}' firmasi xodimlar limiti {max_employees} taga muvaffaqiyatli o'zgartirildi!",
         "max_employees": max_employees
+    }
+
+@router.post("/companies/{company_id}/update-plan")
+async def update_company_plan(
+    company_id: int,
+    new_plan: str = Query(..., regex="^(STANDARD|5_YEARS|UNLIMITED)$"),
+    super_admin: dict = Depends(require_super_admin)
+):
+    """Firma tarif rejasini o'zgartirish (STANDARD, 5_YEARS, UNLIMITED)"""
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("SELECT id, name, plan, subscription_expires_at FROM companies WHERE id = ?", (company_id,))
+        comp = await cur.fetchone()
+        if not comp:
+            raise HTTPException(status_code=404, detail="Firma topilmadi!")
+
+        tashkent_tz = timezone(timedelta(hours=5))
+        now_utc = datetime.now(timezone.utc)
+        new_expires_at = comp["subscription_expires_at"]
+
+        if new_plan == "UNLIMITED":
+            new_expires_at = None
+        elif new_plan == "5_YEARS":
+            tashkent_now = datetime.now(tashkent_tz)
+            try:
+                exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, hour=23, minute=59, second=59, microsecond=0)
+            except ValueError:
+                exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, month=2, day=28, hour=23, minute=59, second=59, microsecond=0)
+            new_expires_at = exp_dt.astimezone(timezone.utc).isoformat()
+        elif new_plan == "STANDARD" and not new_expires_at:
+            new_expires_at = (now_utc + timedelta(days=30)).isoformat()
+
+        await conn.execute("""
+            UPDATE companies 
+            SET plan = ?, subscription_expires_at = ?, is_active = 1 
+            WHERE id = ?
+        """, (new_plan, new_expires_at, company_id))
+
+        details = f"Firma '{comp['name']}' tarifi '{comp['plan']}' dan '{new_plan}' ga o'zgartirildi."
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (1, 'COMPANY', ?, 'UPDATE_PLAN', ?, ?)
+        """, (company_id, super_admin["full_name"], details))
+
+        await conn.commit()
+
+    return {
+        "success": True,
+        "message": f"'{comp['name']}' firmasi tarifi muvaffaqiyatli '{new_plan}' ga o'zgartirildi!"
     }
 
 @router.post("/companies/{company_id}/extend")
