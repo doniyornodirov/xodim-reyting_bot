@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=831">
+  <link rel="stylesheet" href="/static/css/style.css?v=832">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -95,11 +95,13 @@
           <span class="btn-sidebar-text hidden sm:inline">Menyu</span>
         </button>
 
-        <a href="#" class="brand flex items-center gap-2.5 no-underline">
-          <div class="brand-icon w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-base font-bold shadow-sm shadow-indigo-500/25">⚡</div>
-          <div>
-            <span class="brand-title text-[15px] font-bold block leading-tight">XODIM-REITING</span>
-            <span class="brand-subtitle text-[12px] text-slate-400 font-normal block">Paynet & Sim-karta CRM</span>
+        <a href="#" class="brand flex items-center gap-2 sm:gap-2.5 no-underline" title="Xodim-Reyting CRM">
+          <div class="brand-icon w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-base font-bold shadow-sm shadow-indigo-500/25 flex-shrink-0">⚡</div>
+          <div class="brand-text-wrap flex flex-col justify-center leading-none">
+            <span class="brand-title text-[13.5px] sm:text-[15px] font-extrabold tracking-tight leading-none whitespace-nowrap">
+              XODIM<span class="brand-accent text-indigo-400 font-extrabold">-REITING</span>
+            </span>
+            <span class="brand-subtitle text-[10.5px] text-slate-400 font-medium whitespace-nowrap hidden sm:block mt-0.5 tracking-wider uppercase">Paynet & Sim-karta CRM</span>
           </div>
         </a>
       </div>
@@ -113,8 +115,8 @@
         <button id="btn-rahbar-cashier-toggle" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" onclick="toggleRahbarCashierMode()">
           <span>💼</span> Kassir rejimi
         </button>
-        <span id="nav-company-badge" class="badge badge-company inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" title="Firma sozlamalari" onclick="openCompanySettingsModal()">
-          🏢 <span id="nav-company-name">Bosh Tashkilot</span>
+        <span id="nav-company-badge" class="badge badge-company inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition max-w-[170px]" style="display: none;" title="Firma sozlamalari" onclick="openCompanySettingsModal()">
+          🏢 <span id="nav-company-name" class="truncate">Bosh Tashkilot</span>
         </span>
         <span id="nav-user-name" class="text-xs font-semibold hidden md:inline-block">Mehmon</span>
         <span id="nav-user-role" class="badge badge-employee inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold">Xodim</span>
@@ -136,11 +138,13 @@
 
   <aside id="sidebar-drawer" class="sidebar-drawer" aria-label="Yon menyu">
     <div class="sidebar-header">
-      <div class="brand" style="gap: 0.65rem;">
-        <div class="brand-icon" style="width: 34px; height: 34px; font-size: 1.1rem;">⚡</div>
-        <div>
-          <span class="brand-title" style="font-size: 1.05rem;">XODIM-REITING</span>
-          <span class="brand-subtitle" style="font-size: 0.7rem;">CRM Tizimi</span>
+      <div class="brand flex items-center gap-2.5">
+        <div class="brand-icon w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-base font-bold flex-shrink-0 shadow-sm shadow-indigo-500/25">⚡</div>
+        <div class="brand-text-wrap flex flex-col justify-center leading-none">
+          <span class="brand-title text-[15px] font-extrabold tracking-tight whitespace-nowrap">
+            XODIM<span class="brand-accent text-indigo-400 font-extrabold">-REITING</span>
+          </span>
+          <span class="brand-subtitle text-[10.5px] text-slate-400 font-medium whitespace-nowrap mt-0.5 tracking-wider uppercase">Paynet & Sim-karta CRM</span>
         </div>
       </div>
       <button type="button" class="sidebar-close-btn" onclick="closeSidebarMenu()" aria-label="Yopish">✕</button>
@@ -2000,6 +2004,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=370"></script>
+  <script src="/static/js/app.js?v=371"></script>
 </body>
 </html>

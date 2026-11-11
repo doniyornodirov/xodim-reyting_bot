@@ -729,41 +729,91 @@ body.theme-light .navbar {
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   text-decoration: none;
   color: var(--text-main);
+  min-width: 0;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 .brand-icon {
   width: 34px;
   height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  flex-shrink: 0;
   border-radius: 9px;
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.05rem;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: transform var(--transition-fast);
+}
+
+.brand:hover .brand-icon {
+  transform: scale(1.05);
+}
+
+.brand-text-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 }
 
 .brand-title {
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--text-main);
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #f8fafc;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.brand-accent {
+  color: #818cf8;
 }
 
 body.theme-light .brand-title {
   color: #0f172a;
 }
 
+body.theme-light .brand-accent {
+  color: #4f46e5;
+}
+
 .brand-subtitle {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.68rem;
+  color: #94a3b8;
   display: block;
-  font-weight: 400;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+body.theme-light .brand-subtitle {
+  color: #64748b;
+}
+
+#nav-company-badge {
+  max-width: 175px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#nav-company-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-nav-badge {
@@ -2832,6 +2882,14 @@ button:active,
   }
 }
 
+/* 1.5. KICHIK PLANSHETLAR VA MOBIL EKRANLAR (MAX-WIDTH: 850px) */
+@media (max-width: 850px) {
+  /* Bosh tashkilot yorlig'i kichik ekranda sig'may qolmasligi uchun navbarda yashiriladi ([☰ Menyu] ichida to'liq saqlanadi) */
+  #nav-company-badge {
+    display: none !important;
+  }
+}
+
 /* 2. MOBIL QURILMALAR VA SMARTFONLAR (MAX-WIDTH: 768px) */
 @media (max-width: 768px) {
 
@@ -2853,17 +2911,24 @@ button:active,
   }
 
   .brand-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    font-size: 0.95rem !important;
   }
 
   .brand-title {
-    font-size: 0.95rem;
+    font-size: 0.92rem !important;
+    line-height: 1 !important;
   }
 
   .brand-subtitle {
-    font-size: 0.65rem;
+    display: none !important;
+  }
+
+  #nav-company-badge {
+    display: none !important;
   }
 
   /* User profile sub-bar mobil formatda bitta qatorda */
@@ -3254,21 +3319,29 @@ button:active,
   }
 
   .navbar {
-    padding: 0.5rem 0.65rem;
+    padding: 0.45rem 0.55rem;
+    height: 56px;
   }
 
   .brand-title {
-    font-size: 0.92rem;
+    font-size: 0.86rem !important;
+    line-height: 1 !important;
   }
 
   .brand-subtitle {
-    display: none;
+    display: none !important;
   }
 
   .brand-icon {
-    width: 32px;
-    height: 32px;
-    font-size: 1rem;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    font-size: 0.9rem !important;
+  }
+
+  #nav-company-badge {
+    display: none !important;
   }
 
   .user-nav-badge {
