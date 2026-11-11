@@ -568,19 +568,48 @@ async def send_report_status_to_telegram(employee_tg_id: int, report_date: str, 
         logger.warning(f"Hisobot statusini xodimga (TG: {employee_tg_id}) yuborishda xatolik: {e}")
         return False
 
-async def send_daily_digest_for_company(company_id: int) -> dict:
+async def send_daily_digest_for_company(
+    company_id: int,
+    target_date: str | None = None,
+    end_date: str | None = None
+) -> dict:
     """
-    Kompaniya uchun bugungi kunlik yakuniy svodkani hisoblash va
+    Kompaniya uchun bugungi yoki belgilangan sana/davr bo'yicha yakuniy svodkani hisoblash va
     Telegram guruhiga (yoki rahbar shaxsiyiga) yuborish
     """
     if not bot:
         return {"success": False, "message": "Bot faol emas"}
 
+    from datetime import datetime
     from app.security import get_tashkent_now
     now_tashkent = get_tashkent_now()
     today_str = now_tashkent.strftime("%Y-%m-%d")
-    date_display = now_tashkent.strftime("%d.%m.%Y")
     time_display = now_tashkent.strftime("%H:%M")
+
+    # Sana yoki Sana oralig'i (Date or Date Range)
+    if target_date and str(target_date).strip():
+        start_date_str = str(target_date).strip()
+    else:
+        start_date_str = today_str
+
+    if end_date and str(end_date).strip() and str(end_date).strip() != start_date_str:
+        end_date_str = str(end_date).strip()
+        is_range = True
+        try:
+            d1 = datetime.strptime(start_date_str, "%Y-%m-%d").strftime("%d.%m.%Y")
+            d2 = datetime.strptime(end_date_str, "%Y-%m-%d").strftime("%d.%m.%Y")
+            date_display = f"{d1} — {d2}"
+        except Exception:
+            date_display = f"{start_date_str} — {end_date_str}"
+        header_title = "📊 <b>DAVRIY HISOBOT SVODKASI</b>"
+    else:
+        end_date_str = start_date_str
+        is_range = False
+        try:
+            date_display = datetime.strptime(start_date_str, "%Y-%m-%d").strftime("%d.%m.%Y")
+        except Exception:
+            date_display = start_date_str
+        header_title = "📊 <b>KUN YAKUNI HISOBOT SVODKASI</b>" if start_date_str == today_str else "📊 <b>KUNLIK HISOBOT SVODKASI</b>"
 
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
@@ -604,13 +633,21 @@ async def send_daily_digest_for_company(company_id: int) -> dict:
         total_emps = len(all_emps)
         all_emp_ids = {u["id"]: u["full_name"] for u in all_emps}
 
-        # 3. Bugungi kunlik hisobotlar
-        cur_rep = await conn.execute("""
-            SELECT r.*, u.full_name
-            FROM daily_reports r
-            JOIN users u ON r.employee_id = u.id
-            WHERE r.company_id = ? AND r.report_date = ?
-        """, (company_id, today_str))
+        # 3. Kunlik hisobotlar
+        if is_range:
+            cur_rep = await conn.execute("""
+                SELECT r.*, u.full_name
+                FROM daily_reports r
+                JOIN users u ON r.employee_id = u.id
+                WHERE r.company_id = ? AND r.report_date >= ? AND r.report_date <= ?
+            """, (company_id, start_date_str, end_date_str))
+        else:
+            cur_rep = await conn.execute("""
+                SELECT r.*, u.full_name
+                FROM daily_reports r
+                JOIN users u ON r.employee_id = u.id
+                WHERE r.company_id = ? AND r.report_date = ?
+            """, (company_id, start_date_str))
         reports = await cur_rep.fetchall()
 
         submitted_emp_ids = set()
@@ -650,22 +687,36 @@ async def send_daily_digest_for_company(company_id: int) -> dict:
             not_sub_text = f"\n⚠️ <b>Topshirmaganlar:</b> <i>{preview_not_sub}</i>"
 
         # 4. Kassa qabul qilish
-        cur_cash = await conn.execute("""
-            SELECT SUM(amount_uzs) as sum_uzs, SUM(amount_usd) as sum_usd, SUM(amount) as sum_total
-            FROM cashier_handovers
-            WHERE company_id = ? AND handover_date = ?
-        """, (company_id, today_str))
+        if is_range:
+            cur_cash = await conn.execute("""
+                SELECT SUM(amount_uzs) as sum_uzs, SUM(amount_usd) as sum_usd, SUM(amount) as sum_total
+                FROM cashier_handovers
+                WHERE company_id = ? AND handover_date >= ? AND handover_date <= ?
+            """, (company_id, start_date_str, end_date_str))
+        else:
+            cur_cash = await conn.execute("""
+                SELECT SUM(amount_uzs) as sum_uzs, SUM(amount_usd) as sum_usd, SUM(amount) as sum_total
+                FROM cashier_handovers
+                WHERE company_id = ? AND handover_date = ?
+            """, (company_id, start_date_str))
         cash_row = await cur_cash.fetchone()
         kassa_uzs = int(cash_row["sum_uzs"] or 0) if cash_row else 0
         kassa_usd = int(cash_row["sum_usd"] or 0) if cash_row else 0
         kassa_total = int(cash_row["sum_total"] or 0) if cash_row else 0
 
         # 5. Karta to'ldirish so'rovlari
-        cur_top = await conn.execute("""
-            SELECT COUNT(*) as cnt, SUM(amount) as sum_amount
-            FROM card_topups
-            WHERE company_id = ? AND DATE(created_at, '+5 hours') = ? AND status = 'APPROVED'
-        """, (company_id, today_str))
+        if is_range:
+            cur_top = await conn.execute("""
+                SELECT COUNT(*) as cnt, SUM(amount) as sum_amount
+                FROM card_topups
+                WHERE company_id = ? AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ? AND status = 'APPROVED'
+            """, (company_id, start_date_str, end_date_str))
+        else:
+            cur_top = await conn.execute("""
+                SELECT COUNT(*) as cnt, SUM(amount) as sum_amount
+                FROM card_topups
+                WHERE company_id = ? AND DATE(created_at, '+5 hours') = ? AND status = 'APPROVED'
+            """, (company_id, start_date_str))
         top_row = await cur_top.fetchone()
         topup_cnt = top_row["cnt"] or 0 if top_row else 0
         topup_sum = int(top_row["sum_amount"] or 0) if top_row else 0
@@ -676,9 +727,9 @@ async def send_daily_digest_for_company(company_id: int) -> dict:
     topup_sum_fmt = f"{topup_sum:,}".replace(",", " ")
 
     text = (
-        f"📊 <b>KUN YAKUNI HISOBOT SVODKASI</b>\n"
+        f"{header_title}\n"
         f"🏢 <b>{comp_name}</b>\n"
-        f"📅 <b>Sana:</b> {date_display} (⏰ {time_display})\n"
+        f"📅 <b>Sana / Davr:</b> {date_display} (⏰ {time_display})\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"👥 <b>Xodimlar hisoboti:</b> {submitted_count}/{total_emps} ta topshirdi"
         f"{not_sub_text}\n\n"

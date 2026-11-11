@@ -4816,14 +4816,35 @@ async function downloadDatabaseBackup() {
   }
 }
 
-// Bugungi kunlik svodkani Telegram guruhga yuborish
+// Bugungi yoki tanlangan sana/davr bo'yicha svodkani Telegram guruhga yuborish
 async function sendTodayDigestToTelegram() {
-  if (!confirm("Bugungi kun yakuniy hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?")) return;
+  const s = adminReportDateFilter?.startDate;
+  const e = adminReportDateFilter?.endDate;
+
+  let promptText = "";
+  if (s && e && s === e) {
+    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?`;
+  } else if (s && e && s !== e) {
+    promptText = `${formatDateOnly(s)} dan ${formatDateOnly(e)} gacha bo'lgan davriy svodkani Telegram guruhga yuborishni tasdiqlaysizmi?`;
+  } else if (s && !e) {
+    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?`;
+  } else {
+    promptText = "Bugungi kun yakuniy hisobot svodkasini Telegram guruhga yuborishni tasdiqlaysizmi?";
+  }
+
+  if (!confirm(promptText)) return;
   showToast("Svodka hisoblanmoqda va Telegramga yuborilmoqda...", "info");
+
   try {
-    const res = await api("/api/reports/send-daily-digest", "POST");
+    let url = "/api/reports/send-daily-digest";
+    const params = [];
+    if (s) params.push(`target_date=${encodeURIComponent(s)}`);
+    if (e && e !== s) params.push(`end_date=${encodeURIComponent(e)}`);
+    if (params.length > 0) url += `?${params.join("&")}`;
+
+    const res = await api(url, "POST");
     if (res.success) {
-      showToast(res.message || "Kunlik svodka Telegramga muvaffaqiyatli yuborildi!", "success");
+      showToast(res.message || "Svodka Telegramga muvaffaqiyatli yuborildi!", "success");
     } else {
       showToast(res.message || res.detail || "Telegramga yuborib bo'lmadi", "warning");
     }

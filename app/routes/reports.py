@@ -383,9 +383,13 @@ async def update_report_status(
     return {"success": True, "message": f"Hisobot muvaffaqiyatli {status_label} holatiga o'tkazildi!"}
 
 @router.post("/send-daily-digest")
-async def trigger_daily_digest(user: dict = Depends(require_role(["ADMIN"]))):
-    """Firma Rahbari tomonidan bugungi kunlik yakuniy hisobot svodkasini Telegram guruhiga yuborish"""
+async def trigger_daily_digest(
+    target_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    user: dict = Depends(require_role(["ADMIN"]))
+):
+    """Firma Rahbari tomonidan bugungi yoki belgilangan sana/davr bo'yicha hisobot svodkasini Telegram guruhiga yuborish"""
     from app.bot import send_daily_digest_for_company
     comp_id = user.get("company_id") or 1
-    res = await send_daily_digest_for_company(comp_id)
+    res = await send_daily_digest_for_company(comp_id, target_date=target_date, end_date=end_date)
     return res
