@@ -159,6 +159,29 @@ if dp:
                         parse_mode="HTML"
                     )
                 else:
+                    raw_upd = user["last_location_updated_at"]
+                    now_dt = datetime.now(timezone.utc)
+                    loc_lag = 0
+                    if raw_upd:
+                        try:
+                            upd_clean = str(raw_upd).replace("Z", "+00:00")
+                            upd_dt = datetime.fromisoformat(upd_clean)
+                            if upd_dt.tzinfo is None:
+                                upd_dt = upd_dt.replace(tzinfo=timezone.utc)
+                            loc_lag = max(0, int((now_dt - upd_dt).total_seconds() / 60))
+                        except Exception:
+                            loc_lag = 999
+                    else:
+                        loc_lag = 999
+
+                    if not raw_upd or loc_lag >= 10:
+                        signal_line = (
+                            "⚠️ <b>Signal holati:</b> 📵 <b>Signal kelmayapti (Internetingiz o'chiq!)</b>\n"
+                            "<i>Iltimos, mobil internetni yoqing va 📎 (Skrepka) -> 📍 Geopozitsiya -> 'Jonli joylashuv'ni 8 soatga yuboring.</i>\n\n"
+                        )
+                    else:
+                        signal_line = f"📶 <b>Signal holati:</b> 🟢 <b>Jonli signal kelmoqda</b> ({loc_lag} daqiqa oldin yangilangan)\n\n"
+
                     await message.answer(
                         f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
                         f"🏢 <b>Tashkilot:</b> {comp_name}\n"
@@ -166,11 +189,12 @@ if dp:
                         f"📍 <b>Filial:</b> {w_name}\n"
                         f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
                         f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
+                        f"{signal_line}"
                         f"✅ <b>Ish joyingiz koordinatasi belgilangan.</b>\n\n"
                         f"🛰 <b>KUNLIK JONLI JOYLASHUV (LIVE LOCATION):</b>\n"
                         f"Har kuni ishga kelganingizda <b>jonli joylashuv</b> yuborib qo'ying:\n"
                         f"Pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...' (Jonli joylashuv)</i> ni tanlab <b>8 soat</b> qilib yuboring.\n\n"
-                        f"<i>(Agar yangi filialga o'tgan bo'lsangiz, ish joyini qayta belgilash uchun /qayta_sozlash buyrug'ini yuboring)</i>",
+                        f"<i>(Signal holatini tekshirish: /status | Yangi filialga o'tgan bo'lsangiz: /qayta_sozlash)</i>",
                         reply_markup=ReplyKeyboardRemove(),
                         parse_mode="HTML"
                     )
@@ -267,6 +291,67 @@ if dp:
             reply_markup=kb_workplace,
             parse_mode="HTML"
         )
+
+    @dp.message(Command("status"))
+    @dp.message(Command("signal"))
+    @dp.message(Command("holat"))
+    async def handle_employee_signal_status(message: types.Message):
+        user_tg_id = message.from_user.id
+        from datetime import datetime, timezone
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("""
+                SELECT u.*, c.name as company_name
+                FROM users u
+                LEFT JOIN companies c ON c.id = u.company_id
+                WHERE u.telegram_id = ?
+            """, (user_tg_id,))
+            u = await cur.fetchone()
+
+        if not u:
+            await message.answer("Siz tizimda ro'yxatdan o'tmagansiz.", reply_markup=ReplyKeyboardRemove())
+            return
+
+        if u["role"] in ("ADMIN", "DEVELOPER"):
+            await message.answer("👑 Siz Rahbar maqomidasiz. Lokatsiya signali monitoringi faqat xodimlar uchun.", reply_markup=ReplyKeyboardRemove())
+            return
+
+        raw_upd = u["last_location_updated_at"]
+        now_dt = datetime.now(timezone.utc)
+        loc_lag = 0
+        if raw_upd:
+            try:
+                upd_clean = str(raw_upd).replace("Z", "+00:00")
+                upd_dt = datetime.fromisoformat(upd_clean)
+                if upd_dt.tzinfo is None:
+                    upd_dt = upd_dt.replace(tzinfo=timezone.utc)
+                loc_lag = max(0, int((now_dt - upd_dt).total_seconds() / 60))
+            except Exception:
+                loc_lag = 999
+        else:
+            loc_lag = 999
+
+        dist = u["last_distance_meters"]
+        dist_str = f"{round(dist)} m" if dist is not None else "Aniqlanmagan"
+        w_name = u["workplace_name"] or "Bosh ofis / Ish joyi"
+
+        if not raw_upd or loc_lag >= 10:
+            sig_text = (
+                f"🏢 <b>Filial:</b> {w_name}\n"
+                f"📍 <b>Oxirgi masofa:</b> {dist_str}\n\n"
+                f"📵 <b>SIGNAL KELMAYAPTI (INTERNETINGIZ O'CHIQ!)</b>\n\n"
+                f"⚠️ Tizimga oxirgi signal {loc_lag if raw_upd else 'hech qachon'} daqiqa oldin kelgan.\n\n"
+                f"Ish joyingizda ekanligingiz to'g'ri qayd etilishi uchun iltimos, <b>mobil internetingizni yoqing</b> va pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...' (Jonli joylashuv)</i> ni <b>8 soatga</b> yuboring!"
+            )
+        else:
+            sig_text = (
+                f"🏢 <b>Filial:</b> {w_name}\n"
+                f"📍 <b>Ish joyigacha masofa:</b> <b>{dist_str}</b>\n\n"
+                f"🟢 <b>JONLI SIGNAL FAOL VA KELMOQDA!</b>\n"
+                f"✅ Oxirgi muvaffaqiyatli signal: {loc_lag} daqiqa oldin yangilangan."
+            )
+
+        await message.answer(sig_text, parse_mode="HTML")
 
     async def update_employee_location_from_telegram(
         user_tg_id: int,

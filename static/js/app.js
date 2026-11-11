@@ -2453,10 +2453,13 @@ function renderMainAnalyticsChart(timeline) {
       yLeft: {
         type: "linear",
         position: "left",
+        beginAtZero: true,
+        min: 0,
         grid: { color: tc.gridColor },
         ticks: {
           color: tc.textColor,
           font: { size: 11 },
+          precision: 0,
           callback: (v) => formatNumberShort(v)
         }
       }
@@ -2466,11 +2469,15 @@ function renderMainAnalyticsChart(timeline) {
       scales.yRight = {
         type: "linear",
         position: "right",
+        min: 0,
+        suggestedMax: 5,
         grid: { drawOnChartArea: false },
         ticks: {
           color: "#f59e0b",
           font: { size: 11 },
-          callback: (v) => `${v} ta`
+          precision: 0,
+          stepSize: 1,
+          callback: (v) => `${Math.round(v)} ta`
         }
       };
     }
@@ -3866,25 +3873,38 @@ async function loadAdminLocationTab(showToastNotice = false) {
     const inEl = document.getElementById("geo-stat-inside");
     const outEl = document.getElementById("geo-stat-outside");
     const frozenEl = document.getElementById("geo-stat-frozen");
+    const offlineEl = document.getElementById("geo-stat-offline");
 
     const frozenCount = res.frozen_count ?? adminEmployeesLocationCache.filter(e => e.stillness_code === "FROZEN_ALERT").length;
+    const offlineCount = res.offline_count ?? adminEmployeesLocationCache.filter(e => e.is_signal_lost).length;
 
     if (totalEl) totalEl.innerText = total;
     if (confEl) confEl.innerText = configured;
     if (inEl) inEl.innerText = inside;
     if (outEl) outEl.innerText = outside;
     if (frozenEl) frozenEl.innerText = frozenCount;
+    if (offlineEl) offlineEl.innerText = offlineCount;
 
     // Smart Anti-Fraud Ogohlantirish paneli
     const alertBox = document.getElementById("geo-fraud-alert-box");
     const alertText = document.getElementById("geo-fraud-alert-text");
     const frozenEmployees = adminEmployeesLocationCache.filter(e => e.stillness_code === "FROZEN_ALERT");
+    const offlineEmployees = adminEmployeesLocationCache.filter(e => e.is_signal_lost);
 
     if (alertBox && alertText) {
+      const alertParts = [];
+      if (offlineEmployees.length > 0) {
+        const offNames = offlineEmployees.map(e => `<b>${escapeHtml(e.full_name)}</b> (${e.loc_lag_minutes || 0} daqiqadan beri aloqa yo'q)`).join(", ");
+        alertParts.push(`📵 <b>SIGNAL KELMAYAPTI (INTERNETI O'CHIQ):</b> ${offlineEmployees.length} ta xodimdan signal to'xtagan: ${offNames}. Mobil internet o'chirilgan bo'lishi mumkin!`);
+      }
       if (frozenEmployees.length > 0) {
-        alertBox.style.display = "flex";
         const empNames = frozenEmployees.map(e => `<b>${escapeHtml(e.full_name)}</b> (${e.stillness_minutes} daqiqa 0 harakat)`).join(", ");
-        alertText.innerHTML = `<b>SOXTA LOKATSIYA / HARAKATSIZLIK OGOHLANTIRISHI:</b> ${frozenEmployees.length} ta xodimning telefoni stolda mutlaqo qimirlamay qotib qolgan: ${empNames}. Xodim ish joyini tark etgan bo'lishi mumkin!`;
+        alertParts.push(`⚠️ <b>SOXTA LOKATSIYA (0 HARAKAT):</b> ${frozenEmployees.length} ta xodimning telefoni stolda mutlaqo qimirlamay qotib qolgan: ${empNames}. Xodim ish joyini tark etgan bo'lishi mumkin!`);
+      }
+
+      if (alertParts.length > 0) {
+        alertBox.style.display = "flex";
+        alertText.innerHTML = alertParts.join("<br><br>");
       } else {
         alertBox.style.display = "none";
       }
@@ -3923,6 +3943,16 @@ async function loadAdminLocationTab(showToastNotice = false) {
       } else if (!isWithin) {
         distCell = `<span style="opacity: 0.65; font-size: 0.75rem; color: #94a3b8;">🌙 Ish vaqti emas</span>`;
         statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; font-size: 0.75rem;">🌙 Dam olish vaqti</span>`;
+      } else if (emp.is_signal_lost) {
+        // Ish vaqtida, lekin 10+ daqiqadan beri signal kelmayapti (Interneti o'chiq / Oflayn)
+        if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
+          const distM = Math.round(emp.last_distance_meters);
+          const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
+          distCell = `<span style="color: #fb7185; font-size: 0.8rem; font-weight: 600;" title="Oxirgi ma'lum masofa">📍 ${distText} (Eski)</span>`;
+        } else {
+          distCell = `<span style="color: #fb7185; font-size: 0.78rem;">📵 Signal yo'q</span>`;
+        }
+        statusBadge = `<span class="badge" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.5); color: #fb7185; font-size: 0.75rem; font-weight: 700;" title="Xodimning telefoni interneti o'chiq yoki oxirgi ${emp.loc_lag_minutes || 0} daqiqadan beri signal kelmayapti">📵 Signal yo'q (Oflayn)</span>`;
       } else if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
         const distM = Math.round(emp.last_distance_meters);
         const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
@@ -3940,7 +3970,9 @@ async function loadAdminLocationTab(showToastNotice = false) {
 
       // Smart Anti-Fraud Harakat Indikatori
       let stillnessBadge = "";
-      if (emp.stillness_code === "FROZEN_ALERT") {
+      if (emp.is_signal_lost) {
+        stillnessBadge = `<span class="badge" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.5); color: #fb7185; font-size: 0.73rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Xodimning telefoni interneti o'chiq yoki aloqa uzilgan (Oxirgi ${emp.loc_lag_minutes || 0} daqiqa)">📵 Signal kelmayapti (${emp.loc_lag_minutes || 0} daq)</span>`;
+      } else if (emp.stillness_code === "FROZEN_ALERT") {
         stillnessBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; font-size: 0.73rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Diqqat: Telefon ${emp.stillness_minutes} daqiqadan beri mutlaqo qimirlamay stolda yotibdi (Absolyut 0 harakat!)">🔴 ⚠️ Stolda qotgan (${emp.stillness_minutes} daq)</span>`;
       } else if (emp.stillness_code === "STILL_WARN") {
         stillnessBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.73rem; display: inline-flex; align-items: center; gap: 3px;" title="Oxirgi 45-90 daqiqadan beri harakat qayd etilmadi">🟡 Qimirlamayapti (${emp.stillness_minutes} daq)</span>`;
@@ -3953,7 +3985,7 @@ async function loadAdminLocationTab(showToastNotice = false) {
       const timeAgo = formatLocationTimeAgo(emp.last_location_updated_at);
       const exactTime = formatTashkentDateTime(emp.last_location_updated_at, true);
       const timeCell = timeAgo 
-        ? `<span style="font-size: 0.75rem; color: var(--text-muted); cursor: help;" title="Aniq Toshkent vaqti: ${exactTime}">🕒 ${timeAgo}</span>` 
+        ? `<span style="font-size: 0.75rem; color: ${emp.is_signal_lost ? '#fb7185; font-weight: 700' : 'var(--text-muted)'}; cursor: help;" title="Aniq Toshkent vaqti: ${exactTime}${emp.is_signal_lost ? ' (Signal uzilgan)' : ''}">🕒 ${timeAgo}</span>` 
         : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
 
       // Xaritada ko'rish tugmasi (xodimning oxirgi jonli lokatsiyasi)
@@ -4135,6 +4167,23 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
   }
 
   badge.style.display = "inline-flex";
+
+  const empOfflineBox = document.getElementById("employee-offline-alert-box");
+
+  // Agar telefon interneti o'chiq bo'lsa yoki serverda signali uzilgan deb qayd etilgan bo'lsa:
+  if (!navigator.onLine || (myAssignedWorkplace && myAssignedWorkplace.is_signal_lost)) {
+    if (empOfflineBox && currentUser && currentUser.role !== "ADMIN") {
+      empOfflineBox.style.display = "flex";
+    }
+    badge.style.background = "rgba(244, 63, 94, 0.2)";
+    badge.style.color = "#fb7185";
+    badge.style.border = "1px solid rgba(244, 63, 94, 0.5)";
+    badge.innerHTML = "<span>📵</span> Signal kelmayapti (Interneti o'chiq!)";
+    badge.title = "Telefoningizda internet o'chiq yoki joylashuv signali kelmayapti! Iltimos, mobil internetni yoqing yoki Telegramda jonli lokatsiyani yangilang.";
+    return;
+  } else {
+    if (empOfflineBox) empOfflineBox.style.display = "none";
+  }
 
   if (currentUser && currentUser.shift_status === "RESTING") {
     badge.style.background = "rgba(245, 158, 11, 0.15)";
@@ -5809,6 +5858,44 @@ async function sendDeviceTelemetryIfDue() {
   }
 }
 setInterval(sendDeviceTelemetryIfDue, 60000);
+
+// ==========================================
+// OFFLAYN VA SIGNAL KELMAYAPTI DETEKTORI (XODIM DISPLEYI)
+// ==========================================
+window.addEventListener("online", () => {
+  const empOfflineBox = document.getElementById("employee-offline-alert-box");
+  if (empOfflineBox) empOfflineBox.style.display = "none";
+  if (myAssignedWorkplace) myAssignedWorkplace.is_signal_lost = false;
+  if (currentUser && currentUser.role !== "ADMIN") {
+    fetchMyWorkplaceStatus();
+  }
+});
+
+window.addEventListener("offline", () => {
+  const empOfflineBox = document.getElementById("employee-offline-alert-box");
+  if (empOfflineBox && currentUser && currentUser.role !== "ADMIN") {
+    empOfflineBox.style.display = "flex";
+  }
+  updateNavbarLocationBadge(null, false, true);
+});
+
+async function fetchMyWorkplaceStatus() {
+  if (!authToken || !currentUser || currentUser.role === "ADMIN") return;
+  try {
+    const res = await api("/api/location/my-workplace");
+    if (res && res.success) {
+      myAssignedWorkplace = res;
+      if (res.is_signal_lost) {
+        updateNavbarLocationBadge(null, false, true);
+      }
+    }
+  } catch (e) {
+    if (!navigator.onLine) {
+      updateNavbarLocationBadge(null, false, true);
+    }
+  }
+}
+setInterval(fetchMyWorkplaceStatus, 45000);
 
 // Window load init
 window.addEventListener("DOMContentLoaded", () => {

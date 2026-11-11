@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=834">
+  <link rel="stylesheet" href="/static/css/style.css?v=835">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -250,6 +250,18 @@
       <div style="flex: 1;">
         <b class="resting-banner-title">Siz hozirda dam olish (damda) rejimidasiz!</b>
         <span class="resting-banner-desc">Siz tizimga kirib o'z hisobotlaringiz va reytingingizni ko'rishingiz mumkin, lekin amallarni (kunlik hisobot topshirish, karta so'rovi va kassa amallari) bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbaringizga murojaat qiling.</span>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- XODIM UCHUN: SIGNAL KELMAYAPTI (INTERNET O'CHIQ) OGOHLANTIRISH BANNERI -->
+    <!-- Xodimning o'ziga yaqqol ko'rinib turadi -->
+    <!-- ========================================== -->
+    <div id="employee-offline-alert-box" style="display: none; margin-bottom: 1.25rem; padding: 0.85rem 1.15rem; background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.45); border-radius: 12px; color: #fca5a5; font-size: 0.88rem; align-items: center; gap: 0.85rem;">
+      <span style="font-size: 1.7rem; line-height: 1;">📵</span>
+      <div style="flex: 1; line-height: 1.45;">
+        <b style="color: #f43f5e; font-size: 0.95rem; display: block; margin-bottom: 0.2rem;">DIQQAT: Telefoningizda internet o'chiq yoki joylashuv signali kelmayapti!</b>
+        <span style="color: #fecdd3; font-size: 0.82rem;">Ish joyingizda ekanligingiz, ish soatlaringiz va reytingingiz tizimda to'g'ri qayd etilishi uchun iltimos, <b>mobil internetingizni (yoki Wi-Fi)</b> yoqing hamda Telegram'da <code>@xodim_reyting_bot</code> ga kirib <b>«Jonli joylashuv»</b> (Live Location) yuborilganligiga ishonch hosil qiling!</span>
       </div>
     </div>
 
@@ -663,6 +675,10 @@
           <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #f59e0b; margin-bottom: 0;">
             <div style="font-size: 0.72rem; color: #fbbf24; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">⚠️ Qotib qolgan (0 harakat)</div>
             <div id="geo-stat-frozen" style="font-size: 1.5rem; font-weight: 800; color: #fbbf24;">0</div>
+          </div>
+          <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #f43f5e; margin-bottom: 0;">
+            <div style="font-size: 0.72rem; color: #fb7185; margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">📵 Signal kelmayapti (Interneti o'chiq)</div>
+            <div id="geo-stat-offline" style="font-size: 1.5rem; font-weight: 800; color: #fb7185;">0</div>
           </div>
         </div>
 
@@ -2181,6 +2197,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=377"></script>
+  <script src="/static/js/app.js?v=378"></script>
 </body>
 </html>

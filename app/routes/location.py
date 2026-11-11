@@ -50,12 +50,12 @@ def is_time_within_interval(current_hm: str, start_hm: str, end_hm: str) -> bool
 
 @router.get("/my-workplace")
 async def get_my_workplace(user: dict = Depends(get_current_user)):
-    """Xodimning o'ziga biriktirilgan ish joyi va belgilangan ish soatlarini olish"""
+    """Xodimning o'ziga biriktirilgan ish joyi, belgilangan ish soatlari va jonli signal holatini olish"""
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
         cur = await conn.execute("""
             SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
-                   work_start_time, work_end_time
+                   work_start_time, work_end_time, shift_status, last_location_updated_at, last_distance_meters
             FROM users WHERE id = ?
         """, (user["id"],))
         row = await cur.fetchone()
@@ -70,6 +70,29 @@ async def get_my_workplace(user: dict = Depends(get_current_user)):
         end_time = row["work_end_time"] or "19:00"
         current_hm = get_current_tashkent_hm()
         is_within_hours = is_time_within_interval(current_hm, start_time, end_time)
+        emp_shift = row["shift_status"] if ("shift_status" in row.keys() and row["shift_status"]) else "WORKING"
+
+        # Signal kechikishi va oflayn holat (Interneti o'chiqligi)
+        raw_updated_at = row["last_location_updated_at"]
+        norm_updated_at = raw_updated_at
+        loc_lag_minutes = 0
+        now_dt = datetime.now(timezone.utc)
+        if norm_updated_at:
+            if not norm_updated_at.endswith("Z") and "+" not in norm_updated_at:
+                norm_updated_at = norm_updated_at.replace(" ", "T") + "Z"
+            try:
+                loc_clean = str(norm_updated_at).replace("Z", "+00:00")
+                loc_dt = datetime.fromisoformat(loc_clean)
+                if loc_dt.tzinfo is None:
+                    loc_dt = loc_dt.replace(tzinfo=timezone.utc)
+                loc_lag_minutes = max(0, int((now_dt - loc_dt).total_seconds() / 60))
+            except Exception:
+                loc_lag_minutes = 0
+
+        is_signal_lost = False
+        if is_within_hours and emp_shift == "WORKING":
+            if not norm_updated_at or loc_lag_minutes >= 10:
+                is_signal_lost = True
 
         return {
             "success": True,
@@ -81,7 +104,12 @@ async def get_my_workplace(user: dict = Depends(get_current_user)):
             "work_start_time": start_time,
             "work_end_time": end_time,
             "is_within_hours": is_within_hours,
-            "current_time": current_hm
+            "current_time": current_hm,
+            "shift_status": emp_shift,
+            "last_distance_meters": row["last_distance_meters"],
+            "last_location_updated_at": norm_updated_at,
+            "loc_lag_minutes": loc_lag_minutes,
+            "is_signal_lost": is_signal_lost
         }
 
 @router.post("/ping")
@@ -382,6 +410,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
         now_dt = datetime.now(timezone.utc)
         employees = []
         frozen_count = 0
+        offline_count = 0
 
         for r in rows:
             w_lat = r["workplace_latitude"]
@@ -417,7 +446,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                 except Exception:
                     stillness_minutes = 0
 
-            # Telegramning o'zi stolda harakatsiz yotgani sababli uxlab qolgan vaqt oralig'i:
+            # Telegramning o'zi stolda harakatsiz yotgani sababli uxlab qolgan yoki signal to'xtagan vaqt oralig'i:
             loc_lag_minutes = 0
             if norm_updated_at:
                 try:
@@ -432,7 +461,18 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
             effective_still_min = max(stillness_minutes, loc_lag_minutes)
             is_charging = bool(r["is_charging"]) if ("is_charging" in r.keys() and r["is_charging"]) else False
 
-            if is_within_hours and emp_shift == "WORKING" and is_configured and norm_updated_at:
+            # Signal kelmayapti (Interneti o'chiq / Oflayn):
+            # Ish vaqtida bo'lsa va oxirgi 10 daqiqadan beri hech qanday yangilanish kelmagan bo'lsa
+            is_signal_lost = False
+            if is_within_hours and emp_shift == "WORKING":
+                if not norm_updated_at or loc_lag_minutes >= 10:
+                    is_signal_lost = True
+                    offline_count += 1
+
+            if is_signal_lost:
+                stillness_code = "NO_SIGNAL"
+                stillness_label = f"📵 Signal kelmayapti ({loc_lag_minutes} daq)" if loc_lag_minutes > 0 else "📵 Signal kelmayapti"
+            elif is_within_hours and emp_shift == "WORKING" and is_configured and norm_updated_at:
                 if effective_still_min >= 90:
                     stillness_code = "FROZEN_ALERT"
                     stillness_label = f"🔴 ⚠️ Qotib qolgan ({effective_still_min} daq 0 harakat!)"
@@ -473,12 +513,15 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
                 "stillness_code": stillness_code,
                 "stillness_label": stillness_label,
                 "stillness_minutes": effective_still_min,
-                "is_charging": is_charging
+                "is_charging": is_charging,
+                "is_signal_lost": is_signal_lost,
+                "loc_lag_minutes": loc_lag_minutes
             })
 
         return {
             "success": True,
             "current_server_time": current_hm,
             "frozen_count": frozen_count,
+            "offline_count": offline_count,
             "employees": employees
         }
