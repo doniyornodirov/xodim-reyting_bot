@@ -157,6 +157,244 @@ function createToastContainer() {
   return c;
 }
 
+// ============================================================================
+// CUSTOM APP DIALOG SYSTEM (MODERN REPLACEMENT FOR CONFIRM, ALERT, PROMPT)
+// ============================================================================
+
+function createDialogOverlay() {
+  const overlay = document.createElement("div");
+  overlay.className = "app-dialog-overlay";
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+/**
+ * Modern Sleek Confirm Dialog (Promise-based)
+ * @param {string|object} options
+ * @returns {Promise<boolean>}
+ */
+function appConfirm(options) {
+  return new Promise((resolve) => {
+    let opts = typeof options === "string" ? { message: options } : (options || {});
+    const title = opts.title || "Tasdiqlash";
+    const message = opts.message || "";
+    const confirmText = opts.confirmText || "Tasdiqlash";
+    const cancelText = opts.cancelText || "Bekor qilish";
+    const type = opts.type || "primary"; // primary, danger, warning, success
+    const icon = opts.icon || (type === "danger" ? "⚠️" : type === "warning" ? "⚡" : type === "success" ? "✅" : "❓");
+
+    const overlay = createDialogOverlay();
+    overlay.innerHTML = `
+      <div class="app-dialog-box" role="dialog" aria-modal="true">
+        <div class="app-dialog-icon-wrapper app-dialog-type-${type}">
+          <span>${icon}</span>
+        </div>
+        <h3 class="app-dialog-title">${escapeHtml(title)}</h3>
+        <div class="app-dialog-message">${opts.html || escapeHtml(message)}</div>
+        <div class="app-dialog-actions">
+          <button type="button" class="app-dialog-btn app-dialog-btn-cancel" id="app-dialog-cancel-btn">${escapeHtml(cancelText)}</button>
+          <button type="button" class="app-dialog-btn app-dialog-btn-${type}" id="app-dialog-confirm-btn">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    requestAnimationFrame(() => overlay.classList.add("active"));
+
+    const confirmBtn = overlay.querySelector("#app-dialog-confirm-btn");
+    const cancelBtn = overlay.querySelector("#app-dialog-cancel-btn");
+    if (confirmBtn) confirmBtn.focus();
+
+    let settled = false;
+    const cleanup = (result) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener("keydown", keyHandler);
+      overlay.classList.remove("active");
+      setTimeout(() => overlay.remove(), 220);
+      resolve(result);
+    };
+
+    const keyHandler = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cleanup(false);
+      } else if (e.key === "Enter" && document.activeElement !== cancelBtn) {
+        e.preventDefault();
+        cleanup(true);
+      }
+    };
+
+    document.addEventListener("keydown", keyHandler);
+
+    if (confirmBtn) confirmBtn.addEventListener("click", () => cleanup(true));
+    if (cancelBtn) cancelBtn.addEventListener("click", () => cleanup(false));
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) cleanup(false);
+    });
+  });
+}
+
+/**
+ * Modern Sleek Alert Dialog (Promise-based)
+ * @param {string|object} options
+ * @returns {Promise<boolean>}
+ */
+function appAlert(options) {
+  return new Promise((resolve) => {
+    let opts = typeof options === "string" ? { message: options } : (options || {});
+    const title = opts.title || "Xabarnoma";
+    const message = opts.message || "";
+    const buttonText = opts.buttonText || opts.confirmText || "Tushunarli";
+    const type = opts.type || "info"; // info, success, warning, danger
+    const icon = opts.icon || (type === "danger" ? "❌" : type === "warning" ? "⚠️" : type === "success" ? "🎉" : "ℹ️");
+
+    const overlay = createDialogOverlay();
+    overlay.innerHTML = `
+      <div class="app-dialog-box" role="dialog" aria-modal="true">
+        <div class="app-dialog-icon-wrapper app-dialog-type-${type}">
+          <span>${icon}</span>
+        </div>
+        <h3 class="app-dialog-title">${escapeHtml(title)}</h3>
+        <div class="app-dialog-message">${opts.html || escapeHtml(message)}</div>
+        <div class="app-dialog-actions">
+          <button type="button" class="app-dialog-btn app-dialog-btn-primary" id="app-dialog-ok-btn">${escapeHtml(buttonText)}</button>
+        </div>
+      </div>
+    `;
+
+    requestAnimationFrame(() => overlay.classList.add("active"));
+
+    const okBtn = overlay.querySelector("#app-dialog-ok-btn");
+    if (okBtn) okBtn.focus();
+
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener("keydown", keyHandler);
+      overlay.classList.remove("active");
+      setTimeout(() => overlay.remove(), 220);
+      resolve(true);
+    };
+
+    const keyHandler = (e) => {
+      if (e.key === "Escape" || e.key === "Enter") {
+        e.preventDefault();
+        cleanup();
+      }
+    };
+
+    document.addEventListener("keydown", keyHandler);
+    if (okBtn) okBtn.addEventListener("click", cleanup);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) cleanup();
+    });
+  });
+}
+
+/**
+ * Modern Sleek Prompt Dialog (Promise-based)
+ * @param {string|object} options
+ * @returns {Promise<string|null>}
+ */
+function appPrompt(options) {
+  return new Promise((resolve) => {
+    let opts = typeof options === "string" ? { message: options } : (options || {});
+    const title = opts.title || "Ma'lumot kiritish";
+    const message = opts.message || "";
+    const placeholder = opts.placeholder || "";
+    const defaultValue = opts.defaultValue || "";
+    const inputType = opts.inputType || "text";
+    const confirmText = opts.confirmText || "Saqlash";
+    const cancelText = opts.cancelText || "Bekor qilish";
+    const showEyeToggle = opts.showEyeToggle !== false && inputType === "password";
+    const icon = opts.icon || (inputType === "password" ? "🔑" : "✏️");
+
+    const overlay = createDialogOverlay();
+    overlay.innerHTML = `
+      <div class="app-dialog-box" role="dialog" aria-modal="true">
+        <div class="app-dialog-icon-wrapper app-dialog-type-primary">
+          <span>${icon}</span>
+        </div>
+        <h3 class="app-dialog-title">${escapeHtml(title)}</h3>
+        ${message ? `<div class="app-dialog-message" style="margin-bottom: 0.85rem;">${escapeHtml(message)}</div>` : ""}
+        <div class="app-dialog-input-wrap">
+          <input type="${inputType}" class="app-dialog-input" id="app-dialog-input-field" 
+                 placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(defaultValue)}" autocomplete="off" />
+          ${showEyeToggle ? `<button type="button" class="app-dialog-eye-btn" id="app-dialog-eye-btn" title="Parolni ko'rsatish">👁️</button>` : ""}
+        </div>
+        <div class="app-dialog-actions">
+          <button type="button" class="app-dialog-btn app-dialog-btn-cancel" id="app-dialog-cancel-btn">${escapeHtml(cancelText)}</button>
+          <button type="button" class="app-dialog-btn app-dialog-btn-primary" id="app-dialog-confirm-btn">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+
+    requestAnimationFrame(() => overlay.classList.add("active"));
+
+    const inputField = overlay.querySelector("#app-dialog-input-field");
+    const confirmBtn = overlay.querySelector("#app-dialog-confirm-btn");
+    const cancelBtn = overlay.querySelector("#app-dialog-cancel-btn");
+    const eyeBtn = overlay.querySelector("#app-dialog-eye-btn");
+
+    setTimeout(() => {
+      if (inputField) {
+        inputField.focus();
+        inputField.select();
+      }
+    }, 50);
+
+    if (eyeBtn && inputField) {
+      eyeBtn.addEventListener("click", () => {
+        if (inputField.type === "password") {
+          inputField.type = "text";
+          eyeBtn.innerText = "🙈";
+        } else {
+          inputField.type = "password";
+          eyeBtn.innerText = "👁️";
+        }
+      });
+    }
+
+    let settled = false;
+    const cleanup = (value) => {
+      if (settled) return;
+      settled = true;
+      document.removeEventListener("keydown", keyHandler);
+      overlay.classList.remove("active");
+      setTimeout(() => overlay.remove(), 220);
+      resolve(value);
+    };
+
+    const keyHandler = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cleanup(null);
+      } else if (e.key === "Enter" && document.activeElement === inputField) {
+        e.preventDefault();
+        cleanup(inputField.value);
+      }
+    };
+
+    document.addEventListener("keydown", keyHandler);
+
+    if (confirmBtn) confirmBtn.addEventListener("click", () => cleanup(inputField ? inputField.value : null));
+    if (cancelBtn) cancelBtn.addEventListener("click", () => cleanup(null));
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) cleanup(null);
+    });
+  });
+}
+
+// Brauzerning standart alert oynasi o'rniga zamonaviy xabarnoma chiqarish
+window.alert = function(msg) {
+  if (typeof msg === "string" && (msg.includes("\n") || msg.length > 80)) {
+    appAlert({ title: "Xabarnoma", message: msg, type: "info" });
+  } else {
+    showToast(String(msg || ""), "info");
+  }
+};
+
 // O'zbekcha sonlarni so'z bilan ifodalash
 function numberToUzbekWords(num) {
   if (!num || isNaN(num) || num <= 0) return "";
@@ -3215,10 +3453,15 @@ async function toggleEmployeeShift(userId, targetStatus) {
   const targetUser = (adminUsersCache || []).find(u => u.id === userId);
   const name = targetUser ? targetUser.full_name : "xodim";
   const isToRest = targetStatus === "RESTING";
-  const confirmMsg = isToRest
-    ? `Haqiqatan ham '${name}'ni dam olish (damda) rejimiga o'tkazmoqchimisiz?\n\n(Xodim ilovaga kira oladi, lekin amallarni bajara olmaydi)`
-    : `Haqiqatan ham '${name}'ni faol ish rejimiga qaytarmoqchimisiz?`;
-  if (!confirm(confirmMsg)) return;
+  const ok = await appConfirm({
+    title: isToRest ? "Dam olish rejimiga o'tkazish" : "Ish rejimiga qaytarish",
+    message: isToRest
+      ? `Haqiqatan ham '${name}'ni dam olish (damda) rejimiga o'tkazmoqchimisiz?\n\n(Xodim ilovaga kira oladi, lekin amallarni bajara olmaydi)`
+      : `Haqiqatan ham '${name}'ni faol ish rejimiga qaytarmoqchimisiz?`,
+    confirmText: isToRest ? "Dam olishga o'tkazish" : "Ishga qaytarish",
+    type: isToRest ? "warning" : "primary"
+  });
+  if (!ok) return;
 
   try {
     const res = await api(`/api/admin/users/${userId}/toggle-shift`, "POST", { shift_status: targetStatus });
@@ -3229,9 +3472,14 @@ async function toggleEmployeeShift(userId, targetStatus) {
 }
 
 async function handleResetUserDevice(userId, fullName) {
-  if (!confirm(`Haqiqatan ham '${fullName}' xodimi uchun yangi telefon apparati biriktirishga ruxsat bermoqchimisiz?\n\nBu ruxsatdan so'ng xodim o'zining yangi telefonidan tizimga kirgan zahoti yangi apparat avtomatik qayta muhrlanadi.`)) {
-    return;
-  }
+  const ok = await appConfirm({
+    title: "Yangi apparat ulashga ruxsat",
+    message: `Haqiqatan ham '${fullName}' xodimi uchun yangi telefon apparati biriktirishga ruxsat bermoqchimisiz?\n\nBu ruxsatdan so'ng xodim o'zining yangi telefonidan tizimga kirgan zahoti yangi apparat avtomatik qayta muhrlanadi.`,
+    confirmText: "Ruxsat berish",
+    type: "warning"
+  });
+  if (!ok) return;
+
   try {
     const res = await api(`/api/admin/users/${userId}/reset-device`, "POST");
     showToast(res.message || "Ruxsat berildi!", "success");
@@ -3247,8 +3495,16 @@ async function toggleUserActive(userId) {
     showToast("Bosh Rahbar daxlsiz! Uni tizimdan hech kim bo'shata olmaydi va chiqara olmaydi!", "danger");
     return;
   }
-  const actionText = (targetUser && targetUser.is_active) ? "ishdan bo'shatmoqchimisiz" : "qaytadan faollashtirmoqchimisiz";
-  if (!confirm(`Haqiqatan ham bu xodimni ${actionText}?`)) return;
+  const isDismiss = (targetUser && targetUser.is_active);
+  const actionText = isDismiss ? "ishdan bo'shatmoqchimisiz" : "qaytadan faollashtirmoqchimisiz";
+  const ok = await appConfirm({
+    title: isDismiss ? "Xodimni ishdan bo'shatish" : "Xodimni faollashtirish",
+    message: `Haqiqatan ham bu xodimni ${actionText}?`,
+    confirmText: isDismiss ? "Ishdan bo'shatish" : "Faollashtirish",
+    type: isDismiss ? "danger" : "success"
+  });
+  if (!ok) return;
+
   try {
     const res = await api(`/api/admin/users/${userId}/toggle-active`, "POST");
     showToast(res.message, "success");
@@ -3323,7 +3579,14 @@ async function handleAssignDebtSubmit(e) {
 }
 
 async function promptUpdatePassword(userId, name) {
-  const newPass = prompt(`${name} uchun yangi parolni kiriting:`);
+  const newPass = await appPrompt({
+    title: "Yangi parol o'rnatish",
+    message: `'${name}' uchun yangi parolni kiriting:`,
+    placeholder: "Yangi parol (kamida 3 ta belgi)...",
+    inputType: "password",
+    showEyeToggle: true,
+    confirmText: "Parolni saqlash"
+  });
   if (!newPass || newPass.trim().length < 3) return;
 
   try {
@@ -3336,7 +3599,15 @@ async function promptUpdatePassword(userId, name) {
 }
 
 async function appointCashier(userId) {
-  if (!confirm("Ushbu xodimni yangi Kassir etib tayinlamoqchimisiz? Tizimda faqat 1 ta kassir bo'ladi, oldingi kassir avtomatik oddiy xodimga aylanadi.")) return;
+  const ok = await appConfirm({
+    title: "Kassir etib tayinlash",
+    message: "Ushbu xodimni yangi Kassir etib tayinlamoqchimisiz?\n\nTizimda faqat 1 ta kassir bo'ladi, oldingi kassir avtomatik oddiy xodimga aylanadi.",
+    confirmText: "Kassir etib tayinlash",
+    type: "primary",
+    icon: "💼"
+  });
+  if (!ok) return;
+
   try {
     const res = await api("/api/admin/cashier/appoint", "POST", { user_id: userId });
     showToast(res.message, "success");
@@ -3346,7 +3617,15 @@ async function appointCashier(userId) {
 }
 
 async function dismissCashier(userId) {
-  if (!confirm("Ushbu kassirni kassirlikdan bo'shatib, oddiy xodim holatiga qaytarmoqchimisiz?")) return;
+  const ok = await appConfirm({
+    title: "Kassirlikdan bo'shatish",
+    message: "Ushbu kassirni kassirlikdan bo'shatib, oddiy xodim holatiga qaytarmoqchimisiz?",
+    confirmText: "Kassirlikdan bo'shatish",
+    type: "warning",
+    icon: "⚠️"
+  });
+  if (!ok) return;
+
   try {
     const res = await api("/api/admin/cashier/dismiss", "POST", { user_id: userId });
     showToast(res.message, "success");
@@ -3428,7 +3707,14 @@ async function handleAppointCashierSubmit() {
     showToast("Iltimos, xodimni tanlang!", "danger");
     return;
   }
-  if (!confirm("Ushbu xodimni yangi Kassir etib tayinlamoqchimisiz? Tizimda faqat 1 ta kassir bo'ladi, oldingi kassir avtomatik oddiy xodimga aylanadi.")) return;
+  const ok = await appConfirm({
+    title: "Kassir etib tayinlash",
+    message: "Ushbu xodimni yangi Kassir etib tayinlamoqchimisiz?\n\nTizimda faqat 1 ta kassir bo'ladi, oldingi kassir avtomatik oddiy xodimga aylanadi.",
+    confirmText: "Kassir etib tayinlash",
+    type: "primary",
+    icon: "💼"
+  });
+  if (!ok) return;
 
   try {
     const res = await api("/api/admin/cashier/appoint", "POST", { user_id: parseInt(userId) });
@@ -3879,9 +4165,51 @@ async function triggerPwaInstall() {
     const ua = window.navigator.userAgent.toLowerCase();
     const isIos = /iphone|ipad|ipod/.test(ua);
     if (isIos) {
-      alert("📱 iPhone / iPad qurilmasida ilovani o'rnatish:\n\n1. Safari brauzerining pastki qismidagi 'Ulashish' (📤 Share) tugmasini bosing.\n2. Ro'yxatdan 'Asosiy ekranga qo'shish' (+ Add to Home Screen) tugmasini bosing.\n3. 'Qo'shish' (Add) tugmasini bosing.");
+      await appAlert({
+        title: "Ilovani o'rnatish (iPhone / iPad)",
+        icon: "📱",
+        type: "info",
+        buttonText: "Tushunarli",
+        html: `
+          <div style="text-align: left; line-height: 1.6; font-size: 0.92rem;">
+            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
+              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">1</span>
+              <span>Safari brauzerining pastki qismidagi <b>'Ulashish' (📤 Share)</b> tugmasini bosing.</span>
+            </div>
+            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
+              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">2</span>
+              <span>Ro'yxatdan <b>'Asosiy ekranga qo'shish' (+ Add to Home Screen)</b> bandini tanlang.</span>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
+              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">3</span>
+              <span>Yuqori o'ng burchakdagi <b>'Qo'shish' (Add)</b> tugmasini bosing. Ilova ekranda paydo bo'ladi!</span>
+            </div>
+          </div>
+        `
+      });
     } else {
-      alert("📱 Android / Chrome qurilmasida ilovani o'rnatish:\n\n1. Brauzeringizning yuqori o'ng burchagidagi uch nuqta (⋮) tugmasini bosing.\n2. 'Ilovani o'rnatish' yoki 'Asosiy ekranga qo'shish' (Install app / Add to Home screen) ni tanlang.\n3. Tasdiqlang va ilova telefoningiz ekraniga tushadi.");
+      await appAlert({
+        title: "Ilovani o'rnatish (Android / Chrome)",
+        icon: "📱",
+        type: "info",
+        buttonText: "Tushunarli",
+        html: `
+          <div style="text-align: left; line-height: 1.6; font-size: 0.92rem;">
+            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
+              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">1</span>
+              <span>Brauzeringizning yuqori o'ng burchagidagi uch nuqta <b>(⋮ Menyu)</b> tugmasini bosing.</span>
+            </div>
+            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
+              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">2</span>
+              <span><b>'Ilovani o'rnatish'</b> yoki <b>'Asosiy ekranga qo'shish' (Install app)</b> bandini tanlang.</span>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
+              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">3</span>
+              <span>Tasdiqlang va ilova telefoningiz ekraniga alohida dastur sifatida o'rnatiladi!</span>
+            </div>
+          </div>
+        `
+      });
     }
   }
 }
@@ -4203,7 +4531,15 @@ function handleFillCurrentAdminGpsToModal() {
 }
 
 async function handleClearEmployeeWorkplace(userId, fullName) {
-  if (!confirm(`Haqiqatan ham '${fullName}' xodimining ish joyi koordinatasini tozalamoqchimisiz?`)) return;
+  const ok = await appConfirm({
+    title: "Koordinatani tozalash",
+    message: `Haqiqatan ham '${fullName}' xodimining ish joyi koordinatasini tozalamoqchimisiz?`,
+    confirmText: "Tozalash",
+    type: "danger",
+    icon: "🗑️"
+  });
+  if (!ok) return;
+
   try {
     const res = await api(`/api/location/clear-employee-workplace/${userId}`, "POST");
     showToast(res.message, "success");
@@ -4802,10 +5138,15 @@ async function handleSaasExtendFormSubmit(event) {
 }
 
 async function toggleCompanyActive(companyId, currentIsActive) {
-  const actionText = currentIsActive ? "to'xtatish (bloklash)" : "faollashtirish";
-  if (!confirm(`Haqiqatan ham #${companyId} firmadagi xizmatni ${actionText}ni xohlaysizmi?`)) {
-    return;
-  }
+  const isBlock = currentIsActive;
+  const actionText = isBlock ? "to'xtatish (bloklash)" : "faollashtirish";
+  const ok = await appConfirm({
+    title: isBlock ? "Firma faoliyatini to'xtatish" : "Firmani faollashtirish",
+    message: `Haqiqatan ham #${companyId} firmadagi xizmatni ${actionText}ni xohlaysizmi?`,
+    confirmText: isBlock ? "Bloklash" : "Faollashtirish",
+    type: isBlock ? "danger" : "success"
+  });
+  if (!ok) return;
 
   try {
     const res = await api(`/api/saas/companies/${companyId}/toggle-active`, "POST");
@@ -4821,9 +5162,14 @@ async function toggleCompanyActive(companyId, currentIsActive) {
 }
 
 async function extendCompanySubscription(companyId, days = 30) {
-  if (!confirm(`Firma obunasini +${days} kunga uzaytirishni tasdiqlaysizmi?`)) {
-    return;
-  }
+  const ok = await appConfirm({
+    title: "Firma obunasini uzaytirish",
+    message: `Firma obunasini +${days} kunga uzaytirishni tasdiqlaysizmi?`,
+    confirmText: `+${days} kunga uzaytirish`,
+    type: "primary",
+    icon: "📅"
+  });
+  if (!ok) return;
 
   try {
     const res = await api(`/api/saas/companies/${companyId}/extend`, "POST", { days: days });
@@ -5302,7 +5648,14 @@ async function sendTodayDigestToTelegram() {
     promptText = "Bugungi kun yakuniy hisobot svodkasini shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?";
   }
 
-  if (!confirm(promptText)) return;
+  const ok = await appConfirm({
+    title: "Telegram svodka yuborish",
+    message: promptText,
+    confirmText: "Yuborish",
+    type: "primary",
+    icon: "✈️"
+  });
+  if (!ok) return;
   showToast("Svodka hisoblanmoqda va shaxsiy Telegramingizga yuborilmoqda...", "info");
 
   try {

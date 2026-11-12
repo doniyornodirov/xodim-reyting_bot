@@ -381,11 +381,32 @@
       return null;
     }
 
+    function showMiniAlert(msg) {
+      if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.showAlert === "function") {
+        window.Telegram.WebApp.showAlert(msg);
+      } else {
+        let toast = document.getElementById("mini-toast");
+        if (!toast) {
+          toast = document.createElement("div");
+          toast.id = "mini-toast";
+          toast.style.cssText = "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;color:#f8fafc;padding:12px 20px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.1);z-index:99999;font-size:0.9rem;text-align:center;max-width:90%;transition:opacity 0.2s;";
+          document.body.appendChild(toast);
+        }
+        toast.innerText = msg;
+        toast.style.opacity = "1";
+        toast.style.display = "block";
+        setTimeout(() => {
+          toast.style.opacity = "0";
+          setTimeout(() => { toast.style.display = "none"; }, 300);
+        }, 3500);
+      }
+    }
+
     function submitManualTgId() {
       const input = document.getElementById("input-manual-tg-id");
       const val = input ? parseInt(input.value.trim(), 10) : null;
       if (!val || isNaN(val)) {
-        alert("Iltimos, to'g'ri Telegram ID raqamini kiriting!");
+        showMiniAlert("Iltimos, to'g'ri Telegram ID raqamini kiriting!");
         return;
       }
       currentTgId = val;
@@ -456,7 +477,7 @@
     function fetchAndSendGpsLocation() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) {
-          alert("Qurilmangizda Geopozitsiya (GPS) qo'llab-quvvatlanmaydi!");
+          showMiniAlert("Qurilmangizda Geopozitsiya (GPS) qo'llab-quvvatlanmaydi!");
           resolve();
           return;
         }
@@ -542,7 +563,7 @@
             let msg = "GPS kordinata olinmadi.";
             if (err.code === 1) msg = "Iltimos, brauzerga Geopozitsiya (GPS) ruxsatini bering!";
             else if (err.code === 2) msg = "GPS signali topilmadi. Telefoningizda Geolokatsiyani yoqing!";
-            alert(msg);
+            showMiniAlert(msg);
             resolve();
           },
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
