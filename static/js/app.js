@@ -116,16 +116,25 @@ async function api(endpoint, method = "GET", data = null) {
 
   try {
     const res = await fetch(targetUrl, options);
-    const json = await res.json();
+    const rawText = await res.text();
+    let json = {};
+    try {
+      json = rawText ? JSON.parse(rawText) : {};
+    } catch (parseErr) {
+      if (!res.ok) {
+        throw new Error(`Server xatosi (${res.status}): ${rawText.slice(0, 100) || res.statusText}`);
+      }
+    }
+
     if (!res.ok) {
       if (res.status === 401 && !endpoint.includes("/api/auth/")) {
         showToast("Sessiya muddati tugadi. Iltimos, tizimga qaytadan kiring.", "warning");
         logout();
       }
-      if (res.status === 403 && json.detail && json.detail.includes("Obunangizni uzaytiring")) {
+      if (res.status === 403 && json && json.detail && json.detail.includes("Obunangizni uzaytiring")) {
         showSubscriptionExpiredModal(json.detail);
       }
-      throw new Error(json.detail || json.message || "Xatolik yuz berdi");
+      throw new Error((json && (json.detail || json.message)) || `Server xatosi (${res.status})`);
     }
     return json;
   } catch (err) {

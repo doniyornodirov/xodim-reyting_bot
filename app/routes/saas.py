@@ -899,17 +899,18 @@ async def delete_company(
 
         comp_name = comp["name"]
 
-        # Kaskad tozalash
-        await conn.execute("DELETE FROM users WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM daily_reports WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM card_topups WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM cashier_handovers WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM cashier_history WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM given_amounts WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM sim_card_batches WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM sim_card_distributions WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM company_counters WHERE company_id = ?", (company_id,))
-        await conn.execute("DELETE FROM audit_logs WHERE company_id = ?", (company_id,))
+        # Kaskad tozalash (Xavfsiz va aniq jadvallar bo'yicha)
+        cascade_tables = [
+            "users", "daily_reports", "card_topups", "cashier_handovers",
+            "cashier_history", "given_amounts", "sim_cards",
+            "sim_distributions", "audit_logs"
+        ]
+        for tbl in cascade_tables:
+            try:
+                await conn.execute(f"DELETE FROM {tbl} WHERE company_id = ?", (company_id,))
+            except Exception:
+                pass
+
         await conn.execute("DELETE FROM companies WHERE id = ?", (company_id,))
 
         # Bosh Tashkilot audit logiga yozish
