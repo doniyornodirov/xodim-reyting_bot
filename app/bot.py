@@ -1493,6 +1493,61 @@ async def send_subscription_expiry_alert(company_id: int, days_left: int) -> boo
         logger.warning(f"Obuna ogohlantirishini yuborishda xatolik (TG: {owner_tg}): {e}")
         return False
 
+async def send_untrusted_device_alert_to_admin(
+    company_id: int,
+    employee_name: str,
+    employee_tg_id: int,
+    bound_device: str,
+    attempted_device: str
+) -> bool:
+    """Begona apparatdan hisobga ulanishga urinish bo'lganda Rahbarga zudlik bilan Telegram orqali ogohlantirish yuborish"""
+    if not bot:
+        return False
+
+    owner_tg = None
+    try:
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT owner_telegram_id FROM companies WHERE id = ?", (company_id,))
+            comp = await cur.fetchone()
+            if comp and comp["owner_telegram_id"]:
+                owner_tg = int(comp["owner_telegram_id"])
+    except Exception:
+        pass
+
+    if not owner_tg:
+        try:
+            from app.config import RAHBAR_ID
+            owner_tg = int(RAHBAR_ID)
+        except Exception:
+            return False
+
+    time_str = get_current_tashkent_hm()
+    orig_dev = bound_device or "Noma'lum"
+    att_dev = attempted_device or "Begona qurilma"
+
+    text = (
+        "🚨 <b>XAVFSIZLIK OGOHLANTIRISHI: BEGONA QURILMA!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>Xodim:</b> {employee_name} (ID: <code>{employee_tg_id}</code>)\n"
+        f"📱 <b>Rasmiy telefoni:</b> <code>{orig_dev}</code>\n"
+        f"⚠️ <b>Urinilgan begona apparat:</b> <b>{att_dev}</b>\n\n"
+        "🛑 <b>Tizim harakati:</b> Kirish <b>darhol to'xtatildi va bloklandi!</b> Ushbu begona telefondan hech qanday lokatsiya qabul qilinmadi.\n\n"
+        "💡 <i>Agar xodim rostdan ham telefonini almashtirgan bo'lsa, CRM «Xodimlar» panelidan «🔄 Almashtirish» tugmasini bosib ruxsat berishingiz mumkin.</i>\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🕒 <b>Vaqt:</b> {time_str}"
+    )
+
+    try:
+        await asyncio.wait_for(
+            bot.send_message(chat_id=owner_tg, text=text, parse_mode="HTML"),
+            timeout=4.0
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Rahbarga begona qurilma ogohlantirishini yuborishda xatolik: {e}")
+        return False
+
 async def start_bot_polling():
     """Botni fonda asinxron ishga tushirish"""
     if bot and dp:

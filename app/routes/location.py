@@ -613,6 +613,19 @@ async def location_device_checkin(payload: VerifiedCheckinRequest):
             """, (user["company_id"] or 1, user["id"], user["full_name"], details))
             await conn.commit()
 
+            try:
+                import asyncio
+                from app.bot import send_untrusted_device_alert_to_admin
+                asyncio.create_task(send_untrusted_device_alert_to_admin(
+                    company_id=user["company_id"] or 1,
+                    employee_name=user["full_name"],
+                    employee_tg_id=user["telegram_id"],
+                    bound_device=orig_name,
+                    attempted_device=incoming_dev_name
+                ))
+            except Exception:
+                pass
+
             return {
                 "success": False,
                 "is_trusted": False,

@@ -299,6 +299,21 @@ async def verify_or_bind_device(
             }
         else:
             dev_name_orig = u["bound_device_name"] or "Boshqa telefon"
+            incoming_dev = (req.device_name or "Mobil telefon").strip()[:100]
+
+            try:
+                import asyncio
+                from app.bot import send_untrusted_device_alert_to_admin
+                asyncio.create_task(send_untrusted_device_alert_to_admin(
+                    company_id=u["company_id"] or 1,
+                    employee_name=u["full_name"],
+                    employee_tg_id=u["telegram_id"],
+                    bound_device=dev_name_orig,
+                    attempted_device=incoming_dev
+                ))
+            except Exception:
+                pass
+
             return {
                 "success": False,
                 "is_trusted": False,
