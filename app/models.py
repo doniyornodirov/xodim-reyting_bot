@@ -19,6 +19,7 @@ class GivenAmountCreate(BaseModel):
     comment: str
 
 class DailyReportCreate(BaseModel):
+    report_date: Optional[str] = Field(None, description="Hisobot topshirilayotgan sana (YYYY-MM-DD)")
     paynet: float = Field(ge=0, default=0)
     leviy: float = Field(ge=0, default=0)
     debt_paid: float = Field(ge=0, default=0)

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
 from app.config import DB_PATH
+from app.database import get_db_connection
 from app.models import CashierHandoverCreate
 from app.dependencies import get_current_user, require_role
 from app.security import get_tashkent_today_str
@@ -11,8 +12,7 @@ router = APIRouter(prefix="/api/cashier", tags=["Cashier"])
 async def get_active_employees(user: dict = Depends(require_role(["CASHIER", "ADMIN"]))):
     today_str = get_tashkent_today_str()
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role 
             FROM users 
@@ -41,9 +41,7 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
     today_str = get_tashkent_today_str()
     comp_id = user.get("company_id") or 1
 
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
+    async with get_db_connection() as conn:
         # Tizimdagi joriy dollar kursini aniqlash
         cur = await conn.execute("SELECT value FROM system_settings WHERE key = 'usd_rate'")
         rate_row = await cur.fetchone()
@@ -132,8 +130,7 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
 async def get_my_handovers(user: dict = Depends(require_role(["CASHIER", "ADMIN"]))):
     today_str = get_tashkent_today_str()
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("""
             SELECT ch.*, u.full_name as employee_name, cash.full_name as cashier_name
             FROM cashier_handovers ch
@@ -150,8 +147,7 @@ async def get_comparison(date: str = None, user: dict = Depends(require_role(["A
     target_date = date or get_tashkent_today_str()
     comp_id = user.get("company_id") or 1
 
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         query = """
         SELECT 
             u.id as employee_id,
@@ -210,8 +206,7 @@ async def get_comparison(date: str = None, user: dict = Depends(require_role(["A
 @router.get("/all-handovers")
 async def get_all_handovers(user: dict = Depends(require_role(["ADMIN"]))):
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("""
             SELECT ch.*, u.full_name as employee_name, cash.full_name as cashier_name
             FROM cashier_handovers ch

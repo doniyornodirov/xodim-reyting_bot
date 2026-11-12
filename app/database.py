@@ -1,15 +1,42 @@
+from contextlib import asynccontextmanager
 import aiosqlite
 from app.config import DB_PATH
 from app.security import hash_password
 
-async def get_db():
+@asynccontextmanager
+async def get_db_connection():
+    """
+    Standartlashtirilgan yuqori unumdorlikka ega baza ulanishi (High-Load connection context manager).
+    Har bir ulanishda busy_timeout, synchronous va cache sozlamalari kafolatlanadi.
+    """
     conn = await aiosqlite.connect(DB_PATH)
     conn.row_factory = aiosqlite.Row
-    await conn.execute("PRAGMA busy_timeout = 10000;")
+    await conn.execute("PRAGMA busy_timeout = 15000;")
+    await conn.execute("PRAGMA synchronous = NORMAL;")
+    await conn.execute("PRAGMA cache_size = -64000;")
     try:
         yield conn
     finally:
         await conn.close()
+
+async def get_db():
+    async with get_db_connection() as conn:
+        yield conn
+
+async def get_next_transaction_number(conn: aiosqlite.Connection, company_id: int) -> int:
+    """
+    Atomik tartib raqami olish (Race condition ga qarshi 100% kafolat).
+    SQLite yozish qulfi ostida bitta atomik INSERT ... ON CONFLICT DO UPDATE orqali ishlaydi.
+    Bir vaqtda yuzlab so'rovlar kelganda ham hech qachon dublikat chiqarmaydi.
+    """
+    await conn.execute("""
+        INSERT INTO company_counters (company_id, last_transaction_number)
+        VALUES (?, 101)
+        ON CONFLICT(company_id) DO UPDATE SET last_transaction_number = company_counters.last_transaction_number + 1;
+    """, (company_id,))
+    cur = await conn.execute("SELECT last_transaction_number FROM company_counters WHERE company_id = ?", (company_id,))
+    row = await cur.fetchone()
+    return int(row[0]) if row else 101
 
 async def init_db():
     """Baza sxemasini yaratish va boshlang'ich ma'lumotlarni kiritish"""
@@ -67,6 +94,7 @@ async def init_db():
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS card_topups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id),
             transaction_number INTEGER NOT NULL,
             employee_id INTEGER NOT NULL REFERENCES users(id),
             card_number TEXT NOT NULL,
@@ -78,6 +106,19 @@ async def init_db():
             approved_by_name TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+        """)
+
+        # 2.1 Tartib raqamlari hisoblagichi (Atomic Sequence Counters - Race conditionga qarshi)
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS company_counters (
+            company_id INTEGER PRIMARY KEY,
+            last_transaction_number INTEGER NOT NULL DEFAULT 100
+        );
+        """)
+        await conn.execute("""
+        INSERT OR IGNORE INTO company_counters (company_id, last_transaction_number)
+        SELECT c.id, COALESCE((SELECT MAX(transaction_number) FROM card_topups WHERE company_id = c.id), 100)
+        FROM companies c;
         """)
 
         # 3. Berilgan summalar
@@ -237,6 +278,7 @@ async def init_db():
         # Indekslar
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_card_topups_date ON card_topups(created_at);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_card_topups_number ON card_topups(card_number);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_card_topups_company_tx ON card_topups(company_id, transaction_number);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_given_amounts_date ON given_amounts(created_at);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_reports_emp_date ON daily_reports(employee_id, report_date);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_reports_date ON daily_reports(report_date);")

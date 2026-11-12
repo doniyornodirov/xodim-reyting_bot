@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 import aiosqlite
 from app.config import DB_PATH
+from app.database import get_db_connection
 from app.models import DailyReportCreate, StatusActionRequest, SendExcelTelegramRequest
 from app.dependencies import get_current_user, require_role, require_active_shift
 from app.security import get_tashkent_today_str, get_tashkent_now
@@ -82,13 +83,18 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbarga murojaat qiling."
         )
-    today_str = get_tashkent_today_str()
+    # Midnight Rollover himoyasi: agar soat 00:00 dan o'tgan bo'lsa ham xodim formani ochgan sanasini yo'qotmaydi
+    target_date = get_tashkent_today_str()
+    if req.report_date and req.report_date.strip():
+        date_candidate = req.report_date.strip()
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", date_candidate):
+            target_date = date_candidate
+
+    today_str = target_date
     comment = validate_comment(req.comment)
     comp_id = user.get("company_id") or 1
 
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
+    async with get_db_connection() as conn:
         # Avvalgi hisobotni tekshirish
         cursor = await conn.execute("""
             SELECT * FROM daily_reports 
@@ -478,8 +484,8 @@ async def export_reports_excel_endpoint(
         reports_rows = await cur_r.fetchall()
         reports_list = [dict(r) for r in reports_rows]
 
-    # Excel baytlarini generatsiya qilish
-    excel_bytes = generate_reports_excel(comp_name, reports_list, date_display)
+    # Excel baytlarini generatsiya qilish (Event Loop ni bloklamaslik uchun alohida thread pool da bajariladi)
+    excel_bytes = await asyncio.to_thread(generate_reports_excel, comp_name, reports_list, date_display)
 
     # FAQAT Rahbar shaxsiy Telegram lichkasiga hujjat sifatida yuborish (guruhlarga yuborish qat'iy taqiqlangan)
     if send_telegram and owner_tg:

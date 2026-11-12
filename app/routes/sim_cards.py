@@ -90,9 +90,12 @@ async def distribute_sim_cards(
     # 3. Seriya raqamlari ro'yxatini shakllantirish
     serials_to_insert = [str(n).zfill(18) for n in range(start_num, end_num + 1)]
 
-    # 4. Oldin kiritilgan seriyalarni tekshirish
-    placeholders = ",".join("?" for _ in serials_to_insert[:50])
-    cur = await db.execute(f"SELECT serial_number FROM sim_cards WHERE serial_number IN ({placeholders}) AND company_id = ? LIMIT 1", (*serials_to_insert[:50], comp_id))
+    # 4. Oldin kiritilgan seriyalarni tekshirish (100% barcha seriyalar bo'yicha indeksli oraliq tekshiruvi)
+    cur = await db.execute("""
+        SELECT serial_number FROM sim_cards 
+        WHERE serial_number >= ? AND serial_number <= ? AND company_id = ? 
+        LIMIT 1
+    """, (start_str, end_str, comp_id))
     existing = await cur.fetchone()
     if existing:
         raise HTTPException(status_code=400, detail=f"Sim-karta seriyasi bazada allaqachon mavjud: {existing['serial_number']}")

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import aiosqlite
 
 from app.config import DB_PATH
+from app.database import get_db_connection
 from app.dependencies import get_current_user, require_role
 from app.models import LocationPingRequest, SetEmployeeWorkplaceRequest, DeviceTelemetryRequest, VerifiedCheckinRequest
 
@@ -51,8 +52,7 @@ def is_time_within_interval(current_hm: str, start_hm: str, end_hm: str) -> bool
 @router.get("/my-workplace")
 async def get_my_workplace(user: dict = Depends(get_current_user)):
     """Xodimning o'ziga biriktirilgan ish joyi, belgilangan ish soatlari va jonli signal holatini olish"""
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
                    work_start_time, work_end_time, shift_status, last_location_updated_at, last_distance_meters
@@ -126,8 +126,7 @@ async def ping_employee_location(
         return {"success": True, "message": "Rahbar kuzatilmaydi"}
 
     user_id = user["id"]
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
                    work_start_time, work_end_time, shift_status
@@ -240,9 +239,7 @@ async def set_employee_workplace(
     Bosh Rahbar tomonidan muayyan xodim uchun alohida ish joyi lokatsiyasi va ISH VAQTI (soatlari)ni belgilash.
     """
     comp_id = admin.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
+    async with get_db_connection() as conn:
         cur = await conn.execute("SELECT id, full_name, role, last_latitude, last_longitude FROM users WHERE id = ? AND company_id = ?", (payload.user_id, comp_id))
         target_user = await cur.fetchone()
 
@@ -312,9 +309,7 @@ async def clear_employee_workplace(
 ):
     """Xodimga biriktirilgan ish joyi lokatsiyasini o'chirish / tozalash"""
     comp_id = admin.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
+    async with get_db_connection() as conn:
         cur = await conn.execute("SELECT id, full_name FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
         target_user = await cur.fetchone()
         if not target_user:
@@ -355,7 +350,7 @@ async def report_device_telemetry(
     Xodimni hech qanday bezovta qilmaydi.
     """
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    async with aiosqlite.connect(DB_PATH) as conn:
+    async with get_db_connection() as conn:
         if req.has_motion:
             await conn.execute("""
                 UPDATE users 
@@ -387,9 +382,7 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
     Faqat Rahbar ko'ra oladi (o'z firmasi bo'yicha).
     """
     comp_id = admin.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
+    async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, telegram_id, full_name, role, is_active,
                    workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
@@ -534,8 +527,7 @@ async def location_device_checkin(payload: VerifiedCheckinRequest):
     incoming_token = (payload.device_token or "").strip()
     incoming_dev_name = (payload.device_name or "Mobil telefon").strip()[:100]
 
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, full_name, telegram_id, role, company_id,
                    workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
@@ -648,8 +640,7 @@ async def record_verified_checkin(payload: VerifiedCheckinRequest):
     if lat is None or lon is None:
         raise HTTPException(status_code=400, detail="GPS koordinatalari taqdim etilmadi!")
 
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, full_name, telegram_id, role, company_id,
                    workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,

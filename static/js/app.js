@@ -119,6 +119,7 @@ async function api(endpoint, method = "GET", data = null) {
     const json = await res.json();
     if (!res.ok) {
       if (res.status === 401 && !endpoint.includes("/api/auth/")) {
+        showToast("Sessiya muddati tugadi. Iltimos, tizimga qaytadan kiring.", "warning");
         logout();
       }
       if (res.status === 403 && json.detail && json.detail.includes("Obunangizni uzaytiring")) {
@@ -377,6 +378,59 @@ function handleInactivityLogout() {
 
 // Har 30 soniyada fonda tekshirib borish
 setInterval(checkInactivityTimeout, 30000);
+
+// ==========================================
+// FOYDALANUVCHI TABGA QAYTGANIDA AVTO-SINXRONLASH (STALE STATE RECOVERY)
+// ==========================================
+let lastResyncTime = 0;
+async function resyncStaleClientState() {
+  if (!authToken || !currentUser) return;
+  const now = Date.now();
+  // 5 soniyada ko'pi bilan 1 marta qayta sinxronlash (Spamdan saqlash)
+  if (now - lastResyncTime < 5000) return;
+  lastResyncTime = now;
+
+  // 1. Harakatsizlik vaqtini tekshirish
+  if (checkInactivityTimeout()) return;
+
+  // 2. Yangi dollar kursini olish (Kassir va hisobotlar uchun)
+  if (currentUser.role !== "DEVELOPER") {
+    loadUsdRate();
+  }
+
+  // 3. Xodim uchun ish joyi va shift statusini yangilash
+  if (currentUser.role !== "ADMIN") {
+    fetchMyWorkplaceStatus();
+  }
+
+  // 4. Foydalanuvchi qaysi tabda turgan bo'lsa, o'sha tab ma'lumotlarini serverdan yangilash
+  if (typeof currentActiveTab !== "undefined" && currentActiveTab && currentActiveTab.name) {
+    if (currentActiveTab.isAdmin) {
+      if (currentActiveTab.name === "topups") loadAdminTopups();
+      else if (currentActiveTab.name === "cashier") loadAdminCashierTab();
+      else if (currentActiveTab.name === "location") loadAdminLocationTab(false);
+      else if (currentActiveTab.name === "givens") loadAdminGivens();
+      else if (currentActiveTab.name === "reports") loadAdminReports();
+      else if (currentActiveTab.name === "comparison") loadAdminComparison();
+      else if (currentActiveTab.name === "users") loadAdminUsers();
+      else if (currentActiveTab.name === "sims") loadAdminSimsTab();
+    } else {
+      if (currentActiveTab.name === "daily-report") loadDailyReportPrefill();
+      else if (currentActiveTab.name === "cashier-intake") loadCashierPanel();
+      else if (currentActiveTab.name === "card-topup") loadCardHistory();
+      else if (currentActiveTab.name === "given-amount") loadGivenHistory();
+      else if (currentActiveTab.name === "cashier-sims") loadCashierSimsTab();
+    }
+  }
+}
+
+// Brauzer oynasiga qaytilganda yoki telefon ekrani ochilganda darhol yangilash
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    resyncStaleClientState();
+  }
+});
+window.addEventListener("focus", resyncStaleClientState);
 
 // ==========================================
 // ANDROID NATIVE BRIDGE INTEGRATSIYASI
@@ -1695,6 +1749,7 @@ async function handleReportSubmit(e) {
 
   try {
     const res = await api("/api/reports/submit", "POST", {
+      report_date: (prefillData && prefillData.today) ? prefillData.today : null,
       paynet,
       leviy,
       debt_paid: debtPaid,
@@ -1780,6 +1835,7 @@ async function loadLeaderboard(period = "monthly") {
 
 async function loadCashierPanel() {
   try {
+    await loadUsdRate(); // Har safar kassa paneli ochilganda yangi dollar kursini olish
     await loadCashierEmployees();
     setupCashierInputs();
     calculateCashierLiveTotal();
@@ -5960,6 +6016,18 @@ async function fetchMyWorkplaceStatus() {
     const res = await api("/api/location/my-workplace");
     if (res && res.success) {
       myAssignedWorkplace = res;
+      // Agar Rahbar xodimning shift_status ini (Damda / Ishda) o'zgartirgan bo'lsa, formani darhol sinxronlash
+      if (res.shift_status && currentUser.shift_status !== res.shift_status) {
+        currentUser.shift_status = res.shift_status;
+        if (typeof applyShiftFormRestrictions === "function") {
+          applyShiftFormRestrictions(res.shift_status === "RESTING");
+        }
+        if (res.shift_status === "RESTING") {
+          showToast("Siz Rahbar tomonidan Dam olish (Damda 🌙) rejimiga o'tkazildingiz.", "info");
+        } else {
+          showToast("Siz Rahbar tomonidan Ish rejimiga qaytarildingiz.", "success");
+        }
+      }
       if (res.is_signal_lost) {
         updateNavbarLocationBadge(null, false, true);
       }

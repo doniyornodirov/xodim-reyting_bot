@@ -3,6 +3,7 @@ import math
 from fastapi import APIRouter, Depends, HTTPException, status
 import aiosqlite
 from app.config import DB_PATH
+from app.database import get_db_connection, get_next_transaction_number
 from app.models import CardTopupCreate, StatusActionRequest
 from app.dependencies import get_current_user, require_role, require_active_shift
 from app.bot import notify_card_topup_in_group
@@ -51,9 +52,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
     surcharge_amount = float(math.ceil((amount * 1.03) / 1000.0) * 1000)
 
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
+    async with get_db_connection() as conn:
         # 1 kunda 2 va undan ortiq marta yuborilganini tekshirish (Toshkent vaqti +5 bo'yicha)
         clean_card = re.sub(r"\D", "", req.card_number)
         cursor = await conn.execute("""
@@ -75,10 +74,8 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         is_repeat_today = (repeat_count >= 1)
         has_approved_today = (approved_count >= 1)
 
-        # Tartib raqamini hisoblash (#123)
-        cursor = await conn.execute("SELECT MAX(transaction_number) FROM card_topups WHERE company_id = ?", (comp_id,))
-        max_num = (await cursor.fetchone())[0] or 100
-        new_tx_number = max_num + 1
+        # Tartib raqamini hisoblash — 100% Atomik, hech qachon dublikat chiqarmaydi
+        new_tx_number = await get_next_transaction_number(conn, comp_id)
 
         # Bazaga kiritish
         cursor = await conn.execute("""
@@ -111,7 +108,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
     }
     msg_id = await notify_card_topup_in_group(topup_data, group_id=user.get("company_telegram_group_id"))
     if msg_id:
-        async with aiosqlite.connect(DB_PATH) as conn:
+        async with get_db_connection() as conn:
             await conn.execute(
                 "UPDATE card_topups SET telegram_message_id = ? WHERE id = ?",
                 (msg_id, topup_id)
@@ -138,8 +135,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
 @router.get("/my-history")
 async def get_my_card_history(user: dict = Depends(get_current_user)):
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("""
             SELECT * FROM card_topups 
             WHERE employee_id = ? AND company_id = ?
@@ -151,8 +147,7 @@ async def get_my_card_history(user: dict = Depends(get_current_user)):
 @router.get("/all")
 async def get_all_card_topups(user: dict = Depends(require_role(["ADMIN"]))):
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("""
             SELECT c.*, u.full_name as employee_name 
             FROM card_topups c
@@ -173,14 +168,16 @@ async def update_topup_status(
         raise HTTPException(status_code=400, detail="Status 'APPROVED' yoki 'REJECTED' bo'lishi shart!")
 
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ? AND company_id = ?", (topup_id, comp_id))
         topup = await cursor.fetchone()
         if not topup:
             raise HTTPException(status_code=404, detail="So'rov topilmadi!")
 
         status_label = "Tasdiqlandi" if req.status == "APPROVED" else "Rad etildi"
+        if topup["status"] == req.status:
+            return {"success": True, "message": f"Ushbu so'rov allaqachon {status_label} holatida!"}
+
         await conn.execute("""
             UPDATE card_topups 
             SET status = ?, approved_by_name = ? 
@@ -212,8 +209,7 @@ async def reject_card_topup(
 ):
     """Xodim o'zi yuborgan karta to'ldirish so'rovini rad etishi (bekor qilishi)"""
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("SELECT * FROM card_topups WHERE id = ? AND company_id = ?", (topup_id, comp_id))
         topup = await cursor.fetchone()
         if not topup:

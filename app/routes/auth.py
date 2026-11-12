@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 import aiosqlite
 from app.config import DB_PATH, OTP_EXPIRATION_SECONDS, DEBUG, BOT_USERNAME, RAHBAR_ID, DEVELOPER_ID
+from app.database import get_db_connection
 from app.models import LoginRequest, VerifyOtpRequest, DeviceVerifyOrBindRequest
 from app.security import verify_password, generate_otp, create_access_token
 from app.bot import send_otp_to_telegram
@@ -10,13 +11,23 @@ from app.dependencies import get_current_user
 from fastapi import Depends
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
-_otp_lock = asyncio.Lock()
+
+# Foydalanuvchi darajasidagi alohida qulflar (Faqat bitta xodim ketma-ket bosib yubormasligi uchun,
+# boshqa 200 ta xodim bir-biriga aslo to'siq bo'lmaydi)
+_user_locks: dict[int, asyncio.Lock] = {}
+_locks_guard = asyncio.Lock()
+
+async def get_user_lock(telegram_id: int) -> asyncio.Lock:
+    async with _locks_guard:
+        if telegram_id not in _user_locks:
+            _user_locks[telegram_id] = asyncio.Lock()
+        return _user_locks[telegram_id]
 
 @router.post("/login")
 async def login(req: LoginRequest):
-    async with _otp_lock:
-        async with aiosqlite.connect(DB_PATH) as conn:
-            conn.row_factory = aiosqlite.Row
+    user_lock = await get_user_lock(req.telegram_id)
+    async with user_lock:
+        async with get_db_connection() as conn:
             cursor = await conn.execute(
                 "SELECT * FROM users WHERE telegram_id = ?", (req.telegram_id,)
             )
@@ -133,8 +144,7 @@ async def login(req: LoginRequest):
 
 @router.post("/verify-otp")
 async def verify_otp(req: VerifyOtpRequest):
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("""
             SELECT * FROM otp_codes 
             WHERE telegram_id = ? AND is_used = 0
@@ -240,8 +250,7 @@ async def verify_or_bind_device(
             "message": "Rahbar uchun apparat cheklovi qo'yilmaydi."
         }
 
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, full_name, telegram_id, company_id,
                    bound_device_token, bound_device_name, device_bound_at, allow_device_reset

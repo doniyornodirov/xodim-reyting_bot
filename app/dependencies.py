@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import aiosqlite
 from app.config import DB_PATH, RAHBAR_ID, DEVELOPER_ID
+from app.database import get_db_connection
 from app.security import decode_access_token
 
 security = HTTPBearer(auto_error=False)
@@ -23,8 +24,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
     
     user_id = int(payload["sub"])
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
+    async with get_db_connection() as conn:
         cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         user = await cursor.fetchone()
         

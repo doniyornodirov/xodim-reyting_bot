@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 import aiosqlite
 from app.config import DB_PATH
+from app.database import get_db_connection
 from app.dependencies import get_current_user
+from app.security import get_tashkent_now
 
 router = APIRouter(prefix="/api/rating", tags=["Rating"])
 
@@ -13,12 +15,21 @@ async def get_leaderboard(period: str = "monthly", user: dict = Depends(get_curr
     - Har 1 dona sim kartaga = 1 ball
     """
     comp_id = user.get("company_id") or 1
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
+    async with get_db_connection() as conn:
+        params = [comp_id]
         date_filter = ""
         if period == "monthly":
-            date_filter = "AND strftime('%Y-%m', dr.report_date) = strftime('%Y-%m', 'now', '+5 hours')"
+            tashkent_now = get_tashkent_now()
+            y = tashkent_now.year
+            m = tashkent_now.month
+            start_month = f"{y:04d}-{m:02d}-01"
+            next_m = 1 if m == 12 else m + 1
+            next_y = y + 1 if m == 12 else y
+            end_month = f"{next_y:04d}-{next_m:02d}-01"
+            date_filter = "AND dr.report_date >= ? AND dr.report_date < ?"
+            params.extend([start_month, end_month])
+
+        params.append(comp_id)
 
         query = f"""
         SELECT 
@@ -34,7 +45,7 @@ async def get_leaderboard(period: str = "monthly", user: dict = Depends(get_curr
         WHERE u.is_active = 1 AND u.role NOT IN ('ADMIN', 'DEVELOPER') AND u.company_id = ?
         GROUP BY u.id
         """
-        cursor = await conn.execute(query, (comp_id, comp_id))
+        cursor = await conn.execute(query, tuple(params))
         rows = await cursor.fetchall()
 
         leaderboard = []

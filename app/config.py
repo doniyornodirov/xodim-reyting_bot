@@ -24,7 +24,7 @@ JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_MINUTES = 60 * 24  # 24 soat
 OTP_EXPIRATION_SECONDS = 60  # 1 daqiqa
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
-DB_PATH = BASE_DIR / "xodim_reyting.db"
+DB_PATH = Path(os.getenv("DB_PATH", str(BASE_DIR / "xodim_reyting.db")))
 TIMEZONE = "Asia/Tashkent"
 
 # Bulutli baza (Supabase / Managed PostgreSQL) yoki SQLite
