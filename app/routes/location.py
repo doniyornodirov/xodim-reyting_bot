@@ -727,6 +727,20 @@ async def record_verified_checkin(payload: VerifiedCheckinRequest):
         dist_str = f"{int(distance_meters)} m" if distance_meters and distance_meters < 1000 else f"{distance_meters/1000:.1f} km" if distance_meters else "Noma'lum"
         msg_text = "Ish joyingiz koordinatasi joriy jonli joylashuvingiz orqali avtomatik belgilandi va ish boshlandi!" if first_time_auto_configured else f"Davomat muvaffaqiyatli qayd etildi! Masofa: {dist_str}"
 
+        try:
+            import asyncio
+            from app.bot import send_checkin_success_notification_to_employee
+            asyncio.create_task(send_checkin_success_notification_to_employee(
+                employee_tg_id=user["telegram_id"],
+                employee_name=user["full_name"],
+                workplace_name=w_name,
+                distance_text=dist_str,
+                is_inside=bool(is_inside),
+                first_time_auto_configured=first_time_auto_configured
+            ))
+        except Exception:
+            pass
+
         return {
             "success": True,
             "user_id": user["id"],

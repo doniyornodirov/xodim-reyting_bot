@@ -610,38 +610,61 @@ if dp:
         if not loc:
             return
 
-        # Skrepka (📎) orqali yuborilgan lokatsiyani tekshirish
-        async with aiosqlite.connect(DB_PATH) as conn:
-            conn.row_factory = aiosqlite.Row
-            cur = await conn.execute("SELECT role, workplace_latitude, workplace_longitude FROM users WHERE telegram_id = ?", (user_tg_id,))
-            u_check = await cur.fetchone()
-
-        if u_check and u_check["role"] not in ("ADMIN", "DEVELOPER"):
-            w_lat = u_check["workplace_latitude"]
-            w_lon = u_check["workplace_longitude"]
-            is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
-            if is_configured:
-                # Ish joyi avvalroq belgilangan: Telegram skrepkasi rad etiladi!
-                checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
-                kb_checkin = ReplyKeyboardMarkup(
-                    keyboard=[
-                        [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
-                    ],
-                    resize_keyboard=True
-                )
-                await message.reply(
-                    "⚠️ <b>Diqqat!</b> Telegram skrepkasi (📎) orqali yuborilgan lokatsiya qabul qilinmaydi.\n\n"
-                    "Xavfsizlik talablariga ko'ra, davomat faqat sizning rasmiy biriktirilgan telefon apparatingiz orqali qayd etiladi.\n\n"
-                    "Iltimos, pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasidan foydalaning!",
-                    reply_markup=kb_checkin,
-                    parse_mode="HTML"
-                )
-                return
-
         lat = loc.latitude
         lon = loc.longitude
         live_period = getattr(loc, "live_period", None)
 
+        # Foydalanuvchi ma'lumotlarini bazadan olish
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("""
+                SELECT id, full_name, role, workplace_latitude, workplace_longitude, bound_device_token, bound_device_name
+                FROM users WHERE telegram_id = ?
+            """, (user_tg_id,))
+            u_check = await cur.fetchone()
+
+        if not u_check:
+            await message.reply("Siz tizimda xodim sifatida topilmadingiz.")
+            return
+
+        # 1. Agar bir martalik statik lokatsiya yuborilgan bo'lsa (live_period yo'q):
+        if not live_period:
+            checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
+            kb_checkin = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+                ],
+                resize_keyboard=True
+            )
+            await message.reply(
+                "⚠️ <b>Diqqat!</b> Bir martalik oddiy lokatsiya qabul qilinmaydi.\n\n"
+                "Ish vaqtidagi uzluksiz monitoring uchun <b>jonli joylashuv (Live Location)</b> ni <b>8 soat</b>ga yoqib yuboring:\n"
+                "👉 <i>📎 Skrepka ➔ 📍 Geopozitsiya ➔ «Транслировать геопозицию...» (Jonli joylashuv) ➔ 8 soat</i>\n\n"
+                "Yoki rasmiy telefon apparatingiz orqali pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasidan foydalaning!",
+                reply_markup=kb_checkin,
+                parse_mode="HTML"
+            )
+            return
+
+        # 2. Jonli joylashuv (live_period mavjud):
+        # Agar oddiy xodim bo'lsa va apparati hali biriktirilmagan bo'lsa:
+        if u_check["role"] not in ("ADMIN", "DEVELOPER") and not u_check["bound_device_token"]:
+            checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
+            kb_checkin = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+                ],
+                resize_keyboard=True
+            )
+            await message.reply(
+                "⚠️ <b>Telefoningiz tasdiqlanmagan!</b>\n\n"
+                "Jonli monitoring faollashishi uchun avval pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasi orqali rasmiy telefon apparatingizni tasdiqlang va davomatni oching.",
+                reply_markup=kb_checkin,
+                parse_mode="HTML"
+            )
+            return
+
+        # Jonli joylashuvni qabul qilish va bazada yangilash
         res = await update_employee_location_from_telegram(
             user_tg_id=user_tg_id,
             lat=lat,
@@ -650,9 +673,16 @@ if dp:
             is_live_edit=False
         )
         if res.get("reply_text"):
+            checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
+            kb_checkin = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+                ],
+                resize_keyboard=True
+            )
             await message.reply(
                 res["reply_text"],
-                reply_markup=ReplyKeyboardRemove(),
+                reply_markup=kb_checkin,
                 parse_mode="HTML"
             )
 
@@ -660,24 +690,10 @@ if dp:
     async def handle_location_edited(message: types.Message):
         """Xodim harakatlanganda Telegram tomonidan fonda uzatiladigan jonli koordinata yangilanishlari"""
         user_tg_id = message.from_user.id
-
-        # Skrepka orqali yuborilgan jonli tahrirlarni tekshirish: xodimlar uchun bloklanadi
-        async with aiosqlite.connect(DB_PATH) as conn:
-            conn.row_factory = aiosqlite.Row
-            cur = await conn.execute("SELECT role, workplace_latitude, workplace_longitude FROM users WHERE telegram_id = ?", (user_tg_id,))
-            u_check = await cur.fetchone()
-
-        if u_check and u_check["role"] not in ("ADMIN", "DEVELOPER"):
-            w_lat = u_check["workplace_latitude"]
-            w_lon = u_check["workplace_longitude"]
-            is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
-            if is_configured:
-                # Skrepka jonli uzatmasi e'tiborga olinmaydi
-                return
-
         loc = message.location
         if not loc:
             return
+
         lat = loc.latitude
         lon = loc.longitude
         live_period = getattr(loc, "live_period", None)
@@ -1528,6 +1544,57 @@ async def send_untrusted_device_alert_to_admin(
         return True
     except Exception as e:
         logger.error(f"Rahbarga begona qurilma ogohlantirishini yuborishda xatolik: {e}")
+        return False
+
+async def send_checkin_success_notification_to_employee(
+    employee_tg_id: int,
+    employee_name: str,
+    workplace_name: str,
+    distance_text: str,
+    is_inside: bool,
+    first_time_auto_configured: bool = False
+) -> bool:
+    """Xodim WebApp orqali davomat qilgach, Telegram chatiga 8 soatlik jonli lokatsiya yoqish bo'yicha yo'riqnoma yuborish"""
+    if not bot or not employee_tg_id:
+        return False
+
+    time_str = get_current_tashkent_hm()
+    status_icon = "🟢" if is_inside else "🔴"
+    status_label = f"Ish joyida ({distance_text})" if is_inside else f"Ish joyidan tashqarida ({distance_text})"
+
+    if first_time_auto_configured:
+        header = "🎯 <b>Ish joyingiz koordinatasi muvaffaqiyatli belgilandi!</b>"
+    else:
+        header = "✅ <b>Davomat muvaffaqiyatli qayd etildi!</b>"
+
+    text = (
+        f"{header}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 <b>Xodim:</b> {employee_name}\n"
+        f"🏢 <b>Filial:</b> {workplace_name}\n"
+        f"📍 <b>Holati:</b> {status_icon} {status_label}\n\n"
+        f"🛰 <b>Kun davomida uzluksiz monitoring:</b>\n"
+        f"Telefoningiz cho'ntagingizda turganda ham kordinata uzluksiz yangilanib turishi uchun jonli lokatsiyani yoqib qo'ying:\n\n"
+        f"👉 Pastdagi <b>📎 (Skrepka) ➔ 📍 Geopozitsiya ➔ «Транслировать геопозицию...» (Jonli joylashuv)</b> ni tanlab <b>8 soat</b> qilib yuboring!\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🕒 <b>Vaqt:</b> {time_str}"
+    )
+
+    try:
+        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={employee_tg_id}"
+        kb_checkin = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+            ],
+            resize_keyboard=True
+        )
+        await asyncio.wait_for(
+            bot.send_message(chat_id=int(employee_tg_id), text=text, reply_markup=kb_checkin, parse_mode="HTML"),
+            timeout=4.0
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Xodimga davomat tasdiq xabarini yuborishda xatolik: {e}")
         return False
 
 async def start_bot_polling():
