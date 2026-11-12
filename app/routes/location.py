@@ -678,7 +678,24 @@ async def record_verified_checkin(payload: VerifiedCheckinRequest):
 
         distance_meters = None
         is_inside = None
-        if is_configured:
+        first_time_auto_configured = False
+
+        if not is_configured:
+            # Ish joyi hali belgilanmagan bo'lsa:
+            # Ushbu jonli lokatsiyaning birinchi nuqtasi AVTOMATIK ravishda ish joyi deb saqlanadi!
+            w_lat = round(lat, 7)
+            w_lon = round(lon, 7)
+            is_configured = True
+            distance_meters = 0.0
+            is_inside = True
+            first_time_auto_configured = True
+            await conn.execute("""
+                UPDATE users
+                SET workplace_latitude = ?,
+                    workplace_longitude = ?
+                WHERE id = ?
+            """, (w_lat, w_lon, user["id"]))
+        else:
             distance_meters = calculate_haversine_meters(w_lat, w_lon, lat, lon)
             is_inside = (distance_meters <= w_radius)
 
@@ -708,6 +725,7 @@ async def record_verified_checkin(payload: VerifiedCheckinRequest):
         await conn.commit()
 
         dist_str = f"{int(distance_meters)} m" if distance_meters and distance_meters < 1000 else f"{distance_meters/1000:.1f} km" if distance_meters else "Noma'lum"
+        msg_text = "Ish joyingiz koordinatasi joriy jonli joylashuvingiz orqali avtomatik belgilandi va ish boshlandi!" if first_time_auto_configured else f"Davomat muvaffaqiyatli qayd etildi! Masofa: {dist_str}"
 
         return {
             "success": True,
@@ -716,10 +734,11 @@ async def record_verified_checkin(payload: VerifiedCheckinRequest):
             "device_name": user["bound_device_name"] or "Mobil telefon",
             "workplace_name": w_name,
             "is_configured": is_configured,
+            "first_time_configured": first_time_auto_configured,
             "is_inside": is_inside,
             "distance_meters": distance_meters,
             "distance_text": dist_str,
             "radius_meters": w_radius,
             "updated_at": now_utc,
-            "message": f"Davomat muvaffaqiyatli qayd etildi! Masofa: {dist_str}"
+            "message": msg_text
         }

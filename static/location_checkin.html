@@ -447,16 +447,24 @@
               const iconEl = document.getElementById("success-icon");
               const titleEl = document.getElementById("success-title");
 
-              if (isInside) {
+              if (recData.first_time_configured) {
+                distEl.innerHTML = `<span style="color: var(--accent-green);">🟢 Ish joyi belgilandi (0 m)</span>`;
+                iconEl.innerText = "🎯";
+                titleEl.innerText = "Ish Joyi Aniqlandi!";
+                titleEl.style.color = "var(--accent-green)";
+                document.getElementById("success-desc").innerText = "Ish joyingiz koordinatasi joriy jonli joylashuvingiz orqali avtomatik belgilandi va ish boshlandi!";
+              } else if (isInside) {
                 distEl.innerHTML = `<span style="color: var(--accent-green);">🟢 Ish joyida (${distText})</span>`;
                 iconEl.innerText = "🟢";
                 titleEl.innerText = "Siz Ish Joyidasiz!";
                 titleEl.style.color = "var(--accent-green)";
+                document.getElementById("success-desc").innerText = "Qurilmangiz tasdiqlandi va jonli joylashuvingiz yangilandi.";
               } else {
                 distEl.innerHTML = `<span style="color: var(--accent-red);">🔴 Tashqarida (${distText})</span>`;
                 iconEl.innerText = "🔴";
                 titleEl.innerText = "Ish Joyidan Tashqarida!";
                 titleEl.style.color = "var(--accent-red)";
+                document.getElementById("success-desc").innerText = "Diqqat: Siz belgilangan ish joyi hududidan tashqaridasiz!";
               }
 
               const now = new Date();
