@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=840">
+  <link rel="stylesheet" href="/static/css/style.css?v=841">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -88,6 +88,14 @@
       } catch(e) {}
     })();
   </script>
+
+  <!-- Impersonation Banner (Kuzatuv Rejimi) -->
+  <div id="impersonation-banner" style="display: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; padding: 0.55rem 1rem; font-weight: 700; text-align: center; font-size: 0.88rem; z-index: 10000; position: sticky; top: 0; box-shadow: 0 4px 14px rgba(0,0,0,0.4); align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+    <span>⚠️ <b>KUZATUV REJIMI:</b> Siz hozir <span id="impersonated-company-name-display" style="text-decoration: underline; font-weight: 800;">-</span> firmasining boshqaruv kabinetidasiz!</span>
+    <button type="button" class="btn" onclick="exitImpersonation()" style="background: #0f172a; color: #fff; font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 6px; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
+      🔙 Dasturchi paneliga qaytish
+    </button>
+  </div>
 
   <!-- Asosiy Navbar (Modern Executive SaaS Header) -->
   <header class="navbar sticky top-0 z-50 px-4 sm:px-6 h-16 flex items-center transition-colors">
@@ -1018,8 +1026,12 @@
               <input type="text" id="saas-new-password" class="form-input" placeholder="Kiritilmasa Telegram ID bo'ladi">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">Telegram Guruh ID si (ixtiyoriy)</label>
-              <input type="text" id="saas-new-group-id" class="form-input" placeholder="Masalan: -100123456789">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <label class="form-label" style="margin-bottom: 0;">Telegram Guruh ID (ixtiyoriy)</label>
+                <button type="button" onclick="testTelegramGroup('saas-new-group-id', 'saas-new-group-status')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; cursor: pointer; text-decoration: underline; font-weight: 600; padding: 0;">🔍 Guruhni tekshirish</button>
+              </div>
+              <input type="text" id="saas-new-group-id" class="form-input" style="margin-top: 0.35rem;" placeholder="Masalan: -100123456789">
+              <div id="saas-new-group-status" style="font-size: 0.76rem; margin-top: 0.25rem; display: none;"></div>
             </div>
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Xodimlar limiti (soni) *</label>
@@ -1051,9 +1063,27 @@
 
       <!-- Barcha Tashkilotlar Jadvali -->
       <div class="card-box">
-        <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-          <span>📋</span> Barcha Tashkilotlar va Ijarachilar Ro'yxati
-        </h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.1rem;">
+          <h3 class="card-title" style="font-size: 1.1rem; font-weight: 700; margin-bottom: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📋</span> Barcha Tashkilotlar va Ijarachilar Ro'yxati
+            <span id="saas-table-count-badge" class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; font-size: 0.78rem;">0 ta</span>
+          </h3>
+          <!-- Qidiruv va Filtr -->
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <div style="position: relative; width: 230px;">
+              <input type="text" id="saas-search-input" class="form-input" style="height: 36px; padding-left: 2rem; font-size: 0.85rem;" placeholder="Firma yoki Rahbarni qidirish..." oninput="filterSaasCompanies()">
+              <span style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; opacity: 0.6;">🔍</span>
+            </div>
+            <select id="saas-status-filter" class="form-input" style="height: 36px; font-size: 0.85rem; width: 175px;" onchange="filterSaasCompanies()">
+              <option value="ALL">Barchasi (Hammasi)</option>
+              <option value="ACTIVE">🟢 Faol firmalar</option>
+              <option value="EXPIRING_SOON">⏳ Muddati yaqin (≤5 kun)</option>
+              <option value="EXPIRED">⚠️ Obunasi tugagan</option>
+              <option value="BLOCKED">🔴 To'xtatilgan</option>
+            </select>
+          </div>
+        </div>
+
         <div class="table-container table-scroll-5">
           <table class="custom-table data-table">
             <thead>
@@ -1064,8 +1094,8 @@
                 <th>Telegram Guruh</th>
                 <th>Tarif</th>
                 <th>Obuna muddati</th>
-                <th>Xodimlar (Faol / Limit)</th>
-                <th>Hisobotlar</th>
+                <th>Xodimlar</th>
+                <th>Aylanma & Faollik</th>
                 <th>Holati</th>
                 <th>Boshqaruv amallari</th>
               </tr>
@@ -1896,8 +1926,12 @@
 
         <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 0.55rem; margin-bottom: 1.1rem;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Telegram Guruh ID</label>
-            <input type="text" id="saas-edit-group-id" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="-100...">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0;">Telegram Guruh ID</label>
+              <button type="button" onclick="testTelegramGroup('saas-edit-group-id', 'saas-edit-group-status')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; cursor: pointer; text-decoration: underline; font-weight: 600; padding: 0;">🔍 Tekshirish</button>
+            </div>
+            <input type="text" id="saas-edit-group-id" class="form-input" style="height: 38px; font-size: 0.88rem; margin-top: 0.25rem;" placeholder="-100...">
+            <div id="saas-edit-group-status" style="font-size: 0.75rem; margin-top: 0.2rem; display: none;"></div>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" style="font-size: 0.8rem;">Xodimlar limiti *</label>
@@ -2219,6 +2253,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=385"></script>
+  <script src="/static/js/app.js?v=386"></script>
 </body>
 </html>

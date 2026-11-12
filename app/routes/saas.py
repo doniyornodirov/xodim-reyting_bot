@@ -10,9 +10,10 @@ from app.models import (
     ExtendSubscriptionRequest,
     UpdateCompanySettingsRequest,
     UpdateCompanyAdminDetailsRequest,
+    TestGroupRequest,
 )
 from app.dependencies import get_current_user, require_super_admin, require_role
-from app.security import hash_password
+from app.security import hash_password, create_access_token
 
 router = APIRouter(prefix="/api/saas", tags=["SaaS Multi-Tenant Management"])
 
@@ -91,6 +92,30 @@ async def list_companies(super_admin: dict = Depends(require_super_admin)):
             )
             topups_count = (await cur_topups.fetchone())[0]
 
+            # Oxirgi faollik sanasi (hisobot, karta so'rovi yoki kassa topshirish)
+            cur_last = await conn.execute("""
+                SELECT MAX(ts) FROM (
+                    SELECT MAX(created_at) as ts FROM daily_reports WHERE company_id = ?
+                    UNION ALL
+                    SELECT MAX(created_at) as ts FROM card_topups WHERE company_id = ?
+                    UNION ALL
+                    SELECT MAX(created_at) as ts FROM cashier_handovers WHERE company_id = ?
+                )
+            """, (c_id, c_id, c_id))
+            last_activity = (await cur_last.fetchone())[0]
+
+            # Jami aylanma (savdo tushumlari)
+            cur_sales = await conn.execute(
+                "SELECT COALESCE(SUM(total_inflow), 0) FROM daily_reports WHERE company_id = ?", (c_id,)
+            )
+            total_turnover = (await cur_sales.fetchone())[0]
+
+            # Xodimlar umumiy qarzi
+            cur_debt = await conn.execute(
+                "SELECT COALESCE(SUM(debt_amount), 0) FROM users WHERE company_id = ? AND is_active = 1", (c_id,)
+            )
+            total_debt = (await cur_debt.fetchone())[0]
+
             days_left = calculate_days_left(c["plan"], c["subscription_expires_at"])
 
             result.append({
@@ -109,7 +134,10 @@ async def list_companies(super_admin: dict = Depends(require_super_admin)):
                 "employees_count": users_count,
                 "cashiers_count": cashiers_count,
                 "reports_count": reports_count,
-                "topups_count": topups_count
+                "topups_count": topups_count,
+                "last_activity": last_activity,
+                "total_turnover": float(total_turnover or 0),
+                "total_debt": float(total_debt or 0)
             })
 
     return {"success": True, "data": result}
@@ -632,3 +660,224 @@ async def download_saas_database_backup(super_admin: dict = Depends(require_supe
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Baza zaxirasini olishda xatolik: {e}")
+
+@router.post("/test-telegram-group")
+async def test_telegram_group(
+    req: TestGroupRequest,
+    super_admin: dict = Depends(require_super_admin)
+):
+    """Telegram guruh ID si to'g'riligini va bot u guruhda borligini tekshirish"""
+    from app.bot import bot
+    if not bot:
+        raise HTTPException(status_code=500, detail="Telegram bot sozlanmagan (BOT_TOKEN yo'q)!")
+
+    grp_id_str = req.telegram_group_id.strip()
+    if not grp_id_str:
+        raise HTTPException(status_code=400, detail="Guruh ID si kiritilishi shart!")
+
+    try:
+        grp_id = int(grp_id_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Telegram Guruh ID faqat butun sondan iborat bo'lishi kerak (masalan: -100123456789)!")
+
+    try:
+        chat = await bot.get_chat(chat_id=grp_id)
+        # Bot guruhda adminmi yoki oddiy a'zomi?
+        bot_user = await bot.get_me()
+        bot_member = await bot.get_chat_member(chat_id=grp_id, user_id=bot_user.id)
+        is_admin = bot_member.status in ["administrator", "creator"]
+        return {
+            "success": True,
+            "title": chat.title or "Nomsiz guruh",
+            "type": chat.type,
+            "is_admin": is_admin,
+            "message": f"✅ '{chat.title}' guruhi topildi! Bot holati: {'Admin 👑' if is_admin else 'Oddiy a\'zo (Admin huquqi bering) ⚠️'}"
+        }
+    except Exception as e:
+        err_msg = str(e)
+        if "chat not found" in err_msg.lower():
+            detail = "Guruh topilmadi! Guruh ID sini tekshiring yoki botni avval ushbu guruhga qo'shing."
+        elif "bot was kicked" in err_msg.lower() or "not a member" in err_msg.lower():
+            detail = "Bot ushbu guruhda yo'q yoki chiqarib yuborilgan! @xodim_reyting_bot ni guruhga qo'shing."
+        else:
+            detail = f"Telegram xatosi: {err_msg}"
+        return {
+            "success": False,
+            "detail": detail
+        }
+
+@router.post("/companies/{company_id}/send-credentials")
+async def send_company_credentials(
+    company_id: int,
+    super_admin: dict = Depends(require_super_admin)
+):
+    """Firma Rahbarining shaxsiy Telegram lichkasiga kirish rekvizitlarini jo'natish"""
+    from app.bot import bot
+    if not bot:
+        raise HTTPException(status_code=500, detail="Telegram bot sozlanmagan!")
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("""
+            SELECT c.*, u.full_name as owner_name, u.telegram_id as user_tg
+            FROM companies c
+            LEFT JOIN users u ON u.telegram_id = c.owner_telegram_id AND u.company_id = c.id
+            WHERE c.id = ?
+        """, (company_id,))
+        comp = await cur.fetchone()
+        if not comp:
+            raise HTTPException(status_code=404, detail="Firma topilmadi!")
+
+        owner_tg = comp["owner_telegram_id"] or comp["user_tg"]
+        if not owner_tg:
+            raise HTTPException(status_code=400, detail="Firma Rahbarining Telegram ID si belgilanmagan!")
+
+        owner_name = comp["owner_name"] or "Firma Rahbari"
+        tashkent_tz = timezone(timedelta(hours=5))
+        exp_val = comp["subscription_expires_at"]
+        if comp["plan"] == "UNLIMITED":
+            exp_text = "Cheksiz (Unlimited ♾️)"
+        elif exp_val:
+            try:
+                exp_text = datetime.fromisoformat(str(exp_val).replace("Z", "+00:00")).astimezone(tashkent_tz).strftime("%d.%m.%Y")
+            except Exception:
+                exp_text = str(exp_val)
+        else:
+            exp_text = "Belgilanmagan"
+
+        text = (
+            f"🏢 <b>Hurmatli {owner_name}!</b>\n\n"
+            f"Sizning <b>\"{comp['name']}\"</b> tashkilotingiz uchun <b>Xodim-Reyting CRM</b> tizimida Rahbarlik kabineti muvaffaqiyatli faollashtirildi! 🎉\n\n"
+            f"🌐 <b>CRM Havolasi:</b> https://xodim-reyting-bot.onrender.com\n"
+            f"👤 <b>Login (Telegram ID):</b> <code>{owner_tg}</code>\n"
+            f"🔑 <b>Boshlang'ich parol:</b> <code>{owner_tg}</code> (yoki o'rnatilgan parolingiz)\n"
+            f"📅 <b>Obuna amal qilish sanasi:</b> {exp_text} gacha\n"
+            f"👥 <b>Xodimlar limiti:</b> {comp['max_employees']} ta\n\n"
+            f"<i>💡 Tizimga kirib, xodimlaringizni qo'shishingiz va hisobotlarni qabul qilishni boshlashingiz mumkin.</i>"
+        )
+
+        try:
+            await bot.send_message(chat_id=int(owner_tg), text=text, parse_mode="HTML")
+        except Exception as e:
+            err_str = str(e).lower()
+            if "blocked" in err_str or "not found" in err_str or "can't initiate" in err_str:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Xabar yuborib bo'lmadi! Rahbar ({owner_name}) botimizga hali /start bosmagan. Unga @xodim_reyting_bot ga kirib /start bosishini ayting."
+                )
+            raise HTTPException(status_code=400, detail=f"Telegram xatosi: {e}")
+
+        # Audit log
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (1, 'COMPANY', ?, 'SEND_CREDENTIALS', ?, ?)
+        """, (company_id, super_admin["full_name"], f"Firma #{company_id} Rahbariga ({owner_name}) kirish rekvizitlari bot orqali yuborildi"))
+        await conn.commit()
+
+    return {
+        "success": True,
+        "message": f"'{comp['name']}' firmasi Rahbariga ({owner_name}) kirish rekvizitlari muvaffaqiyatli yuborildi! ✉️"
+    }
+
+@router.post("/companies/{company_id}/impersonate")
+async def impersonate_company(
+    company_id: int,
+    super_admin: dict = Depends(require_super_admin)
+):
+    """Super Admin uchun tanlangan firma kabinetiga uning Rahbari sifatida kirish (Kuzatuv rejimi)"""
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
+        comp = await cur.fetchone()
+        if not comp:
+            raise HTTPException(status_code=404, detail="Firma topilmadi!")
+
+        # Firmaning Admin foydalanuvchisini topish
+        cur_user = await conn.execute(
+            "SELECT * FROM users WHERE company_id = ? AND role = 'ADMIN' AND is_active = 1 LIMIT 1",
+            (company_id,)
+        )
+        owner_user = await cur_user.fetchone()
+        if not owner_user:
+            cur_user = await conn.execute(
+                "SELECT * FROM users WHERE company_id = ? AND is_active = 1 LIMIT 1",
+                (company_id,)
+            )
+            owner_user = await cur_user.fetchone()
+
+        if not owner_user:
+            raise HTTPException(status_code=400, detail="Ushbu firmada faol foydalanuvchi topilmadi!")
+
+        # Token yaratish
+        token_data = {
+            "sub": str(owner_user["id"]),
+            "impersonated_by": super_admin["id"],
+            "impersonated_company_id": company_id
+        }
+        token = create_access_token(token_data)
+
+        # Audit log
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (1, 'COMPANY', ?, 'IMPERSONATE', ?, ?)
+        """, (company_id, super_admin["full_name"], f"Super Admin '{comp['name']}' firmasining kabinetiga kuzatuvchi sifatida kirdi"))
+        await conn.commit()
+
+    return {
+        "success": True,
+        "token": token,
+        "company_name": comp["name"],
+        "user": {
+            "id": owner_user["id"],
+            "full_name": owner_user["full_name"],
+            "role": owner_user["role"],
+            "telegram_id": owner_user["telegram_id"],
+            "company_id": company_id
+        }
+    }
+
+@router.delete("/companies/{company_id}")
+async def delete_company(
+    company_id: int,
+    super_admin: dict = Depends(require_super_admin)
+):
+    """Super Admin tomonidan firmani va uning barcha bog'langan ma'lumotlarini tozalash / o'chirish"""
+    if company_id == 1:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bosh Tashkilotni (1-kompaniya) o'chirib bo'lmaydi!"
+        )
+
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (company_id,))
+        comp = await cur.fetchone()
+        if not comp:
+            raise HTTPException(status_code=404, detail="Firma topilmadi!")
+
+        comp_name = comp["name"]
+
+        # Kaskad tozalash
+        await conn.execute("DELETE FROM users WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM daily_reports WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM card_topups WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM cashier_handovers WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM cashier_history WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM given_amounts WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM sim_card_batches WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM sim_card_distributions WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM company_counters WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM audit_logs WHERE company_id = ?", (company_id,))
+        await conn.execute("DELETE FROM companies WHERE id = ?", (company_id,))
+
+        # Bosh Tashkilot audit logiga yozish
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (1, 'COMPANY', ?, 'DELETE_COMPANY', ?, ?)
+        """, (company_id, super_admin["full_name"], f"Firma #{company_id} ('{comp_name}') va uning barcha ma'lumotlari Dasturchi tomonidan butunlay o'chirildi"))
+        await conn.commit()
+
+    return {
+        "success": True,
+        "message": f"'{comp_name}' firmasi va barcha bog'liq ma'lumotlari muvaffaqiyatli o'chirildi!"
+    }

@@ -719,6 +719,7 @@ async function initApp() {
       } catch (renderErr) {
         console.error("renderApp xatosi:", renderErr);
       }
+      checkImpersonationState();
       syncWithAndroidBridge();
       return;
     } catch (e) {
@@ -736,6 +737,10 @@ async function initApp() {
 }
 
 function logout() {
+  if (localStorage.getItem("is_impersonating") === "true") {
+    exitImpersonation();
+    return;
+  }
   stopAutoLocationTracking();
   clearAndroidBridgeAuth();
   hideSubscriptionExpiredModal();
@@ -4775,6 +4780,340 @@ document.addEventListener("visibilitychange", () => {
 
 let saasCompaniesData = [];
 
+function checkImpersonationState() {
+  const isImpersonating = localStorage.getItem("is_impersonating") === "true";
+  const compName = localStorage.getItem("impersonated_comp_name") || "Firma";
+  const banner = document.getElementById("impersonation-banner");
+  const compEl = document.getElementById("impersonated-company-name-display");
+
+  if (isImpersonating) {
+    if (banner) {
+      banner.style.display = "flex";
+      if (compEl) compEl.innerText = `'${compName}'`;
+    }
+  } else {
+    if (banner) banner.style.display = "none";
+  }
+}
+
+function exitImpersonation() {
+  const backupToken = localStorage.getItem("super_admin_backup_token");
+  if (!backupToken) {
+    localStorage.removeItem("is_impersonating");
+    localStorage.removeItem("impersonated_comp_name");
+    window.location.reload();
+    return;
+  }
+  authToken = backupToken;
+  localStorage.setItem("crm_token", authToken);
+  localStorage.removeItem("super_admin_backup_token");
+  localStorage.removeItem("is_impersonating");
+  localStorage.removeItem("impersonated_comp_name");
+  window.location.reload();
+}
+
+async function handleImpersonateCompany(companyId, companyName) {
+  const ok = await appConfirm({
+    title: "Firma kabinetiga kirish (Kuzatuv)",
+    message: `'${companyName}' firmasining boshqaruv kabinetiga uning Rahbari sifatida kirishni tasdiqlaysizmi?\n\nSiz istalgan paytda yuqoridagi '🔙 Dasturchi paneliga qaytish' tugmasi orqali qaytib chiqa olasiz.`,
+    confirmText: "Kuzatishni boshlash",
+    type: "primary",
+    icon: "👁️"
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/api/saas/companies/${companyId}/impersonate`, "POST");
+    if (res.success && res.token) {
+      localStorage.setItem("super_admin_backup_token", authToken);
+      localStorage.setItem("is_impersonating", "true");
+      localStorage.setItem("impersonated_comp_name", res.company_name || companyName);
+      authToken = res.token;
+      localStorage.setItem("crm_token", authToken);
+      window.location.reload();
+    }
+  } catch (e) {
+    showToast(e.message || "Firma kabinetiga kirib bo'lmadi", "danger");
+  }
+}
+
+async function handleSendCompanyCredentials(companyId, companyName, ownerName) {
+  const ok = await appConfirm({
+    title: "Rekvizitlarni Telegramdan yuborish",
+    message: `'${ownerName || 'Rahbar'}'ning shaxsiy Telegramiga (@xodim_reyting_bot orqali) CRM kirish havolasi va rekvizitlarini yuborishni tasdiqlaysizmi?`,
+    confirmText: "Yuborish",
+    type: "primary",
+    icon: "✉️"
+  });
+  if (!ok) return;
+
+  showToast("Rekvizitlar jo'natilmoqda...", "info");
+  try {
+    const res = await api(`/api/saas/companies/${companyId}/send-credentials`, "POST");
+    if (res.success) {
+      showToast(res.message || "Muvaffaqiyatli yuborildi!", "success");
+    } else {
+      showToast(res.detail || "Yuborib bo'lmadi", "danger");
+    }
+  } catch (err) {
+    showToast(err.message || "Yuborishda xatolik", "danger");
+  }
+}
+
+async function handleDeleteCompany(companyId, companyName) {
+  if (companyId === 1) {
+    showToast("Bosh Tashkilotni o'chirib bo'lmaydi!", "danger");
+    return;
+  }
+
+  const ok = await appConfirm({
+    title: "Firmani butunlay o'chirish",
+    message: `DIQQAT! '${companyName}' firmasi va uning barcha ma'lumotlari (xodimlar, hisobotlar, kassa va kartalar) butunlay o'chiriladi!\n\nBu amalni ortga qaytarib bo'lmaydi. Davom etasizmi?`,
+    confirmText: "Ha, butunlay o'chirilsin",
+    type: "danger",
+    icon: "🗑️"
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/api/saas/companies/${companyId}`, "DELETE");
+    if (res.success) {
+      showToast(res.message || "Firma o'chirildi!", "success");
+      loadSaasCompanies();
+    } else {
+      showToast(res.detail || "Xatolik yuz berdi", "danger");
+    }
+  } catch (err) {
+    showToast(err.message || "Server xatosi!", "danger");
+  }
+}
+
+async function testTelegramGroup(inputId, statusContainerId) {
+  const input = document.getElementById(inputId);
+  const statusEl = statusContainerId ? document.getElementById(statusContainerId) : null;
+  const grpVal = input ? input.value.trim() : "";
+
+  if (!grpVal) {
+    showToast("Iltimos, avval Telegram Guruh ID sini kiriting!", "warning");
+    if (input) input.focus();
+    return;
+  }
+
+  showToast("Guruh tekshirilmoqda, iltimos kuting...", "info");
+  if (statusEl) {
+    statusEl.style.display = "block";
+    statusEl.innerHTML = `<span style="color: #818cf8;">⏳ Guruh va bot holati tekshirilmoqda...</span>`;
+  }
+
+  try {
+    const res = await api("/api/saas/test-telegram-group", "POST", { telegram_group_id: grpVal });
+    if (res.success) {
+      showToast(res.message, "success");
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color: #10b981; font-weight: 600;">${escapeHtml(res.message)}</span>`;
+      }
+    } else {
+      showToast(res.detail || "Guruh topilmadi!", "danger");
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color: #ef4444; font-weight: 600;">❌ ${escapeHtml(res.detail || "Guruh topilmadi")}</span>`;
+      }
+    }
+  } catch (err) {
+    showToast(err.message || "Tekshirishda xatolik yuz berdi", "danger");
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color: #ef4444;">❌ ${escapeHtml(err.message || "Xatolik")}</span>`;
+    }
+  }
+}
+
+function formatLastActivity(isoStr) {
+  if (!isoStr) return `<span style="color: #94a3b8; font-size: 0.75rem;">Faollik yo'q</span>`;
+  try {
+    const d = new Date(isoStr);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return `<span style="color: #10b981; font-weight: 700; font-size: 0.75rem;">Bugun ⚡</span>`;
+    if (diffDays === 1) return `<span style="color: #818cf8; font-weight: 600; font-size: 0.75rem;">Kecha</span>`;
+    if (diffDays <= 7) return `<span style="color: #cbd5e1; font-size: 0.75rem;">${diffDays} kun oldin</span>`;
+    return `<span style="color: #f87171; font-size: 0.75rem; font-weight: 600;">${diffDays} kundan beri kirmagan ⚠️</span>`;
+  } catch (e) {
+    return formatDateOnly(isoStr);
+  }
+}
+
+function filterSaasCompanies() {
+  const searchVal = (document.getElementById("saas-search-input")?.value || "").toLowerCase().trim();
+  const filterVal = document.getElementById("saas-status-filter")?.value || "ALL";
+
+  if (!saasCompaniesData) return;
+
+  const filtered = saasCompaniesData.filter(c => {
+    const matchSearch = !searchVal || 
+      (c.name && c.name.toLowerCase().includes(searchVal)) ||
+      (c.slug && c.slug.toLowerCase().includes(searchVal)) ||
+      (c.owner_name && c.owner_name.toLowerCase().includes(searchVal)) ||
+      (c.owner_telegram_id && String(c.owner_telegram_id).includes(searchVal)) ||
+      (c.id && String(c.id).includes(searchVal));
+
+    if (!matchSearch) return false;
+
+    if (filterVal === "ACTIVE") return c.is_active;
+    if (filterVal === "BLOCKED") return !c.is_active;
+    if (filterVal === "EXPIRED") return c.plan !== "UNLIMITED" && c.days_left !== null && c.days_left <= 0;
+    if (filterVal === "EXPIRING_SOON") return c.plan !== "UNLIMITED" && c.days_left !== null && c.days_left > 0 && c.days_left <= 5;
+
+    return true;
+  });
+
+  renderSaasCompaniesTable(filtered);
+}
+
+function renderSaasCompaniesTable(companies) {
+  const tbody = document.getElementById("saas-companies-tbody");
+  const countBadge = document.getElementById("saas-table-count-badge");
+  if (countBadge) countBadge.innerText = `${companies ? companies.length : 0} ta`;
+
+  if (!tbody) return;
+  if (!companies || companies.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 2rem;">Hech qanday firma topilmadi.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = companies.map(c => {
+    const isMain = (c.id === 1);
+    const statusBadge = c.is_active 
+      ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 600;">🟢 Faol</span>`
+      : `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.35); font-weight: 600;">🔴 To'xtatilgan</span>`;
+
+    let expiryText = "";
+    if (c.plan === "UNLIMITED") {
+      expiryText = `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #6366f1; font-weight: 600;">Cheksiz (Unlimited)</span>`;
+    } else if (c.days_left !== null && c.days_left !== undefined) {
+      if (c.days_left <= 0) {
+        expiryText = `<b style="color: #ef4444;">Tugagan ⚠️</b>`;
+      } else if (c.days_left > 365) {
+        const yearsLeft = (c.days_left / 365).toFixed(1);
+        expiryText = `<span style="color: #10b981; font-weight: 700;">${yearsLeft} yil qoldi (${c.days_left} kun) 🌟</span>`;
+      } else if (c.days_left <= 5) {
+        expiryText = `<b style="color: #f59e0b;">${c.days_left} kun qoldi ⏳</b>`;
+      } else {
+        expiryText = `<span style="color: #10b981; font-weight: 600;">${c.days_left} kun qoldi</span>`;
+      }
+    } else {
+      expiryText = "-";
+    }
+
+    let planBadge = "";
+    if (c.plan === "UNLIMITED") {
+      planBadge = `<span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #a855f7; border: 1px solid rgba(147, 51, 234, 0.35); font-weight: 700;">UNLIMITED ♾️</span>`;
+    } else if (c.plan === "5_YEARS") {
+      planBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 700;">5 YIL 🌟</span>`;
+    } else {
+      planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #db2777; border: 1px solid rgba(236, 72, 153, 0.35); font-weight: 700;">${c.plan}</span>`;
+    }
+
+    const safeCompName = (c.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const safeOwnerName = (c.owner_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+    let actionsHtml = `<div style="display: inline-flex; gap: 0.3rem; align-items: center; white-space: nowrap; flex-wrap: wrap;">`;
+    if (!isMain) {
+      actionsHtml += `
+        <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; font-weight: 600;" onclick="handleImpersonateCompany(${c.id}, '${safeCompName}')" title="Firma kabinetiga uning Rahbari sifatida kirib ko'rish">
+          👁️ Kirish
+        </button>
+      `;
+
+      actionsHtml += `
+        <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; font-weight: 600;" onclick="handleSendCompanyCredentials(${c.id}, '${safeCompName}', '${safeOwnerName}')" title="Rahbarga Telegram bot orqali kirish ma'lumotlarini jo'natish">
+          ✉️ Rekvizit
+        </button>
+      `;
+
+      if (c.plan !== "UNLIMITED") {
+        actionsHtml += `
+          <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600; border-radius: 6px;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Obuna muddatini uzaytirish">
+            📅 Uzaytirish
+          </button>
+        `;
+      }
+
+      if (c.is_active) {
+        actionsHtml += `
+          <button type="button" class="btn btn-danger" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, true)" title="Firmani to'xtatish (bloklash)">
+            Bloklash
+          </button>
+        `;
+      } else {
+        actionsHtml += `
+          <button type="button" class="btn btn-success" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, false)" title="Firmani qayta faollashtirish">
+            Faollashtirish
+          </button>
+        `;
+      }
+
+      actionsHtml += `
+        <button type="button" class="btn btn-logout" style="font-size: 0.72rem; padding: 0.28rem 0.45rem; border-color: rgba(239, 68, 68, 0.3); color: #f87171; border-radius: 6px;" onclick="handleDeleteCompany(${c.id}, '${safeCompName}')" title="Firmani va barcha ma'lumotlarini butunlay o'chirish">
+          🗑️
+        </button>
+      `;
+    } else {
+      actionsHtml += `<span style="font-size: 0.75rem; color: #94a3b8;">Bosh Tashkilot (Daxlsiz)</span>`;
+    }
+    actionsHtml += `</div>`;
+
+    return `
+      <tr>
+        <td><b>#${c.id}</b></td>
+        <td>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+            <div>
+              <b style="color: var(--text-main); font-size: 0.95rem; display: block;">${escapeHtml(c.name)}</b>
+              <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
+            </div>
+            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Nomni tahrirlash">✏️</button>` : ''}
+          </div>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+            <div>
+              <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(c.owner_name)}</div>
+              <code style="font-size: 0.75rem; color: #6366f1;">TG: ${c.owner_telegram_id || '-'}</code>
+            </div>
+            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va parolni tahrirlash">✏️</button>` : ''}
+          </div>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+            <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
+            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Guruh ID tahrirlash">✏️</button>` : ''}
+          </div>
+        </td>
+        <td>
+          ${planBadge}
+          ${!isMain ? `<button type="button" onclick="openSaasPlanModal(${c.id}, '${c.plan}', '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">🔄 Tarifni o'zgartirish</button>` : ''}
+        </td>
+        <td>
+          <div>${expiryText}</div>
+          ${c.subscription_expires_at ? `<span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600; display: block; margin-top: 2px;">📅 ${formatDateOnly(c.subscription_expires_at)} gacha</span>` : ''}
+        </td>
+        <td>
+          <b style="color: #6366f1;">${c.employees_count || 0} / ${c.max_employees || 20} ta</b>
+          ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #f59e0b; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
+          ${!isMain ? `<button type="button" onclick="openSaasLimitModal(${c.id}, ${c.max_employees || 20}, '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">⚙️ Limitni o'zgartirish</button>` : ''}
+        </td>
+        <td>
+          <div style="font-size: 0.82rem; font-weight: 700; color: #10b981;">${formatNumberSpaces(c.total_turnover || 0)} so'm</div>
+          <div style="margin-top: 2px;">${formatLastActivity(c.last_activity)}</div>
+          ${c.total_debt ? `<div style="font-size: 0.72rem; color: #f87171;">Qarz: ${formatNumberSpaces(c.total_debt)} so'm</div>` : ''}
+        </td>
+        <td>${statusBadge}</td>
+        <td>${actionsHtml}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
 async function loadSaasCompanies() {
   if (!currentUser || (!currentUser.is_super_admin && currentUser.role !== "DEVELOPER")) return;
 
@@ -4811,120 +5150,7 @@ async function loadSaasCompanies() {
     if (statUsersEl) statUsersEl.innerText = totalUsers;
     if (statReportsEl) statReportsEl.innerText = totalReports;
 
-    if (!tbody) return;
-    if (companies.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: #94a3b8; padding: 2rem;">Hozircha firmalar mavjud emas.</td></tr>`;
-      return;
-    }
-
-    tbody.innerHTML = companies.map(c => {
-      const isMain = (c.id === 1);
-      const statusBadge = c.is_active 
-        ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 600;">🟢 Faol</span>`
-        : `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.35); font-weight: 600;">🔴 To'xtatilgan</span>`;
-
-      let expiryText = "";
-      if (c.plan === "UNLIMITED") {
-        expiryText = `<span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #6366f1; font-weight: 600;">Cheksiz (Unlimited)</span>`;
-      } else if (c.days_left !== null && c.days_left !== undefined) {
-        if (c.days_left <= 0) {
-          expiryText = `<b style="color: #ef4444;">Tugagan ⚠️</b>`;
-        } else if (c.days_left > 365) {
-          const yearsLeft = (c.days_left / 365).toFixed(1);
-          expiryText = `<span style="color: #10b981; font-weight: 700;">${yearsLeft} yil qoldi (${c.days_left} kun) 🌟</span>`;
-        } else if (c.days_left <= 5) {
-          expiryText = `<b style="color: #f59e0b;">${c.days_left} kun qoldi ⏳</b>`;
-        } else {
-          expiryText = `<span style="color: #10b981; font-weight: 600;">${c.days_left} kun qoldi</span>`;
-        }
-      } else {
-        expiryText = "-";
-      }
-
-      let planBadge = "";
-      if (c.plan === "UNLIMITED") {
-        planBadge = `<span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #a855f7; border: 1px solid rgba(147, 51, 234, 0.35); font-weight: 700;">UNLIMITED ♾️</span>`;
-      } else if (c.plan === "5_YEARS") {
-        planBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 700;">5 YIL 🌟</span>`;
-      } else {
-        planBadge = `<span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #db2777; border: 1px solid rgba(236, 72, 153, 0.35); font-weight: 700;">${c.plan}</span>`;
-      }
-
-      // Amallar tugmalari (Sanani uzaytirish va Bloklash yonma-yon va ixcham)
-      const safeCompName = (c.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      let actionsHtml = `<div style="display: inline-flex; gap: 0.35rem; align-items: center; white-space: nowrap;">`;
-      if (!isMain) {
-        if (c.plan !== "UNLIMITED") {
-          actionsHtml += `
-            <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600; border-radius: 6px; line-height: 1.2; display: inline-flex; align-items: center; gap: 0.25rem;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Sanani uzaytirish">
-              <span>📅</span> Sanani uzaytirish
-            </button>
-          `;
-        }
-        if (c.is_active) {
-          actionsHtml += `
-            <button type="button" class="btn btn-danger" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; line-height: 1.2; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, true)">
-              Bloklash
-            </button>
-          `;
-        } else {
-          actionsHtml += `
-            <button type="button" class="btn btn-success" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; line-height: 1.2; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, false)">
-              Faollashtirish
-            </button>
-          `;
-        }
-      } else {
-        actionsHtml += `<span style="font-size: 0.75rem; color: #94a3b8;">Bosh Tashkilot (Daxlsiz)</span>`;
-      }
-      actionsHtml += `</div>`;
-
-      return `
-        <tr>
-          <td><b>#${c.id}</b></td>
-          <td>
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
-              <div>
-                <b style="color: var(--text-main); font-size: 0.95rem; display: block;">${escapeHtml(c.name)}</b>
-                <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
-              </div>
-              ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Nomni tahrirlash">✏️</button>` : ''}
-            </div>
-          </td>
-          <td>
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
-              <div>
-                <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(c.owner_name)}</div>
-                <code style="font-size: 0.75rem; color: #6366f1;">TG: ${c.owner_telegram_id || '-'}</code>
-              </div>
-              ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va parolni tahrirlash">✏️</button>` : ''}
-            </div>
-          </td>
-          <td>
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
-              <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
-              ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Guruh ID tahrirlash">✏️</button>` : ''}
-            </div>
-          </td>
-          <td>
-            ${planBadge}
-            ${!isMain ? `<button type="button" onclick="openSaasPlanModal(${c.id}, '${c.plan}', '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">🔄 Tarifni o'zgartirish</button>` : ''}
-          </td>
-          <td>
-            <div>${expiryText}</div>
-            ${c.subscription_expires_at ? `<span style="font-size: 0.72rem; color: var(--text-sub); font-weight: 600; display: block; margin-top: 2px;">📅 ${formatDateOnly(c.subscription_expires_at)} gacha</span>` : ''}
-          </td>
-          <td>
-            <b style="color: #6366f1;">${c.employees_count || 0} / ${c.max_employees || 20} ta</b>
-            ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #f59e0b; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
-            ${!isMain ? `<button type="button" onclick="openSaasLimitModal(${c.id}, ${c.max_employees || 20}, '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">⚙️ Limitni o'zgartirish</button>` : ''}
-          </td>
-          <td><b>${c.reports_count || 0} ta</b></td>
-          <td>${statusBadge}</td>
-          <td>${actionsHtml}</td>
-        </tr>
-      `;
-    }).join("");
+    filterSaasCompanies();
 
   } catch (e) {
     console.error("loadSaasCompanies xatosi:", e);

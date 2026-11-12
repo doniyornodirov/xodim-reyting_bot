@@ -131,4 +131,8 @@ class SendExcelTelegramRequest(BaseModel):
     file_base64: str = Field(..., description="Base64 formatidagi Excel fayl baytlari")
     caption: Optional[str] = Field(None, max_length=500, description="Telegram xabar matni")
 
+class TestGroupRequest(BaseModel):
+    telegram_group_id: str = Field(..., min_length=2, max_length=50, description="Tekshiriladigan Telegram Guruh ID si")
+
+
 
