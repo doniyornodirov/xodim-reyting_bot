@@ -51,15 +51,28 @@ def get_topup_keyboard(topup_id: int, current_status: str) -> InlineKeyboardMark
         return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 async def check_is_group_admin(chat_id: int, user_id: int) -> bool:
-    """Foydalanuvchi guruh admini ekanligini tekshirish"""
+    """Foydalanuvchi guruh admini yoki guruh egasi (creator) ekanligini tekshirish"""
     if not bot:
         return True
     try:
+        from app.config import RAHBAR_ID, DEVELOPER_ID
+        if str(user_id) in [str(RAHBAR_ID), str(DEVELOPER_ID)]:
+            return True
+
         member = await bot.get_chat_member(chat_id=chat_id, user_id=user_id)
-        return member.status in ["creator", "administrator"]
+        if member.status in ["creator", "administrator"]:
+            return True
+
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute("SELECT role FROM users WHERE telegram_id = ?", (user_id,))
+            u = await cur.fetchone()
+            if u and u["role"] in ("ADMIN", "DEVELOPER"):
+                return True
     except Exception as e:
         logger.warning(f"Adminlik tekshirishda xatolik: {e}")
         return False
+    return False
 
 # Telegram bot komandalarini ro'yxatga olish
 if dp:
@@ -696,10 +709,10 @@ if dp:
         actor_id = query.from_user.id
         actor_name = query.from_user.full_name
 
-        # 1. Adminlik huquqini tekshirish
+        # 1. Adminlik va guruh egasi huquqini tekshirish
         is_admin = await check_is_group_admin(chat_id, actor_id)
         if not is_admin:
-            await query.answer("❌ Faqat guruh adminlari so'rov statusini o'zgartira oladi!", show_alert=True)
+            await query.answer("❌ Ruxsat yo'q! Faqat guruh adminlari va guruh egasi tasdiqlash yoki rad etish huquqiga ega.", show_alert=True)
             return
 
         action, topup_id_str = data.replace("topup_", "").split("_")
