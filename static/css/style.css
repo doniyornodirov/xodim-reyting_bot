@@ -4657,12 +4657,13 @@ body.theme-light .app-dialog-message {
 
 .app-dialog-input {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 2.8rem 0.75rem 1rem;
   border-radius: 12px;
   background: var(--bg-surface-elevated, #1e293b);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.18));
   color: var(--text-main, #ffffff);
-  font-size: 0.95rem;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;

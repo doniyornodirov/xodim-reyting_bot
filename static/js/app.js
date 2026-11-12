@@ -307,8 +307,8 @@ function appPrompt(options) {
     const inputType = opts.inputType || "text";
     const confirmText = opts.confirmText || "Saqlash";
     const cancelText = opts.cancelText || "Bekor qilish";
-    const showEyeToggle = opts.showEyeToggle !== false && inputType === "password";
-    const icon = opts.icon || (inputType === "password" ? "🔑" : "✏️");
+    const showEyeToggle = opts.showEyeToggle === true || (opts.showEyeToggle !== false && inputType === "password");
+    const icon = opts.icon || (opts.showEyeToggle || inputType === "password" ? "🔑" : "✏️");
 
     const overlay = createDialogOverlay();
     overlay.innerHTML = `
@@ -320,8 +320,8 @@ function appPrompt(options) {
         ${message ? `<div class="app-dialog-message" style="margin-bottom: 0.85rem;">${escapeHtml(message)}</div>` : ""}
         <div class="app-dialog-input-wrap">
           <input type="${inputType}" class="app-dialog-input" id="app-dialog-input-field" 
-                 placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(defaultValue)}" autocomplete="off" />
-          ${showEyeToggle ? `<button type="button" class="app-dialog-eye-btn" id="app-dialog-eye-btn" title="Parolni ko'rsatish">👁️</button>` : ""}
+                 placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(defaultValue)}" autocomplete="off" spellcheck="false" />
+          ${showEyeToggle ? `<button type="button" class="app-dialog-eye-btn" id="app-dialog-eye-btn" title="${inputType === 'password' ? "Parolni ko'rsatish" : "Parolni yashirish"}">${inputType === 'password' ? '👁️' : '🙈'}</button>` : ""}
         </div>
         <div class="app-dialog-actions">
           <button type="button" class="app-dialog-btn app-dialog-btn-cancel" id="app-dialog-cancel-btn">${escapeHtml(cancelText)}</button>
@@ -349,9 +349,11 @@ function appPrompt(options) {
         if (inputField.type === "password") {
           inputField.type = "text";
           eyeBtn.innerText = "🙈";
+          eyeBtn.title = "Parolni yashirish (nuqtalar)";
         } else {
           inputField.type = "password";
           eyeBtn.innerText = "👁️";
+          eyeBtn.title = "Parolni ko'rsatish";
         }
       });
     }
@@ -3583,7 +3585,7 @@ async function promptUpdatePassword(userId, name) {
     title: "Yangi parol o'rnatish",
     message: `'${name}' uchun yangi parolni kiriting:`,
     placeholder: "Yangi parol (kamida 3 ta belgi)...",
-    inputType: "password",
+    inputType: "text", // Nuqta emas, asl ochiq matn ko'rinishida
     showEyeToggle: true,
     confirmText: "Parolni saqlash"
   });
