@@ -1674,10 +1674,17 @@
           Geolokatsiya faqat belgilangan soatlar oralig'ida tekshiriladi (dam olish vaqtida xodim kuzatilmaydi).
         </div>
 
-        <!-- Xodimning ayni damdagi turgan joyini olish -->
-        <div style="margin-bottom: 1.25rem;">
-          <button type="button" class="btn-success" id="btn-modal-fill-emp-gps" onclick="handleFillEmployeeCurrentLocationToModal()" style="width: 100%; font-size: 0.85rem; padding: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-weight: 700; border-radius: 0.65rem;">
-            <span>📍</span> Xodimning ayni damdagi turgan joyini olish
+        <!-- Yordamchi xarita havolasi va filial kordinatasi eslatmasi -->
+        <div style="font-size: 0.78rem; color: #94a3b8; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 0.6rem; margin-bottom: 0.85rem; line-height: 1.45;">
+          🏢 <b>Ish joyi (Filial) manzili:</b> Bu xodim biriktirilgan doimiy filial nuqtasi. Xodim har kuni Telegramdan 8 soatlik jonli lokatsiya yuborganida, tizim uni aynan shu manzilga nisbatan masofasini (0 m, 50 m va h.k.) kuzatib boradi.
+        </div>
+
+        <div style="margin-bottom: 1.25rem; display: flex; gap: 0.6rem;">
+          <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" class="btn-logout" style="flex: 1; font-size: 0.8rem; padding: 0.6rem; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 0.65rem;">
+            <span>🗺️</span> Google Xaritadan ochish
+          </a>
+          <button type="button" class="btn-secondary" onclick="handleFillCurrentAdminGpsToModal()" style="flex: 1; font-size: 0.8rem; padding: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 0.65rem;">
+            <span>📍</span> Joriy joylashuvimni olish
           </button>
         </div>
 
@@ -2212,6 +2219,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=380"></script>
+  <script src="/static/js/app.js?v=381"></script>
 </body>
 </html>

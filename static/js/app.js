@@ -4127,44 +4127,23 @@ async function handleSetEmployeeLocationSubmit(e) {
   }
 }
 
-async function handleFillEmployeeCurrentLocationToModal() {
-  const userId = parseInt(document.getElementById("modal-emp-id").value, 10);
-  const btn = document.getElementById("btn-modal-fill-emp-gps");
-  const origText = btn ? btn.innerHTML : "";
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = "<span>⏳</span> Xodim kordinatasi tekshirilmoqda...";
+function handleFillCurrentAdminGpsToModal() {
+  if (!navigator.geolocation) {
+    showToast("Brauzeringizda GPS qo'llab-quvvatlanmaydi", "danger");
+    return;
   }
-
-  try {
-    const res = await api("/api/location/employees");
-    if (res && res.employees) {
-      adminEmployeesLocationCache = res.employees;
-    }
-
-    const emp = (adminEmployeesLocationCache || []).find(u => u.id === userId);
-    if (!emp) {
-      showToast("Xodim ma'lumotlari topilmadi", "danger");
-      return;
-    }
-
-    if (emp.last_latitude && emp.last_longitude) {
-      document.getElementById("modal-emp-wp-lat").value = emp.last_latitude.toFixed(6);
-      document.getElementById("modal-emp-wp-lon").value = emp.last_longitude.toFixed(6);
-      const timeAgo = formatLocationTimeAgo(emp.last_location_updated_at);
-      const timeText = timeAgo ? ` (${timeAgo})` : "";
-      showToast(`✅ ${emp.full_name}ning ayni damdagi turgan joyi olindi!${timeText}`, "success");
-    } else {
-      showToast(`⚠️ ${emp.full_name} hali dasturga kirmagan yoki GPS signali kelmagan. Xodim telefonida ilovani ochgach, qayta bosing.`, "danger");
-    }
-  } catch (err) {
-    showToast("Xatolik: " + err.message, "danger");
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = origText;
-    }
-  }
+  showToast("📍 Joriy koordinatangiz aniqlanmoqda...", "info");
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      document.getElementById("modal-emp-wp-lat").value = pos.coords.latitude.toFixed(6);
+      document.getElementById("modal-emp-wp-lon").value = pos.coords.longitude.toFixed(6);
+      showToast("✅ Koordinata joriy joylashuvingiz bo'yicha to'ldirildi!", "success");
+    },
+    (err) => {
+      showToast("Geolokatsiyani olishda xatolik: " + err.message, "danger");
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
 }
 
 async function handleClearEmployeeWorkplace(userId, fullName) {
