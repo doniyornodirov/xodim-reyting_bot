@@ -28,12 +28,17 @@ if BOT_TOKEN:
         logger.error(f"Telegram bot yaratishda xatolik: {e}")
 
 def get_topup_keyboard(topup_id: int, current_status: str) -> InlineKeyboardMarkup | None:
-    """Statusga qarab o'zgaruvchi inline tugmalar (Rad etilganda tugmalar ko'rinmaydi)"""
-    if current_status == "REJECTED":
-        return None  # Rad etilgan so'rov uchun tugmalar butunlay yo'q qilinadi
-    elif current_status == "APPROVED":
+    """Statusga qarab o'zgaruvchi inline tugmalar (Tasdiqlanganda 'Rad etish', Rad etilganda 'Tasdiqlash')"""
+    if current_status == "APPROVED":
+        # Tasdiqlangan so'rov ostida admin xatoni to'g'rilashi uchun '❌ Rad etish' tugmasi chiqadi
         buttons = [
             [InlineKeyboardButton(text="❌ Rad etish", callback_data=f"topup_reject_{topup_id}")]
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=buttons)
+    elif current_status == "REJECTED":
+        # Rad etilgan so'rov ostida admin qayta tasdiqlashi uchun '✅ Tasdiqlash' tugmasi chiqadi
+        buttons = [
+            [InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"topup_approve_{topup_id}")]
         ]
         return InlineKeyboardMarkup(inline_keyboard=buttons)
     else:  # PENDING
@@ -716,9 +721,9 @@ if dp:
                 await query.answer("So'rov topilmadi!", show_alert=True)
                 return
 
-            # Agar so'rov allaqachon RAD ETILGAN bo'lsa (xodim yoki admin tomonidan), guruh admini o'zgartira olmaydi!
-            if topup["status"] == "REJECTED":
-                await query.answer("❌ Ushbu so'rov xodim tomonidan bekor qilingan! Guruh adminlari uni o'zgartira olmaydi.", show_alert=True)
+            # Agar so'rov xodim tomonidan web paneldan bekor qilingan bo'lsa:
+            if topup["status"] == "REJECTED" and topup["approved_by_name"] and "Xodim:" in str(topup["approved_by_name"]):
+                await query.answer("❌ Ushbu so'rov xodimning o'zi tomonidan bekor qilingan!", show_alert=True)
                 try:
                     await query.message.edit_reply_markup(reply_markup=None)
                 except Exception:
@@ -736,9 +741,9 @@ if dp:
 
             # Audit log
             await conn.execute("""
-                INSERT INTO audit_logs (entity_type, entity_id, action, actor_name, details)
-                VALUES ('CARD_TOPUP', ?, ?, ?, ?)
-            """, (topup_id, new_status, actor_name, f"Telegram guruh orqali status {new_status} ga o'zgartirildi"))
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'CARD_TOPUP', ?, ?, ?, ?)
+            """, (topup["company_id"] or 1, topup_id, new_status, actor_name, f"Telegram guruh orqali status {new_status} ga o'zgartirildi"))
             await conn.commit()
 
         # 3. Telegram xabari matnini yangilash
@@ -761,10 +766,9 @@ if dp:
             tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
 
         if new_status == "REJECTED":
-            # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz va ko'rinmas \u200b bilan) qilinadi!
+            # Rad etilganda karta raqami nusxalanmaydigan qilinadi, lekin admin qayta tasdiqlashi uchun tugma qoladi
             card_display = "\u200b".join(str(topup['card_number']))
             status_line = f"❌ <b>Rad etildi</b> <i>(Admin: {actor_name})</i>"
-            keyboard = None
         else:
             card_display = f"<code>{topup['card_number']}</code>"
             status_line = f"✅ <b>Tasdiqlandi</b> <i>(Admin: {actor_name})</i>"
@@ -933,11 +937,12 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
         tashkent_str = get_tashkent_now().strftime("%d.%m.%Y %H:%M")
 
     if new_status == "REJECTED":
-        reason = reason_text or f"Xodim o'zi bekor qildi ({actor_name})"
+        is_employee_cancel = bool(reason_text and "Xodim" in reason_text)
+        reason = reason_text or f"Admin: {actor_name}"
         status_line = f"❌ <b>Rad etildi</b> <i>({reason})</i>"
-        # Rad etilganda karta raqami nusxalanmaydigan (<code> tegisiz va ko'rinmas \u200b bilan) qilinadi!
+        # Rad etilganda karta raqami nusxalanmaydigan qilinadi
         card_display = "\u200b".join(str(topup['card_number']))
-        markup = None
+        markup = None if is_employee_cancel else get_topup_keyboard(topup_id, "REJECTED")
     else:
         status_line = f"✅ <b>Tasdiqlandi</b> <i>(Admin: {actor_name})</i>"
         card_display = f"<code>{topup['card_number']}</code>"
