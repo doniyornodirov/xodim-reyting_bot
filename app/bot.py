@@ -174,7 +174,7 @@ if dp:
                 else:
                     device_line = "📱 <b>Telefon holati:</b> ⚪ Hali biriktirilmagan (CRMga kirganda avtomatik muhrlanadi)\n"
 
-                checkin_url = f"{FRONTEND_URL}/static/location_checkin.html"
+                checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
                 kb_checkin = ReplyKeyboardMarkup(
                     keyboard=[
                         [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
@@ -243,7 +243,7 @@ if dp:
 
     @dp.message(F.text.in_({"📍 Ish joyimni belgilash", "📍 Ish joyini belgilash", "Ish joyimni belgilash", "Ish joyini belgilash"}))
     async def handle_workplace_button_text(message: types.Message):
-        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html"
+        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
         kb_checkin = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
@@ -279,7 +279,7 @@ if dp:
             """, (user_tg_id,))
             await conn.commit()
 
-        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html"
+        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
         kb_checkin = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
@@ -622,7 +622,7 @@ if dp:
             is_configured = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
             if is_configured:
                 # Ish joyi avvalroq belgilangan: Telegram skrepkasi rad etiladi!
-                checkin_url = f"{FRONTEND_URL}/static/location_checkin.html"
+                checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
                 kb_checkin = ReplyKeyboardMarkup(
                     keyboard=[
                         [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]

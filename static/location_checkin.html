@@ -251,6 +251,21 @@
       <button type="button" class="btn btn-danger" onclick="closeWebApp()">✕ Yopish</button>
     </div>
 
+    <!-- 2.1. Profil aniqlanmagan holat -->
+    <div id="card-unidentified" class="card" style="display: none; border-color: rgba(245, 158, 11, 0.4);">
+      <div class="icon-badge" style="background: rgba(245, 158, 11, 0.15); border: 2px solid #f59e0b;">👤</div>
+      <div class="status-title" style="color: #f59e0b;">Profilingizni Tasdiqlang</div>
+      <div class="status-desc">
+        Telegram profilingiz ID raqami avtomatik aniqlanmadi. Davom etish uchun Telegram ID raqamingizni kiriting:
+      </div>
+      <div style="width: 100%; margin-bottom: 1rem;">
+        <input type="number" id="input-manual-tg-id" placeholder="Telegram ID (masalan: 8662254493)" style="width: 100%; padding: 0.85rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; text-align: center; font-size: 1.05rem; outline: none;">
+      </div>
+      <button type="button" class="btn btn-primary" onclick="submitManualTgId()">
+        Tasdiqlash va Kirish ➡️
+      </button>
+    </div>
+
     <!-- 3. Muvaffaqiyatli Davomat va Jonli Holat -->
     <div id="card-success" class="card" style="display: none; border-color: rgba(16, 185, 129, 0.4);">
       <div class="icon-badge icon-success" id="success-icon">🟢</div>
@@ -329,33 +344,63 @@
     }
 
     function getTelegramUserId() {
-      // 1. Telegram WebApp initDataUnsafe orqali
-      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
-        return tg.initDataUnsafe.user.id;
-      }
-      // 2. URL parametr orqali (?user_id=123)
+      // 1. URL parametr orqali (?user_id=123)
       const params = new URLSearchParams(window.location.search);
       const uid = params.get("user_id") || params.get("tg_id");
       if (uid) return parseInt(uid, 10);
 
-      // 3. Xotirada saqlangan bo'lsa
+      // 2. Telegram WebApp initDataUnsafe orqali
+      if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+        return tg.initDataUnsafe.user.id;
+      }
+
+      // 3. Telegram WebApp initData string orqali
+      if (tg && tg.initData) {
+        try {
+          const initParams = new URLSearchParams(tg.initData);
+          const userJson = initParams.get("user");
+          if (userJson) {
+            const u = JSON.parse(userJson);
+            if (u && u.id) return u.id;
+          }
+        } catch (e) {}
+      }
+
+      // 4. Xotirada saqlangan bo'lsa
       const cached = localStorage.getItem("crm_cached_tg_id");
       if (cached) return parseInt(cached, 10);
 
       return null;
     }
 
+    function submitManualTgId() {
+      const input = document.getElementById("input-manual-tg-id");
+      const val = input ? parseInt(input.value.trim(), 10) : null;
+      if (!val || isNaN(val)) {
+        alert("Iltimos, to'g'ri Telegram ID raqamini kiriting!");
+        return;
+      }
+      currentTgId = val;
+      localStorage.setItem("crm_cached_tg_id", currentTgId.toString());
+      document.getElementById("card-unidentified").style.display = "none";
+      document.getElementById("card-loading").style.display = "flex";
+      proceedWithDeviceCheck();
+    }
+
     async function initCheckinProcess() {
       currentTgId = getTelegramUserId();
       if (!currentTgId) {
         document.getElementById("card-loading").style.display = "none";
-        document.getElementById("card-untrusted").style.display = "flex";
-        document.getElementById("untrusted-desc").innerText = "Telegram profilingiz ma'lumotlari aniqlanmadi. Iltimos, bot orqali qayta kiring.";
+        document.getElementById("card-untrusted").style.display = "none";
+        document.getElementById("card-unidentified").style.display = "flex";
         return;
       }
 
       localStorage.setItem("crm_cached_tg_id", currentTgId.toString());
+      proceedWithDeviceCheck();
+    }
 
+    async function proceedWithDeviceCheck() {
       const savedToken = localStorage.getItem("crm_trusted_device_token") || "";
       const devName = getDeviceModelName();
 
