@@ -153,52 +153,49 @@ if dp:
                     loc_lag = 999
 
                 if not is_configured:
-                    signal_line = "📍 <b>Ish joyi holati:</b> ⏳ Hali belgilanmagan (ish boshlash tugmasini birinchi marta bosganingizda joriy joylashuvingiz avtomatik ish joyi deb olinadi)\n\n"
-                    wp_line = "📍 <b>Ish joyingiz koordinatasi birinchi jonli lokatsiyangiz orqali avtomatik belgilanadi.</b>\n\n"
-                elif not raw_upd or loc_lag >= 10:
-                    signal_line = (
-                        "⚠️ <b>Signal holati:</b> 📵 <b>Signal kelmayapti (Oflayn)</b>\n"
-                        "<i>Iltimos, pastdagi '📍 Ishni boshlash' tugmasi orqali ishni boshlang.</i>\n\n"
+                    kb_loc = ReplyKeyboardMarkup(
+                        keyboard=[
+                            [KeyboardButton(text="📍 Ish joyimni belgilash", request_location=True)],
+                            [KeyboardButton(text="ℹ️ Jonli joylashuv qo'llanmasi")]
+                        ],
+                        resize_keyboard=True
                     )
-                    wp_line = f"✅ <b>Ish joyingiz koordinatasi belgilangan ({w_name}).</b>\n\n"
+                    await message.answer(
+                        f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
+                        f"🏢 <b>Tashkilot:</b> {comp_name}\n"
+                        f"👤 <b>Maqomingiz:</b> {role_title}\n"
+                        f"📍 <b>Filial:</b> {w_name}\n"
+                        f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
+                        f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
+                        f"📍 <b>Sizning ish joyingiz hali belgilanmagan!</b>\n\n"
+                        f"Iltimos, filialingizda (ish joyingizda) turib, pastdagi <b>«📍 Ish joyimni belgilash»</b> tugmasini bosing.\n"
+                        f"Tizim joriy koordinatangizni rasmiy ish joyi deb saqlab oladi.",
+                        reply_markup=kb_loc,
+                        parse_mode="HTML"
+                    )
                 else:
-                    signal_line = f"📶 <b>Signal holati:</b> 🟢 <b>Jonli signal kelmoqda</b> ({loc_lag} daqiqa oldin yangilangan)\n\n"
-                    wp_line = f"✅ <b>Ish joyingiz koordinatasi belgilangan ({w_name}).</b>\n\n"
-
-                dev_name = user["bound_device_name"] if ("bound_device_name" in user.keys() and user["bound_device_name"]) else None
-                allow_reset = bool(user["allow_device_reset"]) if ("allow_device_reset" in user.keys() and user["allow_device_reset"]) else False
-                if dev_name:
-                    device_line = f"📱 <b>Biriktirilgan telefon:</b> <code>{dev_name}</code>\n"
-                elif allow_reset:
-                    device_line = "📱 <b>Telefon holati:</b> ⏳ Yangi telefon biriktirishga ruxsat berilgan\n"
-                else:
-                    device_line = "📱 <b>Telefon holati:</b> ⚪ Hali biriktirilmagan (CRMga kirganda avtomatik muhrlanadi)\n"
-
-                checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
-                kb_checkin = ReplyKeyboardMarkup(
-                    keyboard=[
-                        [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
-                    ],
-                    resize_keyboard=True
-                )
-
-                await message.answer(
-                    f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
-                    f"🏢 <b>Tashkilot:</b> {comp_name}\n"
-                    f"👤 <b>Maqomingiz:</b> {role_title}\n"
-                    f"📍 <b>Filial:</b> {w_name}\n"
-                    f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
-                    f"{device_line}"
-                    f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
-                    f"{signal_line}"
-                    f"{wp_line}"
-                    f"🛰 <b>KUNLIK DAVOMAT VA JONLI JOYLASHUV:</b>\n"
-                    f"Har kuni ishga kelganingizda pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasini bosing.\n"
-                    f"<i>(Xavfsizlik talabi: faqat rasmiy biriktirilgan telefon apparatingiz orqali qabul qilinadi)</i>\n\n"
-                    f"<i>(Signal holatini tekshirish: /status | Yangi filialga o'tgan bo'lsangiz: /qayta_sozlash)</i>",
-                    reply_markup=kb_checkin,
-                    parse_mode="HTML"
-                )
+                    kb_loc = ReplyKeyboardMarkup(
+                        keyboard=[
+                            [KeyboardButton(text="ℹ️ Jonli joylashuv qo'llanmasi")]
+                        ],
+                        resize_keyboard=True
+                    )
+                    await message.answer(
+                        f"Assalomu alaykum, <b>{user['full_name']}</b>!\n\n"
+                        f"🏢 <b>Tashkilot:</b> {comp_name}\n"
+                        f"👤 <b>Maqomingiz:</b> {role_title}\n"
+                        f"📍 <b>Filial:</b> {w_name}\n"
+                        f"⏰ <b>Ish vaqti:</b> {w_hours}\n"
+                        f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n\n"
+                        f"{signal_line}"
+                        f"{wp_line}"
+                        f"🛰 <b>KUNLIK DAVOMAT VA JONLI MONITORING:</b>\n"
+                        f"Har kuni ishga kelganingizda:\n"
+                        f"Pastdagi <b>📎 (Skrepka) ➔ 📍 Geopozitsiya ➔ «Транслировать геопозицию...» (Jonli joylashuv)</b> ni tanlab <b>8 soat</b> qilib yuboring!\n\n"
+                        f"<i>(Signal holatini tekshirish: /status | Yangi filialga o'tsangiz: /qayta_sozlash)</i>",
+                        reply_markup=kb_loc,
+                        parse_mode="HTML"
+                    )
         else:
             # Ro'yxatdan o'tmagan mehmon: Klaviaturani tozalaymiz
             await message.answer(
@@ -230,12 +227,12 @@ if dp:
             "🛰 <b>JOYLASHUV BO'YICHA QO'LLANMA:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             "Xabar yozish maydonidagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya (Location)</b> bo'limi orqali:\n\n"
-            "1️⃣ <b>1-usul: Oddiy joylashuv (Filialning aniq manzili):</b>\n"
-            "• Filialingizga borganingizda <i>'Отправить свою геопозицию'</i> tugmasini bosing;\n"
-            "• Ushbu manzil filialingizning rasmiy koordinatasi sifatida biriktiriladi.\n\n"
+            "1️⃣ <b>1-usul: Ish joyini belgilash:</b>\n"
+            "• Filialingizda turib pastdagi <i>'📍 Ish joyimni belgilash'</i> tugmasini bosing;\n"
+            "• Ushbu manzil filialingizning rasmiy koordinatasi sifatida saqlanadi.\n\n"
             "2️⃣ <b>2-usul: Jonli joylashuv (Kun bo'yi kuzatuv):</b>\n"
-            "• <i>'Тranслировать мою геопозицию...'</i> tugmasini bosing;\n"
-            "• Muddat sifatida <b>8 soat</b> (ish kuni davomi) ni tanlang va yuboring;\n"
+            "• Pastdagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya</b> -> <i>'Транслировать геопозицию...'</i> ni tanlang;\n"
+            "• Muddat sifatida <b>8 soat</b> (ish kuni davomi) ni tanlab yuboring;\n"
             "• Telefoningiz ekrani o'chiq bo'lsa ham, Telegram filialda ekanligingizni CRM tizimiga uzatib turadi.\n"
             "━━━━━━━━━━━━━━━━━━━━━"
         )
@@ -243,16 +240,16 @@ if dp:
 
     @dp.message(F.text.in_({"📍 Ish joyimni belgilash", "📍 Ish joyini belgilash", "Ish joyimni belgilash", "Ish joyini belgilash"}))
     async def handle_workplace_button_text(message: types.Message):
-        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
-        kb_checkin = ReplyKeyboardMarkup(
+        kb_set = ReplyKeyboardMarkup(
             keyboard=[
-                [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+                [KeyboardButton(text="📍 Ish joyimni belgilash", request_location=True)],
+                [KeyboardButton(text="ℹ️ Jonli joylashuv qo'llanmasi")]
             ],
             resize_keyboard=True
         )
         await message.answer(
-            "📍 Ish joyingizni alohida belgilash shart emas!\n\nPastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasini bossangiz, tizim joriy joylashuvingizni avtomatik ish joyi deb saqlab oladi.",
-            reply_markup=kb_checkin,
+            "📍 Ish joyingizni belgilash uchun pastdagi <b>«📍 Ish joyimni belgilash»</b> tugmasini bosing va joylashuvingizni ulashing.",
+            reply_markup=kb_set,
             parse_mode="HTML"
         )
 
@@ -262,7 +259,7 @@ if dp:
         user_tg_id = message.from_user.id
         async with aiosqlite.connect(DB_PATH) as conn:
             conn.row_factory = aiosqlite.Row
-            cur = await conn.execute("SELECT id, role FROM users WHERE telegram_id = ?", (user_tg_id,))
+            cur = await conn.execute("SELECT id, role, full_name FROM users WHERE telegram_id = ?", (user_tg_id,))
             u = await cur.fetchone()
             if u and u["role"] in ("ADMIN", "DEVELOPER"):
                 await message.answer(
@@ -279,17 +276,17 @@ if dp:
             """, (user_tg_id,))
             await conn.commit()
 
-        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
-        kb_checkin = ReplyKeyboardMarkup(
+        kb_set = ReplyKeyboardMarkup(
             keyboard=[
-                [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
+                [KeyboardButton(text="📍 Ish joyimni belgilash", request_location=True)],
+                [KeyboardButton(text="ℹ️ Jonli joylashuv qo'llanmasi")]
             ],
             resize_keyboard=True
         )
         await message.answer(
             "🔄 <b>Ish joyi koordinatasi muvaffaqiyatli nollashtirildi!</b>\n\n"
-            "Yangi filialingizga borganingizda, pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasini bosing — tizim yangi filialingiz koordinatasini o'sha yerdan avtomatik aniqlab oladi.",
-            reply_markup=kb_checkin,
+            "Yangi filialingizga borganingizda, pastdagi <b>«📍 Ish joyimni belgilash»</b> tugmasini bosing — tizim yangi filialingiz koordinatasini o'sha yerdan saqlab oladi.",
+            reply_markup=kb_set,
             parse_mode="HTML"
         )
 
@@ -618,7 +615,7 @@ if dp:
         async with aiosqlite.connect(DB_PATH) as conn:
             conn.row_factory = aiosqlite.Row
             cur = await conn.execute("""
-                SELECT id, full_name, role, workplace_latitude, workplace_longitude, bound_device_token, bound_device_name
+                SELECT id, full_name, role, workplace_latitude, workplace_longitude
                 FROM users WHERE telegram_id = ?
             """, (user_tg_id,))
             u_check = await cur.fetchone()
@@ -627,44 +624,7 @@ if dp:
             await message.reply("Siz tizimda xodim sifatida topilmadingiz.")
             return
 
-        # 1. Agar bir martalik statik lokatsiya yuborilgan bo'lsa (live_period yo'q):
-        if not live_period:
-            checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
-            kb_checkin = ReplyKeyboardMarkup(
-                keyboard=[
-                    [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
-                ],
-                resize_keyboard=True
-            )
-            await message.reply(
-                "⚠️ <b>Diqqat!</b> Bir martalik oddiy lokatsiya qabul qilinmaydi.\n\n"
-                "Ish vaqtidagi uzluksiz monitoring uchun <b>jonli joylashuv (Live Location)</b> ni <b>8 soat</b>ga yoqib yuboring:\n"
-                "👉 <i>📎 Skrepka ➔ 📍 Geopozitsiya ➔ «Транслировать геопозицию...» (Jonli joylashuv) ➔ 8 soat</i>\n\n"
-                "Yoki rasmiy telefon apparatingiz orqali pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasidan foydalaning!",
-                reply_markup=kb_checkin,
-                parse_mode="HTML"
-            )
-            return
-
-        # 2. Jonli joylashuv (live_period mavjud):
-        # Agar oddiy xodim bo'lsa va apparati hali biriktirilmagan bo'lsa:
-        if u_check["role"] not in ("ADMIN", "DEVELOPER") and not u_check["bound_device_token"]:
-            checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
-            kb_checkin = ReplyKeyboardMarkup(
-                keyboard=[
-                    [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
-                ],
-                resize_keyboard=True
-            )
-            await message.reply(
-                "⚠️ <b>Telefoningiz tasdiqlanmagan!</b>\n\n"
-                "Jonli monitoring faollashishi uchun avval pastdagi <b>«📍 Ishni boshlash (Jonli lokatsiya)»</b> tugmasi orqali rasmiy telefon apparatingizni tasdiqlang va davomatni oching.",
-                reply_markup=kb_checkin,
-                parse_mode="HTML"
-            )
-            return
-
-        # Jonli joylashuvni qabul qilish va bazada yangilash
+        # Lokatsiyani qayta ishlash va bazada yangilash
         res = await update_employee_location_from_telegram(
             user_tg_id=user_tg_id,
             lat=lat,
@@ -673,16 +633,34 @@ if dp:
             is_live_edit=False
         )
         if res.get("reply_text"):
-            checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={user_tg_id}"
-            kb_checkin = ReplyKeyboardMarkup(
-                keyboard=[
-                    [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
-                ],
-                resize_keyboard=True
-            )
+            async with aiosqlite.connect(DB_PATH) as conn:
+                conn.row_factory = aiosqlite.Row
+                cur = await conn.execute("SELECT workplace_latitude, workplace_longitude FROM users WHERE telegram_id = ?", (user_tg_id,))
+                u_row = await cur.fetchone()
+
+            is_conf = False
+            if u_row:
+                w_lat = u_row["workplace_latitude"]
+                w_lon = u_row["workplace_longitude"]
+                is_conf = (w_lat is not None and w_lon is not None and (w_lat != 0.0 or w_lon != 0.0))
+
+            if is_conf or live_period:
+                kb = ReplyKeyboardMarkup(
+                    keyboard=[[KeyboardButton(text="ℹ️ Jonli joylashuv qo'llanmasi")]],
+                    resize_keyboard=True
+                )
+            else:
+                kb = ReplyKeyboardMarkup(
+                    keyboard=[
+                        [KeyboardButton(text="📍 Ish joyimni belgilash", request_location=True)],
+                        [KeyboardButton(text="ℹ️ Jonli joylashuv qo'llanmasi")]
+                    ],
+                    resize_keyboard=True
+                )
+
             await message.reply(
                 res["reply_text"],
-                reply_markup=kb_checkin,
+                reply_markup=kb,
                 parse_mode="HTML"
             )
 
@@ -1581,15 +1559,12 @@ async def send_checkin_success_notification_to_employee(
     )
 
     try:
-        checkin_url = f"{FRONTEND_URL}/static/location_checkin.html?user_id={employee_tg_id}"
-        kb_checkin = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="📍 Ishni boshlash (Jonli lokatsiya)", web_app=WebAppInfo(url=checkin_url))]
-            ],
+        kb_loc = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="ℹ️ Jonli joylashuv qo'llanmasi")]],
             resize_keyboard=True
         )
         await asyncio.wait_for(
-            bot.send_message(chat_id=int(employee_tg_id), text=text, reply_markup=kb_checkin, parse_mode="HTML"),
+            bot.send_message(chat_id=int(employee_tg_id), text=text, reply_markup=kb_loc, parse_mode="HTML"),
             timeout=4.0
         )
         return True
