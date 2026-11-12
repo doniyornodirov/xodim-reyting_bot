@@ -135,6 +135,10 @@ async def list_companies(super_admin: dict = Depends(require_super_admin)):
                 "cashiers_count": cashiers_count,
                 "reports_count": reports_count,
                 "topups_count": topups_count,
+                "owner_phone": c["owner_phone"] if ("owner_phone" in c.keys() and c["owner_phone"]) else None,
+                "owner_extra_contact": c["owner_extra_contact"] if ("owner_extra_contact" in c.keys() and c["owner_extra_contact"]) else None,
+                "company_inn": c["company_inn"] if ("company_inn" in c.keys() and c["company_inn"]) else None,
+                "notes": c["notes"] if ("notes" in c.keys() and c["notes"]) else None,
                 "last_activity": last_activity,
                 "total_turnover": float(total_turnover or 0),
                 "total_debt": float(total_debt or 0)
@@ -200,10 +204,25 @@ async def create_company(
         # 4. Kompaniyani yaratish
         max_emp = req.max_employees or 20
         cur_c = await conn.execute("""
-            INSERT INTO companies (name, slug, telegram_group_id, owner_telegram_id, plan, subscription_expires_at, max_employees, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-        """, (req.name.strip(), slug, req.telegram_group_id.strip() if req.telegram_group_id else None,
-              req.owner_telegram_id, req.plan, expires_at, max_emp))
+            INSERT INTO companies (
+                name, slug, telegram_group_id, owner_telegram_id, plan,
+                subscription_expires_at, max_employees, is_active,
+                owner_phone, owner_extra_contact, company_inn, notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+        """, (
+            req.name.strip(),
+            slug,
+            req.telegram_group_id.strip() if req.telegram_group_id else None,
+            req.owner_telegram_id,
+            req.plan,
+            expires_at,
+            max_emp,
+            req.owner_phone.strip() if req.owner_phone else None,
+            req.owner_extra_contact.strip() if req.owner_extra_contact else None,
+            req.company_inn.strip() if req.company_inn else None,
+            req.notes.strip() if req.notes else None
+        ))
         company_id = cur_c.lastrowid
 
         # 5. Firma Rahbarini (Admin) yaratish
@@ -343,6 +362,26 @@ async def edit_company_details(
             clean_grp = req.telegram_group_id.strip() if req.telegram_group_id.strip() else None
             comp_updates.append("telegram_group_id = ?")
             comp_params.append(clean_grp)
+
+        if req.owner_phone is not None:
+            clean_phone = req.owner_phone.strip() if req.owner_phone.strip() else None
+            comp_updates.append("owner_phone = ?")
+            comp_params.append(clean_phone)
+
+        if req.owner_extra_contact is not None:
+            clean_extra = req.owner_extra_contact.strip() if req.owner_extra_contact.strip() else None
+            comp_updates.append("owner_extra_contact = ?")
+            comp_params.append(clean_extra)
+
+        if req.company_inn is not None:
+            clean_inn = req.company_inn.strip() if req.company_inn.strip() else None
+            comp_updates.append("company_inn = ?")
+            comp_params.append(clean_inn)
+
+        if req.notes is not None:
+            clean_notes = req.notes.strip() if req.notes.strip() else None
+            comp_updates.append("notes = ?")
+            comp_params.append(clean_notes)
 
         if req.max_employees is not None:
             if req.max_employees < 1 or req.max_employees > 10000:
@@ -745,12 +784,15 @@ async def send_company_credentials(
         else:
             exp_text = "Belgilanmagan"
 
+        phone_line = f"📞 <b>Aloqa raqami:</b> <code>{comp['owner_phone']}</code>\n" if ("owner_phone" in comp.keys() and comp["owner_phone"]) else ""
+
         text = (
             f"🏢 <b>Hurmatli {owner_name}!</b>\n\n"
             f"Sizning <b>\"{comp['name']}\"</b> tashkilotingiz uchun <b>Xodim-Reyting CRM</b> tizimida Rahbarlik kabineti muvaffaqiyatli faollashtirildi! 🎉\n\n"
             f"🌐 <b>CRM Havolasi:</b> https://xodim-reyting-bot.onrender.com\n"
             f"👤 <b>Login (Telegram ID):</b> <code>{owner_tg}</code>\n"
             f"🔑 <b>Boshlang'ich parol:</b> <code>{owner_tg}</code> (yoki o'rnatilgan parolingiz)\n"
+            f"{phone_line}"
             f"📅 <b>Obuna amal qilish sanasi:</b> {exp_text} gacha\n"
             f"👥 <b>Xodimlar limiti:</b> {comp['max_employees']} ta\n\n"
             f"<i>💡 Tizimga kirib, xodimlaringizni qo'shishingiz va hisobotlarni qabul qilishni boshlashingiz mumkin.</i>"

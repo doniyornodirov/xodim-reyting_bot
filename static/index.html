@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=841">
+  <link rel="stylesheet" href="/static/css/style.css?v=842">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -1026,6 +1026,22 @@
               <input type="text" id="saas-new-password" class="form-input" placeholder="Kiritilmasa Telegram ID bo'ladi">
             </div>
             <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Rahbar telefon raqami</label>
+              <input type="tel" id="saas-new-owner-phone" class="form-input" placeholder="+998 90 123 45 67" maxlength="35">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Qo'shimcha aloqa (ixtiyoriy)</label>
+              <input type="text" id="saas-new-owner-extra" class="form-input" placeholder="Zaxira tel yoki @telegram_user" maxlength="100">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Firma INN / STIR (ixtiyoriy)</label>
+              <input type="text" id="saas-new-inn" class="form-input" placeholder="Masalan: 301234567" maxlength="50">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Eslatma / Izoh (ixtiyoriy)</label>
+              <input type="text" id="saas-new-notes" class="form-input" placeholder="Mijoz haqida maxsus eslatma..." maxlength="500">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <label class="form-label" style="margin-bottom: 0;">Telegram Guruh ID (ixtiyoriy)</label>
                 <button type="button" onclick="testTelegramGroup('saas-new-group-id', 'saas-new-group-status')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; cursor: pointer; text-decoration: underline; font-weight: 600; padding: 0;">🔍 Guruhni tekshirish</button>
@@ -1887,7 +1903,7 @@
 
   <!-- Dasturchi Admin: Firma va Rahbar Ma'lumotlarini Tahrirlash Modali -->
   <div class="modal-overlay" id="saas-edit-company-modal" style="display: none;" onclick="if(event.target.id === 'saas-edit-company-modal') closeSaasEditCompanyModal()">
-    <div class="modal-content" style="max-width: 440px; width: 100%; border-radius: 1.25rem; padding: 1.25rem;" onclick="event.stopPropagation()">
+    <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem; padding: 1.25rem;" onclick="event.stopPropagation()">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem;">
         <div>
           <h3 class="card-title" style="font-size: 1.1rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
@@ -1916,6 +1932,28 @@
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label" style="font-size: 0.8rem;">Rahbar TG ID *</label>
             <input type="number" id="saas-edit-owner-tg" class="form-input" style="height: 38px; font-size: 0.88rem;" required>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin-bottom: 0.65rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.8rem;">Rahbar telefon raqami</label>
+            <input type="tel" id="saas-edit-owner-phone" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="+998...">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.8rem;">Qo'shimcha aloqa (@user/tel)</label>
+            <input type="text" id="saas-edit-owner-extra" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="@username">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 0.55rem; margin-bottom: 0.65rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.8rem;">Firma INN / STIR</label>
+            <input type="text" id="saas-edit-inn" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="301234567">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label" style="font-size: 0.8rem;">Eslatma / Izoh</label>
+            <input type="text" id="saas-edit-notes" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="Mijoz haqida eslatma...">
           </div>
         </div>
 
@@ -2253,6 +2291,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=386"></script>
+  <script src="/static/js/app.js?v=387"></script>
 </body>
 </html>

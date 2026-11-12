@@ -4954,6 +4954,10 @@ function filterSaasCompanies() {
       (c.slug && c.slug.toLowerCase().includes(searchVal)) ||
       (c.owner_name && c.owner_name.toLowerCase().includes(searchVal)) ||
       (c.owner_telegram_id && String(c.owner_telegram_id).includes(searchVal)) ||
+      (c.owner_phone && c.owner_phone.toLowerCase().includes(searchVal)) ||
+      (c.owner_extra_contact && c.owner_extra_contact.toLowerCase().includes(searchVal)) ||
+      (c.company_inn && c.company_inn.toLowerCase().includes(searchVal)) ||
+      (c.notes && c.notes.toLowerCase().includes(searchVal)) ||
       (c.id && String(c.id).includes(searchVal));
 
     if (!matchSearch) return false;
@@ -5075,12 +5079,18 @@ function renderSaasCompaniesTable(companies) {
           </div>
         </td>
         <td>
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 0.35rem;">
             <div>
-              <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(c.owner_name)}</div>
-              <code style="font-size: 0.75rem; color: #6366f1;">TG: ${c.owner_telegram_id || '-'}</code>
+              <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">${escapeHtml(c.owner_name)}</div>
+              <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; margin-top: 2px;">
+                <code style="font-size: 0.73rem; color: #6366f1;">TG: ${c.owner_telegram_id || '-'}</code>
+                ${c.owner_phone ? `<a href="tel:${escapeHtml(c.owner_phone)}" style="font-size: 0.73rem; color: #10b981; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 2px;" title="Qo'ng'iroq qilish">📞 ${escapeHtml(c.owner_phone)}</a>` : ''}
+              </div>
+              ${c.owner_extra_contact ? `<div style="font-size: 0.72rem; color: var(--text-sub); margin-top: 1px;">💬 ${escapeHtml(c.owner_extra_contact)}</div>` : ''}
+              ${c.company_inn ? `<span style="display: inline-block; font-size: 0.68rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1; padding: 1px 4px; border-radius: 4px; margin-top: 2px;">INN: ${escapeHtml(c.company_inn)}</span>` : ''}
+              ${c.notes ? `<div style="font-size: 0.71rem; color: #f59e0b; margin-top: 2px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(c.notes)}">📝 ${escapeHtml(c.notes)}</div>` : ''}
             </div>
-            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va parolni tahrirlash">✏️</button>` : ''}
+            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va aloqa ma'lumotlarini tahrirlash">✏️</button>` : ''}
           </div>
         </td>
         <td>
@@ -5221,6 +5231,10 @@ async function handleCreateCompanySubmit(event) {
   const dateInput = document.getElementById("saas-new-expires-date");
   const planSelect = document.getElementById("saas-new-plan");
   const maxEmpInput = document.getElementById("saas-new-max-employees");
+  const ownerPhoneInput = document.getElementById("saas-new-owner-phone");
+  const ownerExtraInput = document.getElementById("saas-new-owner-extra");
+  const innInput = document.getElementById("saas-new-inn");
+  const notesInput = document.getElementById("saas-new-notes");
 
   const name = nameInput?.value.trim();
   const ownerName = ownerNameInput?.value.trim();
@@ -5230,6 +5244,10 @@ async function handleCreateCompanySubmit(event) {
   const plan = planSelect?.value || "STANDARD";
   const expiresDate = dateInput?.value || null;
   const maxEmployees = parseInt(maxEmpInput?.value || "20") || 20;
+  const ownerPhone = ownerPhoneInput?.value.trim() || null;
+  const ownerExtra = ownerExtraInput?.value.trim() || null;
+  const companyInn = innInput?.value.trim() || null;
+  const notes = notesInput?.value.trim() || null;
 
   if (!name || !ownerName || !ownerTg) {
     showToast("Iltimos, barcha majburiy maydonlarni to'ldiring!", "error");
@@ -5246,6 +5264,10 @@ async function handleCreateCompanySubmit(event) {
       name: name,
       owner_name: ownerName,
       owner_telegram_id: ownerTg,
+      owner_phone: ownerPhone,
+      owner_extra_contact: ownerExtra,
+      company_inn: companyInn,
+      notes: notes,
       initial_password: initialPassword,
       telegram_group_id: groupId,
       expires_date: plan === "STANDARD" ? expiresDate : null,
@@ -5651,6 +5673,10 @@ function openSaasEditCompanyModal(companyId) {
   const nameInput = document.getElementById("saas-edit-name");
   const ownerNameInput = document.getElementById("saas-edit-owner-name");
   const ownerTgInput = document.getElementById("saas-edit-owner-tg");
+  const phoneInput = document.getElementById("saas-edit-owner-phone");
+  const extraInput = document.getElementById("saas-edit-owner-extra");
+  const innInput = document.getElementById("saas-edit-inn");
+  const notesInput = document.getElementById("saas-edit-notes");
   const passwordInput = document.getElementById("saas-edit-password");
   const groupIdInput = document.getElementById("saas-edit-group-id");
   const maxEmpInput = document.getElementById("saas-edit-max-employees");
@@ -5659,6 +5685,10 @@ function openSaasEditCompanyModal(companyId) {
   if (nameInput) nameInput.value = comp.name || "";
   if (ownerNameInput) ownerNameInput.value = comp.owner_name === "Belgilanmagan" ? "" : (comp.owner_name || "");
   if (ownerTgInput) ownerTgInput.value = comp.owner_telegram_id || "";
+  if (phoneInput) phoneInput.value = comp.owner_phone || "";
+  if (extraInput) extraInput.value = comp.owner_extra_contact || "";
+  if (innInput) innInput.value = comp.company_inn || "";
+  if (notesInput) notesInput.value = comp.notes || "";
   if (passwordInput) passwordInput.value = "";
   if (groupIdInput) groupIdInput.value = comp.telegram_group_id || "";
   if (maxEmpInput) maxEmpInput.value = comp.max_employees || 20;
@@ -5679,6 +5709,10 @@ async function handleSaasEditCompanySubmit(event) {
   const name = document.getElementById("saas-edit-name")?.value.trim();
   const ownerName = document.getElementById("saas-edit-owner-name")?.value.trim();
   const ownerTg = parseInt(document.getElementById("saas-edit-owner-tg")?.value);
+  const ownerPhone = document.getElementById("saas-edit-owner-phone")?.value.trim() || null;
+  const ownerExtra = document.getElementById("saas-edit-owner-extra")?.value.trim() || null;
+  const companyInn = document.getElementById("saas-edit-inn")?.value.trim() || null;
+  const notes = document.getElementById("saas-edit-notes")?.value.trim() || null;
   const password = document.getElementById("saas-edit-password")?.value.trim() || null;
   const groupId = document.getElementById("saas-edit-group-id")?.value.trim() || null;
   const maxEmp = parseInt(document.getElementById("saas-edit-max-employees")?.value || "20");
@@ -5693,6 +5727,10 @@ async function handleSaasEditCompanySubmit(event) {
       name: name,
       owner_name: ownerName,
       owner_telegram_id: ownerTg,
+      owner_phone: ownerPhone,
+      owner_extra_contact: ownerExtra,
+      company_inn: companyInn,
+      notes: notes,
       new_password: password,
       telegram_group_id: groupId,
       max_employees: maxEmp
