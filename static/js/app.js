@@ -4165,69 +4165,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 async function triggerPwaInstall() {
-  if (deferredPwaPrompt) {
-    try {
-      deferredPwaPrompt.prompt();
-      const choice = await deferredPwaPrompt.userChoice;
-      console.log("PWA o'rnatish natijasi:", choice);
-      if (choice.outcome === 'accepted') {
-        deferredPwaPrompt = null;
-      }
-    } catch (e) {
-      console.warn("PWA prompt xatosi:", e);
-    }
-  } else {
-    // Brauzer yoki qurilma turi bo'yicha yo'riqnoma ko'rsatish
-    const ua = window.navigator.userAgent.toLowerCase();
-    const isIos = /iphone|ipad|ipod/.test(ua);
-    if (isIos) {
-      await appAlert({
-        title: "Ilovani o'rnatish (iPhone / iPad)",
-        icon: "📱",
-        type: "info",
-        buttonText: "Tushunarli",
-        html: `
-          <div style="text-align: left; line-height: 1.6; font-size: 0.92rem;">
-            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
-              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">1</span>
-              <span>Safari brauzerining pastki qismidagi <b>'Ulashish' (📤 Share)</b> tugmasini bosing.</span>
-            </div>
-            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
-              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">2</span>
-              <span>Ro'yxatdan <b>'Asosiy ekranga qo'shish' (+ Add to Home Screen)</b> bandini tanlang.</span>
-            </div>
-            <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
-              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">3</span>
-              <span>Yuqori o'ng burchakdagi <b>'Qo'shish' (Add)</b> tugmasini bosing. Ilova ekranda paydo bo'ladi!</span>
-            </div>
-          </div>
-        `
-      });
-    } else {
-      await appAlert({
-        title: "Ilovani o'rnatish (Android / Chrome)",
-        icon: "📱",
-        type: "info",
-        buttonText: "Tushunarli",
-        html: `
-          <div style="text-align: left; line-height: 1.6; font-size: 0.92rem;">
-            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
-              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">1</span>
-              <span>Brauzeringizning yuqori o'ng burchagidagi uch nuqta <b>(⋮ Menyu)</b> tugmasini bosing.</span>
-            </div>
-            <div style="margin-bottom: 0.65rem; display: flex; align-items: flex-start; gap: 0.65rem;">
-              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">2</span>
-              <span><b>'Ilovani o'rnatish'</b> yoki <b>'Asosiy ekranga qo'shish' (Install app)</b> bandini tanlang.</span>
-            </div>
-            <div style="display: flex; align-items: flex-start; gap: 0.65rem;">
-              <span style="background: var(--bg-surface-elevated, #1e293b); padding: 2px 8px; border-radius: 6px; font-weight: 700; color: var(--accent-primary, #6366f1);">3</span>
-              <span>Tasdiqlang va ilova telefoningiz ekraniga alohida dastur sifatida o'rnatiladi!</span>
-            </div>
-          </div>
-        `
-      });
-    }
-  }
+  // Foydalanuvchi talabiga ko'ra ilova o'rnatish taklifi o'chirilgan
 }
 
 function registerServiceWorker() {
@@ -6702,28 +6640,11 @@ window.addEventListener("DOMContentLoaded", () => {
 // ==========================================
 let deferredPrompt = null;
 window.addEventListener("beforeinstallprompt", (e) => {
+  // Brauzerning avtomatik o'rnatish bannerlarini ko'rsatmaslik
   e.preventDefault();
   deferredPrompt = e;
-  const pwaBtn = document.getElementById("btn-pwa-install");
-  const pwaSideBtn = document.getElementById("sidebar-pwa-install");
-  if (pwaBtn) pwaBtn.style.display = "inline-flex";
-  if (pwaSideBtn) pwaSideBtn.style.display = "flex";
 });
 
 function installPWA() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === "accepted") {
-        showToast("Ilova muvaffaqiyatli o'rnatilmoqda!", "success");
-      }
-      deferredPrompt = null;
-      const pwaBtn = document.getElementById("btn-pwa-install");
-      const pwaSideBtn = document.getElementById("sidebar-pwa-install");
-      if (pwaBtn) pwaBtn.style.display = "none";
-      if (pwaSideBtn) pwaSideBtn.style.display = "none";
-    });
-  } else {
-    showToast("Ilovani brauzer menyusidan 'Bosh ekranga qo'shish' orqali o'rnatishingiz mumkin.", "info");
-  }
+  // Foydalanuvchi talabiga ko'ra o'chirilgan
 }

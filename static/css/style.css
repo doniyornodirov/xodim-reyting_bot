@@ -4969,31 +4969,9 @@ body.theme-light .segmented-control .btn-logout:hover {
   color: #0f172a !important;
 }
 
-/* PWA O'rnatish Tugmasi */
-#btn-pwa-install {
-  background: rgba(16, 185, 129, 0.12) !important;
-  border: 1px solid rgba(16, 185, 129, 0.35) !important;
-  color: #34d399 !important;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
-}
-
-#btn-pwa-install:hover {
-  background: rgba(16, 185, 129, 0.25) !important;
-  border-color: #10b981 !important;
-  color: #ffffff !important;
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4) !important;
-}
-
-body.theme-light #btn-pwa-install {
-  background: #ecfdf5 !important;
-  border-color: #a7f3d0 !important;
-  color: #059669 !important;
-}
-
-body.theme-light #btn-pwa-install:hover {
-  background: #10b981 !important;
-  border-color: #10b981 !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
+/* PWA O'rnatish elementlari yashirilgan */
+#btn-pwa-install,
+#sidebar-pwa-install,
+#sidebar-pwa-item {
+  display: none !important;
 }

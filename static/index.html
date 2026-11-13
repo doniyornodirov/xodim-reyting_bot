@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=846">
+  <link rel="stylesheet" href="/static/css/style.css?v=847">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -124,9 +124,6 @@
       </div>
 
       <div class="user-nav-badge flex items-center gap-2" id="nav-user-area">
-        <button id="btn-pwa-install" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #818cf8;" onclick="installPWA()" title="Ilovani o'rnatish">
-          <span>📲</span> <span class="hidden sm:inline">O'rnatish</span>
-        </button>
         <div id="nav-usd-rate-container" class="flex items-center">
           <div id="usd-rate-badge" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" onclick="handleUsdRateClick()">
             <span>💵</span> <span id="usd-rate-text">1$ = 12 000 so'm</span>
@@ -196,14 +193,6 @@
     </nav>
 
     <div class="sidebar-footer">
-      <div class="sidebar-footer-item" id="sidebar-pwa-install" onclick="installPWA()" style="display: none; cursor: pointer; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; background: rgba(99, 102, 241, 0.12); border-color: rgba(99, 102, 241, 0.3);">
-        <span style="display: flex; align-items: center; gap: 0.5rem;"><span>📲</span> Ilova:</span>
-        <b style="color: var(--accent-primary);">O'rnatish</b>
-      </div>
-      <div class="sidebar-footer-item" id="sidebar-pwa-item" onclick="triggerPwaInstall()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.25);">
-        <span style="display: flex; align-items: center; gap: 0.5rem;"><span>📲</span> Ilovani o'rnatish:</span>
-        <b style="color: #34d399;">O'rnatish 📥</b>
-      </div>
       <div class="sidebar-footer-item" id="sidebar-theme-item" onclick="toggleAppTheme()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.25);">
         <span style="display: flex; align-items: center; gap: 0.5rem;"><span id="sidebar-theme-icon">🌙</span> Rejim:</span>
         <b id="sidebar-theme-text" style="color: var(--accent-primary);">Tungi rejim</b>
@@ -2320,6 +2309,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=846"></script>
+  <script src="/static/js/app.js?v=847"></script>
 </body>
 </html>
