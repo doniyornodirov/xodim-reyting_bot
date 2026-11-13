@@ -512,7 +512,7 @@ Loyiha davomida foydalanuvchi tomonidan berilgan barcha fikr-mulohazalar (feedba
 ## 7. 🚀 Joriy Tizim Holati va Sinov Ko'rsatmalari (Testing & Live Status)
 
 1. **Onlayn Bulutli Server**:
-   - Manzil: `https://xodim-reyting-bot.onrender.com` (Doimiy 24/7 onlayn server).
+   - Manzil: `https://crm.xodimkpi.uz` (Doimiy 24/7 onlayn server).
    - Mahalliy Server: `http://127.0.0.1:8000` (`python run.py`).
 
 2. **Dasturchi Admin (SaaS Platforma Egasi) Sifatida Sinash**:

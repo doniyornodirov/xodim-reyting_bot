@@ -129,7 +129,7 @@ if dp:
             if user["role"] in ("ADMIN", "DEVELOPER"):
                 inline_crm_kb = InlineKeyboardMarkup(
                     inline_keyboard=[
-                        [InlineKeyboardButton(text="🌐 Web CRM Tizimiga kirish", url="https://xodim-reyting-bot.onrender.com/")]
+                        [InlineKeyboardButton(text="🌐 Web CRM Tizimiga kirish", url=FRONTEND_URL)]
                     ]
                 )
                 await message.answer(
@@ -225,6 +225,22 @@ if dp:
             )
 
     @dp.message(F.text == "ℹ️ Jonli joylashuv qo'llanmasi")
+    @dp.message(Command("crm"))
+    @dp.message(Command("web"))
+    async def handle_crm_link_command(message: types.Message):
+        inline_crm_kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🌐 XodimKPI CRM Tizimiga kirish", url=FRONTEND_URL)]
+            ]
+        )
+        await message.answer(
+            f"💼 <b>XodimKPI CRM Tizimi:</b>\n\n"
+            f"Hisobotlar, kassa taqqoslash, reyting va boshqaruv uchun CRM platformasiga kiring:\n"
+            f"👉 <code>{FRONTEND_URL}</code>",
+            reply_markup=inline_crm_kb,
+            parse_mode="HTML"
+        )
+
     @dp.message(Command("location"))
     async def handle_location_guide(message: types.Message):
         user_tg_id = message.from_user.id

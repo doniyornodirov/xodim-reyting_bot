@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 import aiosqlite
 
-from app.config import DB_PATH
+from app.config import DB_PATH, FRONTEND_URL
 from app.models import (
     CreateCompanyRequest,
     ExtendSubscriptionRequest,
@@ -788,8 +788,8 @@ async def send_company_credentials(
 
         text = (
             f"🏢 <b>Hurmatli {owner_name}!</b>\n\n"
-            f"Sizning <b>\"{comp['name']}\"</b> tashkilotingiz uchun <b>Xodim-Reyting CRM</b> tizimida Rahbarlik kabineti muvaffaqiyatli faollashtirildi! 🎉\n\n"
-            f"🌐 <b>CRM Havolasi:</b> https://xodim-reyting-bot.onrender.com\n"
+            f"Sizning <b>\"{comp['name']}\"</b> tashkilotingiz uchun <b>XodimKPI CRM</b> tizimida Rahbarlik kabineti muvaffaqiyatli faollashtirildi! 🎉\n\n"
+            f"🌐 <b>CRM Havolasi:</b> {FRONTEND_URL}\n"
             f"👤 <b>Login (Telegram ID):</b> <code>{owner_tg}</code>\n"
             f"🔑 <b>Boshlang'ich parol:</b> <code>{owner_tg}</code> (yoki o'rnatilgan parolingiz)\n"
             f"{phone_line}"
