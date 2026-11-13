@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import init_db
 from app.bot import start_bot_polling, bot
 from app.config import CORS_ORIGINS
-from app.routes import auth, cards, given, reports, cashier, admin, rating, sim_cards, settings, location, saas
+from app.routes import auth, cards, given, reports, cashier, admin, rating, sim_cards, settings, location, saas, leads
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app_main")
@@ -82,6 +82,7 @@ app.include_router(sim_cards.router)
 app.include_router(settings.router)
 app.include_router(location.router)
 app.include_router(saas.router)
+app.include_router(leads.router)
 
 # Statik fayllarni ulash
 STATIC_DIR.mkdir(parents=True, exist_ok=True)

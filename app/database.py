@@ -330,6 +330,22 @@ async def init_db():
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_distributions_created ON sim_distributions(created_at);")
 
+        # 12. Sotuv sayti lidlari (Leads from sales landing page)
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS leads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            telegram TEXT,
+            plan TEXT,
+            source TEXT DEFAULT 'xodimkpi.uz',
+            status TEXT DEFAULT 'YANGI',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);")
+
         # Agar sim_distributions bo'sh bo'lsa va sim_cards da ma'lumot bo'lsa, mavjud tarqatishlarni partiya qilib o'tkazish
         cur_dist = await conn.execute("SELECT COUNT(*) FROM sim_distributions")
         dist_count = (await cur_dist.fetchone())[0]

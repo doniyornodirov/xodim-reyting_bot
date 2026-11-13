@@ -142,5 +142,12 @@ class SendExcelTelegramRequest(BaseModel):
 class TestGroupRequest(BaseModel):
     telegram_group_id: str = Field(..., min_length=2, max_length=50, description="Tekshiriladigan Telegram Guruh ID si")
 
+class CreateLeadRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100, description="Mijoz ismi")
+    phone: str = Field(..., min_length=5, max_length=50, description="Telefon raqami")
+    telegram: Optional[str] = Field(None, max_length=100, description="Telegram username")
+    plan: Optional[str] = Field(None, max_length=150, description="Tanlangan tarif")
+    source: Optional[str] = Field("xodimkpi.uz", max_length=100, description="Lid manbasi")
+
 
 
