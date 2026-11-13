@@ -5469,6 +5469,19 @@ async function checkSubscriptionStatusAgain(silent = false) {
 // QURILMA BIRIKTIRISH VA BEGONA APPARATNI BLOKLASH (Hardware Crypto Binding)
 // ==========================================
 
+function isWindowsClient() {
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  return /Windows|Win32|Win64|WinCE/i.test(ua) || /Win32|Win64|Windows|WinCE/i.test(platform);
+}
+
+function isDesktopClient() {
+  if (isWindowsClient()) return true;
+  const ua = navigator.userAgent || "";
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua) || Boolean(window.AndroidBridge);
+  return !isMobile;
+}
+
 function getClientDeviceName() {
   const ua = navigator.userAgent || "";
   const androidMatch = ua.match(/Android[^;]+;\s*([^;)]+)\s*Build/i) || ua.match(/Android[^;]+;\s*([^;)]+)\)/i);
@@ -5501,12 +5514,30 @@ function showUntrustedDeviceModal(boundDeviceName) {
 function hideUntrustedDeviceModal() {
   const modal = document.getElementById("modal-untrusted-device");
   if (modal) modal.style.display = "none";
+  const appContent = document.getElementById("app-content");
+  if (appContent && appContent.style.display === "none") {
+    appContent.style.display = "block";
+  }
 }
 
 async function verifyOrBindClientDevice() {
   if (!currentUser) return true;
   if (currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") {
     hideUntrustedDeviceModal();
+    return true;
+  }
+
+  // Windows va kompyuterlar uchun qurilma cheklovi qo'llanilmaydi - faqat mobil qurilmalar cheklanadi
+  if (isDesktopClient()) {
+    hideUntrustedDeviceModal();
+    // Serverga fonda platform ma'lumotini yuborib qo'yamiz (lekin hech qachon bloklanmaydi)
+    try {
+      api("/api/auth/device/verify-or-bind", "POST", {
+        device_token: localStorage.getItem("crm_trusted_device_token") || "",
+        device_name: getClientDeviceName(),
+        platform_info: (navigator.userAgent || "").substring(0, 200)
+      }).catch(() => {});
+    } catch (e) {}
     return true;
   }
 

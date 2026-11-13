@@ -550,6 +550,19 @@ async def location_device_checkin(payload: VerifiedCheckinRequest):
                 "user": dict(user)
             }
 
+        # Windows kompyuter / noutbuk uchun cheklov qo'yilmaydi (faqat mobil apparatlar cheklanadi)
+        import re
+        if re.search(r"Windows|Win32|Win64|kompyuter|Macintosh", incoming_dev_name, re.I):
+            return {
+                "success": True,
+                "is_trusted": True,
+                "action": "WINDOWS_EXEMPT",
+                "device_token": incoming_token or "windows_token",
+                "device_name": incoming_dev_name,
+                "user": dict(user),
+                "message": "Windows kompyuter uchun apparat cheklovi qo'yilmaydi."
+            }
+
         bound_token = user["bound_device_token"]
         allow_reset = bool(user["allow_device_reset"])
         now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

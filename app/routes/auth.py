@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, HTTPException, status
 import aiosqlite
@@ -234,8 +235,10 @@ async def verify_or_bind_device(
 ):
     """
     Qurilmani tekshirish va biriktirish (Device Binding & Hardware Token Verification).
-    Xodimning hisobini uning haqiqiy telefon apparatiga mixlab qo'yadi.
-    Boshqa qurilmadan (masalan, ikkinchi telefondan) kirishga urinishlarni avtomatik bloklaydi.
+    Xodimning hisobini uning haqiqiy mobil telefon apparatiga mixlab qo'yadi.
+    Boshqa begona mobil telefondan kirishga urinishlarni avtomatik bloklaydi.
+    MUHIM: Ushbu qonun faqatgina Mobil qurilmalar (Android, iOS) uchun amal qiladi!
+    Windows kompyuter va noutbuklar cheklovsiz kirish huquqiga ega.
     """
     user_id = current_user["id"]
     role = current_user.get("role")
@@ -250,6 +253,31 @@ async def verify_or_bind_device(
             "message": "Rahbar uchun apparat cheklovi qo'yilmaydi."
         }
 
+    dev_name = (req.device_name or "").strip()
+    platform = (req.platform_info or "").strip()
+
+    # Foydalanuvchi qat'iy talabi:
+    # "xodim 1- yoki 2- qurilma windows bo'lsa, boshqa qurilmadan tizimga kirsa uni tizimdan chiqarib yuborma
+    # bu qonun faqatgina Mobil qurilmalar uchun amal qilsin"
+    is_windows = bool(
+        re.search(r"Windows|Win32|Win64|WinNT", dev_name, re.I) or
+        re.search(r"Windows|Win32|Win64|WinNT", platform, re.I)
+    )
+    is_desktop = is_windows or bool(
+        re.search(r"Macintosh|Mac OS X|Linux x86_64", platform, re.I) and
+        not re.search(r"Android|Mobile|iPhone|iPad", platform, re.I)
+    )
+
+    if is_windows or is_desktop:
+        return {
+            "success": True,
+            "is_trusted": True,
+            "is_windows": True,
+            "action": "WINDOWS_EXEMPT",
+            "device_name": dev_name or "Windows kompyuter",
+            "message": "Windows kompyuter uchun apparat cheklovi qo'yilmaydi. Cheklov faqat mobil telefonlarga tegishli."
+        }
+
     async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, full_name, telegram_id, company_id,
@@ -261,14 +289,18 @@ async def verify_or_bind_device(
             raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi")
 
         bound_token = u["bound_device_token"]
+        bound_name = (u["bound_device_name"] or "").strip()
         allow_reset = bool(u["allow_device_reset"])
         now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # 1. Birinchi marta ulanayotgan bo'lsa YOKI Rahbar yangi telefon biriktirishga ruxsat bergan bo'lsa:
-        if not bound_token or allow_reset:
+        # Agar oldin tasodifan Windows biriktirilib qolgan bo'lsa, uni mobil apparat hisoblamaymiz:
+        is_bound_to_windows = bool(re.search(r"Windows|kompyuter|Mac", bound_name, re.I))
+
+        # 1. Birinchi marta mobil telefon ulanayotgan bo'lsa YOKI Rahbar yangi telefon biriktirishga ruxsat bergan bo'lsa:
+        if not bound_token or allow_reset or is_bound_to_windows:
             import secrets
             new_device_token = secrets.token_hex(32) # 64-belgili apparat maxfiy kaliti
-            dev_name = (req.device_name or "Mobil telefon").strip()[:100]
+            mobile_dev_name = (req.device_name or "Mobil telefon").strip()[:100]
 
             await conn.execute("""
                 UPDATE users 
@@ -277,9 +309,9 @@ async def verify_or_bind_device(
                     device_bound_at = ?,
                     allow_device_reset = 0
                 WHERE id = ?
-            """, (new_device_token, dev_name, now_utc, user_id))
+            """, (new_device_token, mobile_dev_name, now_utc, user_id))
 
-            details = f"Xodim '{u['full_name']}' ga yangi apparat ({dev_name}) muhrlab biriktirildi."
+            details = f"Xodim '{u['full_name']}' ga yangi mobil apparat ({mobile_dev_name}) muhrlab biriktirildi."
             await conn.execute("""
                 INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
                 VALUES (?, 'DEVICE', ?, 'BIND_DEVICE', ?, ?)
@@ -291,11 +323,11 @@ async def verify_or_bind_device(
                 "is_trusted": True,
                 "action": "BOUND",
                 "device_token": new_device_token,
-                "device_name": dev_name,
-                "message": f"Ushbu qurilma ({dev_name}) rasmiy telefoningiz sifatida muvaffaqiyatli biriktirildi!"
+                "device_name": mobile_dev_name,
+                "message": f"Ushbu telefon ({mobile_dev_name}) rasmiy mobil apparatingiz sifatida biriktirildi!"
             }
 
-        # 2. Qurilma allaqachon biriktirilgan bo'lsa, xotiradagi token solishtiriladi:
+        # 2. Mobil telefon allaqachon biriktirilgan bo'lsa, xotiradagi token solishtiriladi:
         incoming_token = req.device_token.strip() if req.device_token else ""
         if incoming_token and incoming_token == bound_token:
             return {
@@ -303,11 +335,11 @@ async def verify_or_bind_device(
                 "is_trusted": True,
                 "action": "VERIFIED",
                 "device_token": bound_token,
-                "device_name": u["bound_device_name"] or "Tasdiqlangan telefon",
-                "message": "Qurilma tasdiqlangan."
+                "device_name": bound_name or "Tasdiqlangan telefon",
+                "message": "Mobil qurilma tasdiqlangan."
             }
         else:
-            dev_name_orig = u["bound_device_name"] or "Boshqa telefon"
+            dev_name_orig = bound_name or "Boshqa telefon"
             incoming_dev = (req.device_name or "Mobil telefon").strip()[:100]
 
             try:
@@ -329,7 +361,7 @@ async def verify_or_bind_device(
                 "action": "REJECTED",
                 "error_code": "UNTRUSTED_DEVICE",
                 "bound_device_name": dev_name_orig,
-                "message": f"⛔ DIQQAT: Begona qurilma aniqlandi! Tizimga faqat sizning rasmiy ro'yxatdan o'tgan telefoningiz ({dev_name_orig}) orqali kirish mumkin. Yangi telefon biriktirish uchun Rahbaringizga murojaat qiling."
+                "message": f"⛔ DIQQAT: Begona mobil telefon aniqlandi! Tizimga faqat sizning rasmiy ro'yxatdan o'tgan telefoningiz ({dev_name_orig}) orqali kirish mumkin. Yangi telefon biriktirish uchun Rahbaringizga murojaat qiling."
             }
 
 @router.get("/me")
