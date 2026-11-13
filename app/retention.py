@@ -227,12 +227,96 @@ async def check_and_send_expiry_alerts_all():
     except Exception as e:
         logger.error(f"check_and_send_expiry_alerts_all xatolik: {e}")
 
+
+def create_db_backup_bytes() -> tuple[bytes, str]:
+    """
+    Xavfsiz SQLite online backup (database snapshot):
+    Tranzaksiyalar yoki boshqa yozuv operatsiyalari bilan to'qnashmasdan
+    bazaning to'liq va butun nusxasini (.db) xotiraga/faylga oladi.
+    Qaytaradi: (backup_bytes, filename)
+    """
+    import sqlite3
+    import tempfile
+    import os
+
+    now_t = get_tashkent_now()
+    timestamp_str = now_t.strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"xodimkpi_backup_{timestamp_str}.db"
+
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        tmp_path = tmp.name
+
+    try:
+        source_conn = sqlite3.connect(str(DB_PATH))
+        dest_conn = sqlite3.connect(tmp_path)
+        with dest_conn:
+            source_conn.backup(dest_conn)
+        dest_conn.close()
+        source_conn.close()
+
+        with open(tmp_path, "rb") as f:
+            backup_bytes = f.read()
+
+        return backup_bytes, filename
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+async def send_automatic_db_backup(target_chat_id: int | str | None = None) -> bool:
+    """
+    Ma'lumotlar bazasining (.db) to'liq zaxira nusxasini Bosh Rahbar (yoki ko'rsatilgan admin) Telegramiga xavfsiz yuborish.
+    """
+    from app.config import RAHBAR_ID
+    from app.bot import send_document_to_telegram
+
+    chat_id = target_chat_id or RAHBAR_ID
+    if not chat_id:
+        logger.error("DB backup yuborish uchun chat_id topilmadi!")
+        return False
+
+    try:
+        loop = asyncio.get_running_loop()
+        backup_bytes, filename = await loop.run_in_executor(None, create_db_backup_bytes)
+        size_kb = round(len(backup_bytes) / 1024, 1)
+        size_str = f"{size_kb} KB" if size_kb < 1024 else f"{round(size_kb / 1024, 2)} MB"
+
+        now_str = get_tashkent_now().strftime("%Y-%m-%d %H:%M:%S")
+        caption = (
+            f"🗄 <b>XODIMKPI BAZA ZAXIRA NUSXASI (BACKUP)</b>\n\n"
+            f"📅 <b>Vaqt:</b> <code>{now_str}</code> (Toshkent)\n"
+            f"📦 <b>Fayl:</b> <code>{filename}</code>\n"
+            f"💾 <b>Hajmi:</b> <code>{size_str}</code>\n"
+            f"🏢 <b>Tizim:</b> XodimKPI Production CRM\n\n"
+            f"🔒 <i>Ushbu fayl faqat Rahbar shaxsiy lichkasiga xavfsiz holatda yetkazildi. Unda barcha xodimlar, to'lovlar, sim-kartalar va KPI hisobotlari to'liq saqlangan.</i>"
+        )
+
+        ok = await send_document_to_telegram(
+            chat_id=int(chat_id),
+            file_bytes=backup_bytes,
+            filename=filename,
+            caption=caption
+        )
+        if ok:
+            logger.info(f"DB backup muvaffaqiyatli yuborildi: {filename} ({size_str}) -> chat_id: {chat_id}")
+        else:
+            logger.warning(f"DB backup yuborishda muammo bo'ldi: chat_id {chat_id}")
+        return ok
+    except Exception as e:
+        logger.error(f"send_automatic_db_backup xatolik: {e}")
+        return False
+
+
 async def start_retention_scheduler(interval_hours: int = 24):
     """Fonda har daqiqada tekshirib, Toshkent vaqti bilan kerakli soatlarda vazifalarni bajaruvchi fon jarayoni"""
-    logger.info("Markaziy fon scheduleri (Retention, Digest, Obuna ogohlantirishi) ishga tushdi.")
+    logger.info("Markaziy fon scheduleri (Retention, Digest, Obuna ogohlantirishi, DB Backup) ishga tushdi.")
     last_digest_date = None
     last_expiry_check_date = None
     last_retention_date = None
+    last_backup_date = None
 
     while True:
         try:
@@ -245,13 +329,19 @@ async def start_retention_scheduler(interval_hours: int = 24):
                 logger.info("Kechki 23:55 avtomatik kunlik hisobot svodkasi (rahbar shaxsiy lichkasiga) vazifasi boshlandi...")
                 asyncio.create_task(send_daily_digest_for_all_companies(send_to_owner=True))
 
-            # 2. Soat 10:00 da obuna ogohlantirishlari
+            # 2. Soat 23:59 da har kecha avtomatik DB zaxira nusxasi (Bosh Rahbar shaxsiy lichkasiga)
+            if now_t.hour == 23 and now_t.minute >= 59 and last_backup_date != today_str:
+                last_backup_date = today_str
+                logger.info("Kechki 23:59 avtomatik DB zaxira nusxasi (backup) yuborish vazifasi boshlandi...")
+                asyncio.create_task(send_automatic_db_backup())
+
+            # 3. Soat 10:00 da obuna ogohlantirishlari
             if now_t.hour == 10 and now_t.minute >= 0 and last_expiry_check_date != today_str:
                 last_expiry_check_date = today_str
                 logger.info("Ertalabki 10:00 obuna muddati ogohlantirishlari vazifasi boshlandi...")
                 asyncio.create_task(check_and_send_expiry_alerts_all())
 
-            # 3. Soat 03:00 da 90 kunlik tozalash
+            # 4. Soat 03:00 da 90 kunlik tozalash
             if now_t.hour == 3 and now_t.minute >= 0 and last_retention_date != today_str:
                 last_retention_date = today_str
                 logger.info("Tungi 03:00 ma'lumotlar saqlanish tozalashi boshlandi...")

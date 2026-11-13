@@ -241,6 +241,45 @@ if dp:
             parse_mode="HTML"
         )
 
+    @dp.message(Command("backup"))
+    @dp.message(Command("baza"))
+    async def handle_db_backup_command(message: types.Message):
+        user_tg_id = message.from_user.id
+        from app.config import RAHBAR_ID, DEVELOPER_ID
+        is_allowed = str(user_tg_id) in [str(RAHBAR_ID), str(DEVELOPER_ID)]
+
+        if not is_allowed:
+            async with aiosqlite.connect(DB_PATH) as conn:
+                conn.row_factory = aiosqlite.Row
+                cur = await conn.execute("SELECT role FROM users WHERE telegram_id = ?", (user_tg_id,))
+                u = await cur.fetchone()
+                if u and u["role"] in ("DEVELOPER",):
+                    is_allowed = True
+
+        if not is_allowed:
+            await message.answer(
+                "⛔ <b>Ruxsat berilmadi!</b>\nMa'lumotlar bazasi zaxira nusxasini (backup) yuklab olish faqat Bosh Rahbar va Dasturchi uchun ruxsat etilgan.",
+                parse_mode="HTML"
+            )
+            return
+
+        status_msg = await message.answer(
+            "⏳ <b>Bazaning to'liq zaxira nusxasi (backup) tayyorlanmoqda...</b>\n<i>Iltimos, kuting...</i>",
+            parse_mode="HTML"
+        )
+        from app.retention import send_automatic_db_backup
+        ok = await send_automatic_db_backup(target_chat_id=message.chat.id)
+        if ok:
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
+        else:
+            await status_msg.edit_text(
+                "❌ <b>Zaxira nusxasini tayyorlashda yoki yuborishda xatolik yuz berdi.</b> Server loglarini tekshiring.",
+                parse_mode="HTML"
+            )
+
     @dp.message(Command("location"))
     async def handle_location_guide(message: types.Message):
         user_tg_id = message.from_user.id
@@ -1447,7 +1486,7 @@ async def send_document_to_telegram(
         doc = BufferedInputFile(file_bytes, filename=filename)
         await asyncio.wait_for(
             bot.send_document(chat_id=target_chat, document=doc, caption=caption, parse_mode="HTML"),
-            timeout=10.0
+            timeout=30.0
         )
         return True
     except Exception as e:

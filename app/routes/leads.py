@@ -158,3 +158,4 @@ async def update_lead_status(
             raise HTTPException(status_code=404, detail="Lid topilmadi")
 
     return {"success": True, "message": "Holat yangilandi"}
+
