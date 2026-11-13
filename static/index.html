@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="manifest" href="/manifest.json?v=848">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=848">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=848">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=848', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=847">
+  <link rel="stylesheet" href="/static/css/style.css?v=848">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -89,6 +89,25 @@
     })();
   </script>
 
+  <!-- ========================================== -->
+  <!-- ILOVA OCHILISH EKRANI (EXECUTIVE SPLASH SCREEN) -->
+  <!-- ========================================== -->
+  <div id="app-splash-screen" class="app-splash-screen" aria-label="Yuklanmoqda...">
+    <div class="splash-content">
+      <div class="splash-logo-wrap">
+        <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="splash-logo-img">
+        <div class="splash-logo-glow"></div>
+      </div>
+      <div class="splash-brand-text">
+        <span class="splash-brand-title">XODIM<span class="splash-brand-accent">KPI</span></span>
+        <span class="splash-brand-subtitle">PAYNET & SIM-KARTA CRM</span>
+      </div>
+      <div class="splash-loader-bar">
+        <div class="splash-loader-progress"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Impersonation Banner (Kuzatuv Rejimi) -->
   <div id="impersonation-banner" style="display: none; background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; padding: 0.55rem 1rem; font-weight: 700; text-align: center; font-size: 0.88rem; z-index: 10000; position: sticky; top: 0; box-shadow: 0 4px 14px rgba(0,0,0,0.4); align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
     <span>⚠️ <b>KUZATUV REJIMI:</b> Siz hozir <span id="impersonated-company-name-display" style="text-decoration: underline; font-weight: 800;">-</span> firmasining boshqaruv kabinetidasiz!</span>
@@ -111,8 +130,8 @@
         </button>
 
         <a href="#" class="brand flex items-center gap-2 sm:gap-2.5 no-underline" title="XodimKPI CRM">
-          <div class="brand-icon w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm shadow-indigo-500/25">
-            <img src="/static/icons/icon.svg" alt="XodimKPI" class="w-full h-full object-contain p-0.5">
+          <div class="brand-icon w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+            <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="w-full h-full object-contain">
           </div>
           <div class="brand-text-wrap flex flex-col justify-center leading-none">
             <span class="brand-title text-[13.5px] sm:text-[15px] font-extrabold tracking-tight leading-none whitespace-nowrap">
@@ -156,8 +175,8 @@
   <aside id="sidebar-drawer" class="sidebar-drawer" aria-label="Yon menyu">
     <div class="sidebar-header">
       <div class="brand flex items-center gap-2.5">
-        <div class="brand-icon w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm shadow-indigo-500/25">
-          <img src="/static/icons/icon.svg" alt="XodimKPI" class="w-full h-full object-contain p-0.5">
+        <div class="brand-icon w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+          <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="w-full h-full object-contain">
         </div>
         <div class="brand-text-wrap flex flex-col justify-center leading-none">
           <span class="brand-title text-[15px] font-extrabold tracking-tight whitespace-nowrap">
@@ -1574,8 +1593,8 @@
       <!-- 1-Qadam: Login & Parol -->
       <div id="login-step-1">
         <div style="text-align: center; margin-bottom: 1.5rem;">
-          <div class="brand-icon" style="margin: 0 auto 0.75rem; width: 52px; height: 52px; padding: 2px;">
-            <img src="/static/icons/icon.svg" alt="XodimKPI" class="w-full h-full object-contain">
+          <div class="brand-icon" style="margin: 0 auto 0.75rem; width: 56px; height: 56px; background: transparent; border: none; box-shadow: none;">
+            <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="w-full h-full object-contain" style="border-radius: 14px; filter: drop-shadow(0 8px 20px rgba(99, 102, 241, 0.45));">
           </div>
           <h2 style="font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em;">Xodim<span style="color: #818cf8;">KPI</span> CRM</h2>
         </div>
@@ -2309,6 +2328,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=847"></script>
+  <script src="/static/js/app.js?v=848"></script>
 </body>
 </html>

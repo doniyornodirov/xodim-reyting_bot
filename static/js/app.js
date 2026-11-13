@@ -711,38 +711,54 @@ function clearAndroidBridgeAuth() {
   }
 }
 
-async function initApp() {
-  if (authToken) {
-    if (checkInactivityTimeout()) {
-      return;
-    }
-    try {
-      const res = await api("/api/auth/me");
-      currentUser = res.user;
-      localStorage.setItem("crm_last_activity", Date.now().toString());
-      hideSubscriptionExpiredModal();
-      const isDeviceOk = await verifyOrBindClientDevice();
-      if (!isDeviceOk) return;
-      try {
-        renderApp();
-      } catch (renderErr) {
-        console.error("renderApp xatosi:", renderErr);
+function hideSplashScreen() {
+  const splash = document.getElementById("app-splash-screen");
+  if (splash && !splash.classList.contains("splash-hidden")) {
+    splash.classList.add("splash-hidden");
+    setTimeout(() => {
+      if (splash && splash.parentNode) {
+        splash.parentNode.removeChild(splash);
       }
-      checkImpersonationState();
-      syncWithAndroidBridge();
-      return;
-    } catch (e) {
-      console.warn("Auth token yaroqsiz yoki obuna tugagan:", e);
-      if (e.message && e.message.includes("Obunangizni uzaytiring")) {
-        showSubscriptionExpiredModal(e.message);
+    }, 450);
+  }
+}
+
+async function initApp() {
+  try {
+    if (authToken) {
+      if (checkInactivityTimeout()) {
         return;
       }
-      authToken = null;
-      localStorage.removeItem("crm_token");
-      localStorage.removeItem("crm_last_activity");
+      try {
+        const res = await api("/api/auth/me");
+        currentUser = res.user;
+        localStorage.setItem("crm_last_activity", Date.now().toString());
+        hideSubscriptionExpiredModal();
+        const isDeviceOk = await verifyOrBindClientDevice();
+        if (!isDeviceOk) return;
+        try {
+          renderApp();
+        } catch (renderErr) {
+          console.error("renderApp xatosi:", renderErr);
+        }
+        checkImpersonationState();
+        syncWithAndroidBridge();
+        return;
+      } catch (e) {
+        console.warn("Auth token yaroqsiz yoki obuna tugagan:", e);
+        if (e.message && e.message.includes("Obunangizni uzaytiring")) {
+          showSubscriptionExpiredModal(e.message);
+          return;
+        }
+        authToken = null;
+        localStorage.removeItem("crm_token");
+        localStorage.removeItem("crm_last_activity");
+      }
     }
+    showLoginModal();
+  } finally {
+    hideSplashScreen();
   }
-  showLoginModal();
 }
 
 function logout() {
@@ -6632,7 +6648,11 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  initApp();
+  initApp().finally(() => {
+    hideSplashScreen();
+  });
+  // Xavfsizlik uchun maksimal 1.2s da splashni yopish
+  setTimeout(hideSplashScreen, 1200);
 });
 
 // ==========================================
