@@ -103,7 +103,7 @@ def generate_reports_excel(
         ("Jami Kirim", ALIGN_RIGHT),
         ("Kunlik (so'm)", ALIGN_RIGHT),
         ("Terminal", ALIGN_RIGHT),
-        ("Berilgan summa", ALIGN_RIGHT),
+        ("Olingan summa", ALIGN_RIGHT),
         ("Skidka (so'm)", ALIGN_RIGHT),
         ("Xarajat (so'm)", ALIGN_RIGHT),
         ("Jami Chiqim", ALIGN_RIGHT),

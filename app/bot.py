@@ -1331,7 +1331,7 @@ async def send_report_summary_to_telegram(employee_tg_id: int, report_data: dict
         comment = (report_data.get("comment") or "").strip()
         comment_block = f"\n💬 <b>Izoh:</b> <i>{comment}</i>\n" if comment else ""
         debt_paid_inflow = f"🔹 Qarz to'lovi: {debt_paid_str} so'm\n" if debt_paid_val > 0 else ""
-        given_block = f"🔸 Berilgan summa: {given_str} so'm\n" if given_val > 0 else ""
+        given_block = f"🔸 Olingan summa: {given_str} so'm\n" if given_val > 0 else ""
 
         text = (
             "📊 <b>KUNLIK HISOBOT TOPSHIRILDI</b>\n"

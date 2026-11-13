@@ -1234,7 +1234,7 @@ function updateSidebarContent() {
       menuItems = [
         { id: "reports", icon: "📋", title: "Hisobotlarni qabul qilish", isAdmin: true },
         { id: "analytics", icon: "📈", title: "Savdo monitoringi", isAdmin: true },
-        { id: "givens", icon: "💵", title: "Berilgan summalar", isAdmin: true },
+        { id: "givens", icon: "💵", title: "Olingan summalar", isAdmin: true },
         { id: "topups", icon: "💳", title: "Karta so'rovlari", isAdmin: true },
         { id: "comparison", icon: "⚖️", title: "Kassa taqqoslash (Audit)", isAdmin: true },
         { id: "users", icon: "👥", title: "Xodimlar & Qarz boshqaruvi", isAdmin: true },
@@ -3188,7 +3188,7 @@ function openReportDetailsModal(reportId) {
         <table class="rep-modal-table">
           <tr><td class="rep-modal-label">Kunlik (Oylik / Avans):</td><td class="rep-modal-val">${formatNumberSpaces(r.kunlik)} so'm</td></tr>
           <tr><td class="rep-modal-label">Terminal chiqimi:</td><td class="rep-modal-val">${formatNumberSpaces(r.terminal)} so'm</td></tr>
-          <tr><td class="rep-modal-label">Berilgan summa:</td><td class="rep-modal-val">${formatNumberSpaces(r.given_amount)} so'm</td></tr>
+          <tr><td class="rep-modal-label">${(currentUser && currentUser.role === "ADMIN") ? "Olingan summa:" : "Berilgan summa:"}</td><td class="rep-modal-val">${formatNumberSpaces(r.given_amount)} so'm</td></tr>
           <tr><td class="rep-modal-label">Skidka (Chegirma):</td><td class="rep-modal-val">${formatNumberSpaces(r.skidka)} so'm</td></tr>
           <tr><td class="rep-modal-label">Boshqa xarajatlar:</td><td class="rep-modal-val">${formatNumberSpaces(r.xarajat)} so'm</td></tr>
         </table>
@@ -3250,7 +3250,7 @@ async function updateReportStatusFromModal(id, status) {
   closeReportDetailsModal();
 }
 
-// Admin 2: Berilgan summalarni tasdiqlash
+// Admin 2: Olingan summalarni tasdiqlash
 async function loadAdminGivens() {
   try {
     const res = await api("/api/given/all");
@@ -5998,7 +5998,7 @@ async function exportAdminReportsToExcel() {
     "Jami Kirim (so'm)": r.total_inflow || 0,
     "Kunlik (so'm)": r.kunlik || 0,
     "Terminal (so'm)": r.terminal || 0,
-    "Berilgan summa (so'm)": r.given_amount || 0,
+    [(currentUser && currentUser.role === "ADMIN") ? "Olingan summa (so'm)" : "Berilgan summa (so'm)"]: r.given_amount || 0,
     "Skidka (so'm)": r.skidka || 0,
     "Xarajat (so'm)": r.xarajat || 0,
     "Jami Chiqim (so'm)": r.total_outflow || 0,
