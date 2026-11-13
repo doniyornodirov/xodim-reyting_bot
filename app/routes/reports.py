@@ -571,5 +571,5 @@ async def send_excel_telegram_endpoint(
 
     return {
         "success": success,
-        "message": "Excel fayli rahbar shaxsiy Telegramingizga (@xodim_reyting_bot) yuborildi!" if success else "Telegramga yuborib bo'lmadi (Bot bilan chat boshlanmagan bo'lishi mumkin)."
+        "message": "Excel fayli rahbar shaxsiy Telegramingizga (@xodimkpi_bot) yuborildi!" if success else "Telegramga yuborib bo'lmadi (Bot bilan chat boshlanmagan bo'lishi mumkin)."
     }

@@ -15,7 +15,7 @@ for secret_path in [
         load_dotenv(secret_path, override=True)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
-BOT_USERNAME = os.getenv("BOT_USERNAME", "xodimreyting_bot").strip().lstrip("@")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "xodimkpi_bot").strip().lstrip("@")
 TELEGRAM_GROUP_ID = os.getenv("TELEGRAM_GROUP_ID", "-5381348358").strip()
 RAHBAR_ID = os.getenv("RAHBAR_ID", "8686341550").strip()
 DEVELOPER_ID = os.getenv("DEVELOPER_ID", "8694797293").strip()

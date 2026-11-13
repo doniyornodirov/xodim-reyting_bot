@@ -1,6 +1,6 @@
 {
-  "name": "Xodim-Reyting & Paynet CRM",
-  "short_name": "Xodim CRM",
+  "name": "XodimKPI & Paynet CRM",
+  "short_name": "XodimKPI",
   "description": "Tashkilot xodimlarining KPI reytingi va Paynet to'lovlarini monitoring qiluvchi zamonaviy CRM tizimi",
   "start_url": "/",
   "scope": "/",

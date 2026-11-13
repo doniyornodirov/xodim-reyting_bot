@@ -219,7 +219,7 @@ if dp:
             await message.answer(
                 f"Assalomu alaykum, <b>{user_name}</b>!\n\n"
                 f"Sizning Telegram ID raqamingiz: <code>{user_tg_id}</code> (bosib nusxa oling).\n\n"
-                f"Ushbu ID raqamingizni Rahbarga taqdim eting, shunda sizni Xodim-Reyting CRM tizimiga ro'yxatga oladi.",
+                f"Ushbu ID raqamingizni Rahbarga taqdim eting, shunda sizni XodimKPI CRM tizimiga ro'yxatga oladi.",
                 reply_markup=ReplyKeyboardRemove(),
                 parse_mode="HTML"
             )
@@ -811,7 +811,7 @@ async def send_otp_to_telegram(telegram_id: int, otp_code: str) -> bool:
         return False
 
     text = (
-        f"🔐 <b>Xodim-Reyting CRM: Bir martalik kirish kodi</b>\n\n"
+        f"🔐 <b>XodimKPI CRM: Bir martalik kirish kodi</b>\n\n"
         f"Sizning tasdiqlash kodingiz: <code>{otp_code}</code>\n\n"
         f"⚠️ Ushbu kod <b>1 daqiqa</b> amal qiladi. Kodni hech kimga bermang!"
     )
@@ -1373,7 +1373,7 @@ async def send_daily_digest_for_company(
         f"• <b>Jami ekvivalent:</b> <b>{kassa_total_fmt} so'm</b>\n\n"
         f"🏆 <b>Kun yetakchisi:</b> {leader_name}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        "✨ <i>Xodim-Reyting CRM tahlili</i>"
+        "✨ <i>XodimKPI CRM tahlili</i>"
     )
 
     # Qayerga yuborish: FAQAT Rahbar shaxsiy lichkasiga (Telegram guruhlarga yuborish qat'iy taqiqlangan)
@@ -1470,11 +1470,11 @@ async def send_subscription_expiry_alert(company_id: int, days_left: int) -> boo
         f"{icon} <b>DIQQAT: OBUNA MUDDATI TUGAMOQDA!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         f"Hurmatli <b>{comp_name}</b> rahbari!\n\n"
-        f"Sizning <b>Xodim-Reyting CRM</b> tizimidan foydalanish ijara obunangiz tugashiga <b>{day_word}</b> qoldi.\n\n"
+        f"Sizning <b>XodimKPI CRM</b> tizimidan foydalanish ijara obunangiz tugashiga <b>{day_word}</b> qoldi.\n\n"
         f"📅 <b>Tugash sanasi:</b> {exp_display}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
         "Xizmat to'xtab qolmasligi va tizimdan uzluksiz foydalanish uchun iltimos, o'z vaqtida obunani uzaytiring.\n\n"
-        "📞 <i>Dasturchi Admin bilan bog'lanish: @xodim_reyting_bot</i>"
+        "📞 <i>Dasturchi Admin bilan bog'lanish: @xodimkpi_bot</i>"
     )
 
     try:

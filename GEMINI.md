@@ -1,4 +1,4 @@
-# GEMINI.md — Xodim-Reyting Loyihasi Uchun Asosiy Xotira (Persistent Memory)
+# GEMINI.md — XodimKPI Loyihasi Uchun Asosiy Xotira (Persistent Memory)
 
 > **Loyiha maqsadi**: Tashkilotdagi xodimlarning ish faoliyati, KPI va reyting ballarini hisoblovchi, monitoring qiluvchi yuqori yuklamaga chidamli va xavfsiz tizim.
 > **Asos**: https://claude-presentation.netlify.app/ metodologiyasi Gemini va Antigravity muhitiga to'liq moslashtirilgan holda (Memory, Settings, Rules, Hooks, Skills, Commands, Agents).

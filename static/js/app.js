@@ -1,5 +1,5 @@
 // ==========================================
-// Xodim-Reyting & Paynet CRM: Frontend Logic
+// XodimKPI & Paynet CRM: Frontend Logic
 // ==========================================
 
 let currentUser = null;
@@ -1855,7 +1855,7 @@ async function loadDailyReportPrefill() {
       if (debtSnapInput) debtSnapInput.value = formatNumberSpaces(remainingDebt);
       if (debtPaidInput) {
         debtPaidInput.disabled = false;
-        debtPaidInput.placeholder = "0 (kamida 50 000)";
+        debtPaidInput.placeholder = "0";
       }
     } else {
       if (snapGroup) snapGroup.style.display = "none";
@@ -2890,7 +2890,7 @@ function renderGrowthChart(timeline) {
               maxRotation: 0,
               minRotation: 0,
               autoSkip: true,
-              maxTicksLimit: 8
+              maxTicksLimit: 7
             }
           },
           y: {
@@ -4849,7 +4849,7 @@ async function handleImpersonateCompany(companyId, companyName) {
 async function handleSendCompanyCredentials(companyId, companyName, ownerName) {
   const ok = await appConfirm({
     title: "Rekvizitlarni Telegramdan yuborish",
-    message: `'${ownerName || 'Rahbar'}'ning shaxsiy Telegramiga (@xodim_reyting_bot orqali) CRM kirish havolasi va rekvizitlarini yuborishni tasdiqlaysizmi?`,
+    message: `'${ownerName || 'Rahbar'}'ning shaxsiy Telegramiga (@xodimkpi_bot orqali) CRM kirish havolasi va rekvizitlarini yuborishni tasdiqlaysizmi?`,
     confirmText: "Yuborish",
     type: "primary",
     icon: "✉️"
@@ -5914,13 +5914,13 @@ async function sendTodayDigestToTelegram() {
 
   let promptText = "";
   if (s && e && s === e) {
-    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?`;
+    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini shaxsiy Telegramingizga (@xodimkpi_bot) yuborishni tasdiqlaysizmi?`;
   } else if (s && e && s !== e) {
-    promptText = `${formatDateOnly(s)} dan ${formatDateOnly(e)} gacha bo'lgan davriy svodkani shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?`;
+    promptText = `${formatDateOnly(s)} dan ${formatDateOnly(e)} gacha bo'lgan davriy svodkani shaxsiy Telegramingizga (@xodimkpi_bot) yuborishni tasdiqlaysizmi?`;
   } else if (s && !e) {
-    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?`;
+    promptText = `${formatDateOnly(s)} sanasi bo'yicha hisobot svodkasini shaxsiy Telegramingizga (@xodimkpi_bot) yuborishni tasdiqlaysizmi?`;
   } else {
-    promptText = "Bugungi kun yakuniy hisobot svodkasini shaxsiy Telegramingizga (@xodim_reyting_bot) yuborishni tasdiqlaysizmi?";
+    promptText = "Bugungi kun yakuniy hisobot svodkasini shaxsiy Telegramingizga (@xodimkpi_bot) yuborishni tasdiqlaysizmi?";
   }
 
   const ok = await appConfirm({
@@ -6017,7 +6017,7 @@ async function exportAdminReportsToExcel() {
     window.URL.revokeObjectURL(downloadUrl);
     a.remove();
 
-    showToast("Excel hisoboti yuklab olindi va shaxsiy Telegramingizga (@xodim_reyting_bot) yuborildi! 📥", "success");
+    showToast("Excel hisoboti yuklab olindi va shaxsiy Telegramingizga (@xodimkpi_bot) yuborildi! 📥", "success");
     return;
   } catch (err) {
     console.warn("Backend Excel export xatoligi, mijoz tomonidan yuklanmoqda:", err);
@@ -6696,3 +6696,34 @@ window.addEventListener("DOMContentLoaded", () => {
 
   initApp();
 });
+
+// ==========================================
+// PWA ILOVA O'RNATISH (INSTALLATION) TIZIMI
+// ==========================================
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const pwaBtn = document.getElementById("btn-pwa-install");
+  const pwaSideBtn = document.getElementById("sidebar-pwa-install");
+  if (pwaBtn) pwaBtn.style.display = "inline-flex";
+  if (pwaSideBtn) pwaSideBtn.style.display = "flex";
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === "accepted") {
+        showToast("Ilova muvaffaqiyatli o'rnatilmoqda!", "success");
+      }
+      deferredPrompt = null;
+      const pwaBtn = document.getElementById("btn-pwa-install");
+      const pwaSideBtn = document.getElementById("sidebar-pwa-install");
+      if (pwaBtn) pwaBtn.style.display = "none";
+      if (pwaSideBtn) pwaSideBtn.style.display = "none";
+    });
+  } else {
+    showToast("Ilovani brauzer menyusidan 'Bosh ekranga qo'shish' orqali o'rnatishingiz mumkin.", "info");
+  }
+}

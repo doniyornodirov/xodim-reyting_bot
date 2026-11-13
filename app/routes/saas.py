@@ -737,7 +737,7 @@ async def test_telegram_group(
         if "chat not found" in err_msg.lower():
             detail = "Guruh topilmadi! Guruh ID sini tekshiring yoki botni avval ushbu guruhga qo'shing."
         elif "bot was kicked" in err_msg.lower() or "not a member" in err_msg.lower():
-            detail = "Bot ushbu guruhda yo'q yoki chiqarib yuborilgan! @xodim_reyting_bot ni guruhga qo'shing."
+            detail = "Bot ushbu guruhda yo'q yoki chiqarib yuborilgan! @xodimkpi_bot ni guruhga qo'shing."
         else:
             detail = f"Telegram xatosi: {err_msg}"
         return {
@@ -805,7 +805,7 @@ async def send_company_credentials(
             if "blocked" in err_str or "not found" in err_str or "can't initiate" in err_str:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Xabar yuborib bo'lmadi! Rahbar ({owner_name}) botimizga hali /start bosmagan. Unga @xodim_reyting_bot ga kirib /start bosishini ayting."
+                    detail=f"Xabar yuborib bo'lmadi! Rahbar ({owner_name}) botimizga hali /start bosmagan. Unga @xodimkpi_bot ga kirib /start bosishini ayting."
                 )
             raise HTTPException(status_code=400, detail=f"Telegram xatosi: {e}")
 

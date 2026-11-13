@@ -1,4 +1,4 @@
-# 🌟 Xodim-Reyting Tizimi: Mukammal Gemini & Dasturlash Standartlari
+# 🌟 XodimKPI Tizimi: Mukammal Gemini & Dasturlash Standartlari
 
 Ushbu loyiha **Gemini va Google Antigravity** muhiti uchun maxsus moslashtirilgan 7 ta ustun asosida yaratilgan bo'lib, sun'iy intellekt (Gemini, Antigravity, Cursor) yordamida **galutsinatsiyalarsiz**, **maksimal xavfsiz** va **yuqori yuklamada (High-Load)** ham chaqqon ishlaydigan xodimlar reytingi va KPI tizimini barpo etish uchun xizmat qiladi.
 

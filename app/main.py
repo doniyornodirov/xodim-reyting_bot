@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
         retention_task.cancel()
 
 app = FastAPI(
-    title="Xodim-Reyting & Paynet CRM",
+    title="XodimKPI & Paynet CRM",
     description="Telegram Bot bilan integratsiyalashgan yuqori yuklamaga chidamli Paynet va xodimlar reytingi tizimi",
     version="1.0.0",
     lifespan=lifespan
@@ -68,7 +68,7 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """Docker, Railway va monitoring uchun health check endpoint"""
-    return {"status": "ok", "app": "Xodim-Reyting CRM"}
+    return {"status": "ok", "app": "XodimKPI CRM"}
 
 # API routerlarini ulash
 app.include_router(auth.router)
@@ -110,5 +110,5 @@ async def root():
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    return {"message": "Xodim-Reyting CRM API ishlamoqda. static/index.html topilmadi."}
+    return {"message": "XodimKPI CRM API ishlamoqda. static/index.html topilmadi."}
 
