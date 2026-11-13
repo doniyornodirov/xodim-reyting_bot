@@ -215,11 +215,14 @@ if dp:
                         parse_mode="HTML"
                     )
         else:
-            # Ro'yxatdan o'tmagan mehmon: Klaviaturani tozalaymiz
+            # Ro'yxatdan o'tmagan yangi mehmon: Klaviaturani tozalaymiz va Rahbarga xabar yozish imkonini beramiz
             await message.answer(
                 f"Assalomu alaykum, <b>{user_name}</b>!\n\n"
-                f"Sizning Telegram ID raqamingiz: <code>{user_tg_id}</code> (bosib nusxa oling).\n\n"
-                f"Ushbu ID raqamingizni Rahbarga taqdim eting, shunda sizni XodimKPI CRM tizimiga ro'yxatga oladi.",
+                f"🔑 Sizning Telegram ID raqamingiz: <code>{user_tg_id}</code> <i>(ustiga bosib nusxa oling)</i>.\n\n"
+                f"Ushbu ID raqamingizni Rahbarga taqdim eting, shunda sizni XodimKPI CRM tizimiga ro'yxatga oladi.\n\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"✍️ <b>Admin (Bosh Rahbar) bilan bog'lanmoqchimisiz?</b>\n"
+                f"Shunchaki xabaringiz, savolingiz yoki telefon raqamingizni shu yerga yozib yuboring — men uni darhol Bosh Rahbarga yetkazaman!",
                 reply_markup=ReplyKeyboardRemove(),
                 parse_mode="HTML"
             )
@@ -671,6 +674,164 @@ if dp:
                 f"🕒 <b>Toshkent vaqti:</b> {time_hm}"
             )
             return {"success": True, "reply_text": reply_text}
+
+    @dp.message(F.text & ~F.text.startswith("/"))
+    async def handle_user_text_message(message: types.Message):
+        """Foydalanuvchi yoki mehmondan kelgan matnli xabarni Bosh Rahbarga yetkazish va Rahbar javobini qaytarish"""
+        user_tg_id = message.from_user.id
+        user_name = message.from_user.full_name
+        username = message.from_user.username
+        text = message.text.strip()
+        from app.config import RAHBAR_ID
+        from app.security import get_tashkent_now
+
+        target_admin_id = int(RAHBAR_ID) if RAHBAR_ID else 8686341550
+
+        # 1. Agar xabarni Bosh Rahbar yozgan bo'lsa va bot xabariga 'Reply' (Javob) qilgan bo'lsa:
+        if user_tg_id == target_admin_id:
+            if message.reply_to_message and message.reply_to_message.text:
+                import re
+                match = re.search(r"Telegram ID:\s*<code>(\d+)</code>", message.reply_to_message.text)
+                if match:
+                    target_user_id = int(match.group(1))
+                    try:
+                        await bot.send_message(
+                            chat_id=target_user_id,
+                            text=f"👑 <b>Bosh Rahbardan javob:</b>\n\n{text}",
+                            parse_mode="HTML"
+                        )
+                        await message.reply("✅ <b>Javobingiz foydalanuvchiga muvaffaqiyatli yetkazildi!</b>", parse_mode="HTML")
+                        return
+                    except Exception as e:
+                        logger.error(f"Javobni yetkazishda xatolik: {e}")
+                        await message.reply(f"❌ <b>Javobni yetkazishda xatolik yuz berdi:</b> {e}", parse_mode="HTML")
+                        return
+            return
+
+        # 2. Foydalanuvchi ma'lumotlarini tekshirish
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cur = await conn.execute(
+                "SELECT u.*, c.name as company_name FROM users u LEFT JOIN companies c ON c.id = u.company_id WHERE u.telegram_id = ?",
+                (user_tg_id,)
+            )
+            u = await cur.fetchone()
+
+        now_str = get_tashkent_now().strftime("%Y-%m-%d %H:%M:%S")
+        if u:
+            comp_name = u["company_name"] or "Kompaniya"
+            role_str = f"Xodim ({u['role']} - {comp_name})"
+        else:
+            role_str = "Yangi mehmon (Ro'yxatdan o'tmagan)"
+
+        user_tag = f"@{username}" if username else "Mavjud emas"
+
+        admin_text = (
+            f"📩 <b>BOTDAN YANGI XABAR / MUROJAAT:</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>Kimdan:</b> {user_name}\n"
+            f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n"
+            f"📱 <b>Username:</b> {user_tag}\n"
+            f"🎖 <b>Maqomi:</b> {role_str}\n"
+            f"📅 <b>Vaqt:</b> {now_str} (Toshkent)\n\n"
+            f"💬 <b>Xabar matni:</b>\n"
+            f"<i>«{text}»</i>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"💡 <i>(Ushbu xabarga Telegramda to'g'ridan-to'g'ri 'Reply' / Javob qilib yozsangiz, javobingiz avtomatik shu foydalanuvchiga boradi)</i>"
+        )
+
+        buttons = []
+        if username:
+            buttons.append([InlineKeyboardButton(text="💬 Telegramda yozish", url=f"https://t.me/{username}")])
+        else:
+            buttons.append([InlineKeyboardButton(text="💬 Profilni ochish", url=f"tg://user?id={user_tg_id}")])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+        # Bosh Rahbarga (8686341550) yetkazish
+        try:
+            await bot.send_message(
+                chat_id=target_admin_id,
+                text=admin_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+
+            # Bazadagi leads jadvaliga ham saqlaymiz (agar yangi mehmon bo'lsa)
+            if not u:
+                try:
+                    async with aiosqlite.connect(DB_PATH) as conn:
+                        await conn.execute("""
+                            INSERT INTO leads (name, phone, telegram, plan, source, status, created_at)
+                            VALUES (?, 'Telegram chat orqali', ?, 'BOT_CHAT', 'Telegram Bot Murojaat', 'YANGI', CURRENT_TIMESTAMP)
+                        """, (user_name, f"@{username}" if username else str(user_tg_id)))
+                        await conn.commit()
+                except Exception as db_err:
+                    logger.warning(f"Leadni bazaga saqlashda xatolik: {db_err}")
+
+            await message.answer(
+                "✅ <b>Xabaringiz Bosh Rahbarga muvaffaqiyatli yetkazildi!</b>\n\n"
+                "Tez orada siz bilan bog'lanishadi.",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Xabarni rahbar shaxsiy lichkasiga yetkazishda xatolik: {e}")
+            await message.answer(
+                "Xabarni yetkazishda texnik xatolik yuz berdi. Iltimos, keyinroq qayta urinib ko'ring.",
+                parse_mode="HTML"
+            )
+
+    @dp.message(F.contact)
+    async def handle_user_contact_message(message: types.Message):
+        """Foydalanuvchi telefon raqamini yuborganda Bosh Rahbarga yetkazish"""
+        user_tg_id = message.from_user.id
+        user_name = message.from_user.full_name
+        username = message.from_user.username
+        phone = message.contact.phone_number
+        from app.config import RAHBAR_ID
+        from app.security import get_tashkent_now
+
+        target_admin_id = int(RAHBAR_ID) if RAHBAR_ID else 8686341550
+        now_str = get_tashkent_now().strftime("%Y-%m-%d %H:%M:%S")
+        user_tag = f"@{username}" if username else "Mavjud emas"
+
+        admin_text = (
+            f"📞 <b>BOTDAN YANGI TELEFON RAQAM YUBORILDI:</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>Kimdan:</b> {user_name}\n"
+            f"📞 <b>Telefon raqam:</b> <code>{phone}</code>\n"
+            f"🔑 <b>Telegram ID:</b> <code>{user_tg_id}</code>\n"
+            f"📱 <b>Username:</b> {user_tag}\n"
+            f"📅 <b>Vaqt:</b> {now_str} (Toshkent)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"💡 <i>(Ushbu xabarga 'Reply' / Javob qilib yozsangiz, javobingiz foydalanuvchiga boradi)</i>"
+        )
+        buttons = []
+        if username:
+            buttons.append([InlineKeyboardButton(text="💬 Telegramda yozish", url=f"https://t.me/{username}")])
+        else:
+            buttons.append([InlineKeyboardButton(text="💬 Profilni ochish", url=f"tg://user?id={user_tg_id}")])
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+        try:
+            await bot.send_message(chat_id=target_admin_id, text=admin_text, reply_markup=kb, parse_mode="HTML")
+            try:
+                async with aiosqlite.connect(DB_PATH) as conn:
+                    await conn.execute("""
+                        INSERT INTO leads (name, phone, telegram, plan, source, status, created_at)
+                        VALUES (?, ?, ?, 'BOT_CONTACT', 'Telegram Bot Kontakt', 'YANGI', CURRENT_TIMESTAMP)
+                    """, (user_name, phone, f"@{username}" if username else str(user_tg_id)))
+                    await conn.commit()
+            except Exception as db_err:
+                logger.warning(f"Leadni bazaga saqlashda xatolik: {db_err}")
+
+            await message.answer(
+                "✅ <b>Telefon raqamingiz Bosh Rahbarga muvaffaqiyatli yetkazildi!</b>\n\n"
+                "Tez orada siz bilan bog'lanishadi.",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"Kontaktni yetkazishda xatolik: {e}")
 
     @dp.message(F.location)
     async def handle_location_message(message: types.Message):
