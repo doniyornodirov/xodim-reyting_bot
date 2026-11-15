@@ -5616,7 +5616,7 @@ function renderSaasCompaniesTable(companies) {
     
     // Tahrirlash tugmasi BARCHA tashkilotlar (shu jumladan Bosh Tashkilot) uchun to'liq ochiq
     actionsHtml += `
-      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; font-weight: 600;" onclick="openSaasEditCompanyModal(${c.id})" title="Firma va Rahbar ma'lumotlarini tahrirlash">
+      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; font-weight: 600;" onclick="openSaasEditCompanyModal(${c.id}, 'all')" title="Firma va Rahbar ma'lumotlarini tahrirlash">
         ✏️ Tahrirlash
       </button>
     `;
@@ -5676,7 +5676,7 @@ function renderSaasCompaniesTable(companies) {
               <b style="color: var(--text-main); font-size: 0.95rem; display: block;">${escapeHtml(c.name)}</b>
               <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
             </div>
-            <button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Nomni tahrirlash">✏️</button>
+            <button type="button" onclick="openSaasEditCompanyModal(${c.id}, 'name')" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Firma nomi va INN ni tahrirlash">✏️</button>
           </div>
         </td>
         <td>
@@ -5691,13 +5691,13 @@ function renderSaasCompaniesTable(companies) {
               ${c.company_inn ? `<span style="display: inline-block; font-size: 0.68rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1; padding: 1px 4px; border-radius: 4px; margin-top: 2px;">INN: ${escapeHtml(c.company_inn)}</span>` : ''}
               ${c.notes ? `<div style="font-size: 0.71rem; color: #f59e0b; margin-top: 2px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(c.notes)}">📝 ${escapeHtml(c.notes)}</div>` : ''}
             </div>
-            <button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va aloqa ma'lumotlarini tahrirlash">✏️</button>
+            <button type="button" onclick="openSaasEditCompanyModal(${c.id}, 'owner')" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va aloqa ma'lumotlarini tahrirlash">✏️</button>
           </div>
         </td>
         <td>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
             <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
-            <button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Guruh ID tahrirlash">✏️</button>
+            <button type="button" onclick="openSaasEditCompanyModal(${c.id}, 'group')" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Guruh ID tahrirlash">✏️</button>
           </div>
         </td>
         <td>
@@ -6218,14 +6218,21 @@ async function openCompanySettingsModal() {
     if (res.success && res.data) {
       const comp = res.data;
       const nameEl = document.getElementById("company-modal-name");
+      const nameInput = document.getElementById("company-modal-name-input");
       const planEl = document.getElementById("company-modal-plan");
       const daysLeftEl = document.getElementById("company-modal-days-left");
       const expiresEl = document.getElementById("company-modal-expires");
       const groupInput = document.getElementById("company-modal-group-input");
-      const saveBtn = document.getElementById("btn-company-save-settings");
+      const saveNameBtn = document.getElementById("btn-company-save-name");
+      const saveGroupBtn = document.getElementById("btn-company-save-group");
+      const groupStatus = document.getElementById("company-modal-group-status");
 
-      if (nameEl) nameEl.innerText = comp.name;
-      if (planEl) planEl.innerText = comp.plan;
+      if (nameEl) nameEl.innerText = comp.name || "-";
+      if (nameInput) {
+        nameInput.value = comp.name || "";
+        nameInput.readOnly = (currentUser.role !== "ADMIN");
+      }
+      if (planEl) planEl.innerText = comp.plan || "STANDARD";
       if (daysLeftEl) {
         if (comp.plan === "UNLIMITED") {
           daysLeftEl.innerText = "Cheksiz (UNLIMITED) ♾️";
@@ -6245,8 +6252,15 @@ async function openCompanySettingsModal() {
         groupInput.value = comp.telegram_group_id || "";
         groupInput.readOnly = (currentUser.role !== "ADMIN");
       }
-      if (saveBtn) {
-        saveBtn.style.display = (currentUser.role === "ADMIN") ? "inline-flex" : "none";
+      if (saveNameBtn) {
+        saveNameBtn.style.display = (currentUser.role === "ADMIN") ? "inline-flex" : "none";
+      }
+      if (saveGroupBtn) {
+        saveGroupBtn.style.display = (currentUser.role === "ADMIN") ? "inline-flex" : "none";
+      }
+      if (groupStatus) {
+        groupStatus.style.display = "none";
+        groupStatus.innerHTML = "";
       }
 
       modal.style.display = "flex";
@@ -6267,18 +6281,39 @@ function handleCompanyModalOverlayClick(event) {
   }
 }
 
-async function handleCompanySettingsSubmit(event) {
-  event.preventDefault();
-  const groupInput = document.getElementById("company-modal-group-input");
-  const groupId = groupInput ? groupInput.value.trim() : "";
+async function saveMyCompanyField(field) {
+  if (currentUser.role !== "ADMIN") {
+    showToast("Faqat tashkilot Rahbari (Admin) ma'lumotlarni o'zgartira oladi!", "warning");
+    return;
+  }
+
+  const payload = {};
+  if (field === "name") {
+    const nameInput = document.getElementById("company-modal-name-input");
+    const val = nameInput ? nameInput.value.trim() : "";
+    if (!val) {
+      showToast("Firma nomi bo'sh bo'lishi mumkin emas!", "warning");
+      if (nameInput) nameInput.focus();
+      return;
+    }
+    payload.name = val;
+  } else if (field === "group") {
+    const groupInput = document.getElementById("company-modal-group-input");
+    payload.telegram_group_id = groupInput ? groupInput.value.trim() : null;
+  }
 
   try {
-    const res = await api("/api/saas/my-company/settings", "POST", {
-      telegram_group_id: groupId
-    });
+    const res = await api("/api/saas/my-company/settings", "POST", payload);
     if (res.success) {
-      showToast(res.message || "Sozlamalar muvaffaqiyatli saqlandi!", "success");
-      closeCompanySettingsModal();
+      showToast(res.message || "Sozlama muvaffaqiyatli saqlandi!", "success");
+      if (field === "name" && payload.name) {
+        const nameEl = document.getElementById("company-modal-name");
+        if (nameEl) nameEl.innerText = payload.name;
+        const navComp = document.getElementById("nav-company-name");
+        if (navComp) navComp.innerText = payload.name;
+        const sideComp = document.getElementById("sidebar-company-name");
+        if (sideComp) sideComp.innerText = payload.name;
+      }
     } else {
       showToast(res.detail || "Xatolik yuz berdi!", "error");
     }
@@ -6287,14 +6322,85 @@ async function handleCompanySettingsSubmit(event) {
   }
 }
 
+// Fallback legacy support
+async function handleCompanySettingsSubmit(event) {
+  if (event) event.preventDefault();
+  await saveMyCompanyField("group");
+}
+
 // =========================================================
 // TIJORIY & B2B EXCEL EKSPORTI VA BOSHQARUV QUROLLARI
 // =========================================================
 
 // ==========================================
-// SAAS KOMPANIYA & RAHBAR MA'LUMOTLARINI TAHRIRLASH MODALI
+// SAAS KOMPANIYA & RAHBAR MA'LUMOTLARINI ALOHIDA TAHRIRLASH
 // ==========================================
-function openSaasEditCompanyModal(companyId) {
+
+function switchSaasEditSection(tabName) {
+  const tabs = document.querySelectorAll("#saas-edit-nav-tabs .saas-edit-tab-btn");
+  tabs.forEach(btn => {
+    if (btn.dataset.tab === tabName) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  const sections = [
+    { id: "saas-edit-sec-name", key: "name" },
+    { id: "saas-edit-sec-owner", key: "owner" },
+    { id: "saas-edit-sec-contact", key: "contact" },
+    { id: "saas-edit-sec-group", key: "group" },
+    { id: "saas-edit-sec-password", key: "password" },
+    { id: "saas-edit-sec-limit", key: "limit" }
+  ];
+
+  sections.forEach(sec => {
+    const el = document.getElementById(sec.id);
+    if (!el) return;
+    if (tabName === "all" || tabName === sec.key) {
+      el.style.display = "block";
+    } else {
+      el.style.display = "none";
+    }
+  });
+
+  const saveAllBtn = document.getElementById("btn-saas-save-all");
+  if (saveAllBtn) {
+    saveAllBtn.style.display = (tabName === "all") ? "inline-flex" : "none";
+  }
+}
+
+function generateRandomSaasPassword() {
+  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let pwd = "";
+  for (let i = 0; i < 8; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  const input = document.getElementById("saas-edit-password");
+  if (input) {
+    input.value = pwd;
+    input.type = "text";
+    const btn = document.getElementById("btn-toggle-saas-pwd");
+    if (btn) btn.innerText = "🙈";
+    showToast(`Generatsiya qilingan yangi parol: ${pwd}`, "info");
+  }
+}
+
+function toggleSaasPasswordVisibility() {
+  const input = document.getElementById("saas-edit-password");
+  const btn = document.getElementById("btn-toggle-saas-pwd");
+  if (!input) return;
+  if (input.type === "password") {
+    input.type = "text";
+    if (btn) btn.innerText = "🙈";
+  } else {
+    input.type = "password";
+    if (btn) btn.innerText = "👁️";
+  }
+}
+
+function openSaasEditCompanyModal(companyId, targetSection = "all") {
   const comp = (saasCompaniesData || []).find(c => c.id === companyId);
   if (!comp) {
     showToast("Firma ma'lumotlari topilmadi!", "error");
@@ -6302,28 +6408,46 @@ function openSaasEditCompanyModal(companyId) {
   }
   const modal = document.getElementById("saas-edit-company-modal");
   const idInput = document.getElementById("saas-edit-company-id");
+  const compNameTitle = document.getElementById("saas-edit-modal-comp-name");
+  const compIdTitle = document.getElementById("saas-edit-modal-comp-id");
+
   const nameInput = document.getElementById("saas-edit-name");
+  const innInput = document.getElementById("saas-edit-inn");
   const ownerNameInput = document.getElementById("saas-edit-owner-name");
   const ownerTgInput = document.getElementById("saas-edit-owner-tg");
   const phoneInput = document.getElementById("saas-edit-owner-phone");
   const extraInput = document.getElementById("saas-edit-owner-extra");
-  const innInput = document.getElementById("saas-edit-inn");
-  const notesInput = document.getElementById("saas-edit-notes");
-  const passwordInput = document.getElementById("saas-edit-password");
   const groupIdInput = document.getElementById("saas-edit-group-id");
+  const passwordInput = document.getElementById("saas-edit-password");
   const maxEmpInput = document.getElementById("saas-edit-max-employees");
+  const notesInput = document.getElementById("saas-edit-notes");
+  const groupStatus = document.getElementById("saas-edit-group-status");
 
   if (idInput) idInput.value = comp.id;
+  if (compNameTitle) compNameTitle.innerText = comp.name || "Nomsiz";
+  if (compIdTitle) compIdTitle.innerText = `#${comp.id}`;
+
   if (nameInput) nameInput.value = comp.name || "";
+  if (innInput) innInput.value = comp.company_inn || "";
   if (ownerNameInput) ownerNameInput.value = comp.owner_name === "Belgilanmagan" ? "" : (comp.owner_name || "");
   if (ownerTgInput) ownerTgInput.value = comp.owner_telegram_id || "";
   if (phoneInput) phoneInput.value = comp.owner_phone || "";
   if (extraInput) extraInput.value = comp.owner_extra_contact || "";
-  if (innInput) innInput.value = comp.company_inn || "";
-  if (notesInput) notesInput.value = comp.notes || "";
-  if (passwordInput) passwordInput.value = "";
   if (groupIdInput) groupIdInput.value = comp.telegram_group_id || "";
+  if (passwordInput) {
+    passwordInput.value = "";
+    passwordInput.type = "password";
+    const btn = document.getElementById("btn-toggle-saas-pwd");
+    if (btn) btn.innerText = "👁️";
+  }
   if (maxEmpInput) maxEmpInput.value = comp.max_employees || 20;
+  if (notesInput) notesInput.value = comp.notes || "";
+  if (groupStatus) {
+    groupStatus.style.display = "none";
+    groupStatus.innerHTML = "";
+  }
+
+  switchSaasEditSection(targetSection);
 
   if (modal) modal.style.display = "flex";
 }
@@ -6333,51 +6457,134 @@ function closeSaasEditCompanyModal() {
   if (modal) modal.style.display = "none";
 }
 
-async function handleSaasEditCompanySubmit(event) {
-  event.preventDefault();
+async function saveSaasField(field) {
   const companyId = parseInt(document.getElementById("saas-edit-company-id")?.value);
-  if (!companyId) return;
-
-  const name = document.getElementById("saas-edit-name")?.value.trim();
-  const ownerName = document.getElementById("saas-edit-owner-name")?.value.trim();
-  const ownerTg = parseInt(document.getElementById("saas-edit-owner-tg")?.value);
-  const ownerPhone = document.getElementById("saas-edit-owner-phone")?.value.trim() || null;
-  const ownerExtra = document.getElementById("saas-edit-owner-extra")?.value.trim() || null;
-  const companyInn = document.getElementById("saas-edit-inn")?.value.trim() || null;
-  const notes = document.getElementById("saas-edit-notes")?.value.trim() || null;
-  const password = document.getElementById("saas-edit-password")?.value.trim() || null;
-  const groupId = document.getElementById("saas-edit-group-id")?.value.trim() || null;
-  const maxEmp = parseInt(document.getElementById("saas-edit-max-employees")?.value || "20");
-
-  if (!name || !ownerName || !ownerTg) {
-    showToast("Firma nomi, Rahbar ismi va Telegram ID kiritilishi shart!", "warning");
+  if (!companyId) {
+    showToast("Firma tanlanmagan!", "error");
     return;
   }
 
+  const payload = {};
+
+  if (field === "name") {
+    const name = document.getElementById("saas-edit-name")?.value.trim();
+    const inn = document.getElementById("saas-edit-inn")?.value.trim() || null;
+    if (!name) {
+      showToast("Iltimos, firma nomini kiriting!", "warning");
+      document.getElementById("saas-edit-name")?.focus();
+      return;
+    }
+    payload.name = name;
+    payload.company_inn = inn;
+  } else if (field === "owner") {
+    const ownerName = document.getElementById("saas-edit-owner-name")?.value.trim();
+    const ownerTgVal = document.getElementById("saas-edit-owner-tg")?.value.trim();
+    const ownerTg = ownerTgVal ? parseInt(ownerTgVal) : null;
+    if (!ownerName) {
+      showToast("Iltimos, Rahbar F.I.SH ni kiriting!", "warning");
+      document.getElementById("saas-edit-owner-name")?.focus();
+      return;
+    }
+    if (!ownerTg) {
+      showToast("Iltimos, Rahbar Telegram ID sini kiriting!", "warning");
+      document.getElementById("saas-edit-owner-tg")?.focus();
+      return;
+    }
+    payload.owner_name = ownerName;
+    payload.owner_telegram_id = ownerTg;
+  } else if (field === "contact") {
+    const phone = document.getElementById("saas-edit-owner-phone")?.value.trim() || null;
+    const extra = document.getElementById("saas-edit-owner-extra")?.value.trim() || null;
+    payload.owner_phone = phone;
+    payload.owner_extra_contact = extra;
+  } else if (field === "group") {
+    const groupId = document.getElementById("saas-edit-group-id")?.value.trim() || null;
+    payload.telegram_group_id = groupId;
+  } else if (field === "password") {
+    const pwd = document.getElementById("saas-edit-password")?.value.trim();
+    if (!pwd) {
+      showToast("Iltimos, yangi parolni kiriting yoki 🎲 Generatsiya tugmasini bosing!", "warning");
+      document.getElementById("saas-edit-password")?.focus();
+      return;
+    }
+    payload.new_password = pwd;
+  } else if (field === "limit") {
+    const maxEmp = parseInt(document.getElementById("saas-edit-max-employees")?.value || "20");
+    const notes = document.getElementById("saas-edit-notes")?.value.trim() || null;
+    if (!maxEmp || maxEmp < 1) {
+      showToast("Xodimlar limiti kamida 1 bo'lishi kerak!", "warning");
+      document.getElementById("saas-edit-max-employees")?.focus();
+      return;
+    }
+    payload.max_employees = maxEmp;
+    payload.notes = notes;
+  } else if (field === "all") {
+    const name = document.getElementById("saas-edit-name")?.value.trim();
+    const ownerName = document.getElementById("saas-edit-owner-name")?.value.trim();
+    const ownerTgVal = document.getElementById("saas-edit-owner-tg")?.value.trim();
+    const ownerTg = ownerTgVal ? parseInt(ownerTgVal) : null;
+    const ownerPhone = document.getElementById("saas-edit-owner-phone")?.value.trim() || null;
+    const ownerExtra = document.getElementById("saas-edit-owner-extra")?.value.trim() || null;
+    const companyInn = document.getElementById("saas-edit-inn")?.value.trim() || null;
+    const notes = document.getElementById("saas-edit-notes")?.value.trim() || null;
+    const password = document.getElementById("saas-edit-password")?.value.trim() || null;
+    const groupId = document.getElementById("saas-edit-group-id")?.value.trim() || null;
+    const maxEmp = parseInt(document.getElementById("saas-edit-max-employees")?.value || "20");
+
+    if (!name) {
+      showToast("Iltimos, firma nomini kiriting!", "warning");
+      document.getElementById("saas-edit-name")?.focus();
+      return;
+    }
+    if (!ownerName) {
+      showToast("Iltimos, Rahbar F.I.SH ni kiriting!", "warning");
+      document.getElementById("saas-edit-owner-name")?.focus();
+      return;
+    }
+    if (!ownerTg) {
+      showToast("Iltimos, Rahbar Telegram ID sini kiriting!", "warning");
+      document.getElementById("saas-edit-owner-tg")?.focus();
+      return;
+    }
+
+    payload.name = name;
+    payload.owner_name = ownerName;
+    payload.owner_telegram_id = ownerTg;
+    payload.owner_phone = ownerPhone;
+    payload.owner_extra_contact = ownerExtra;
+    payload.company_inn = companyInn;
+    payload.notes = notes;
+    payload.new_password = password;
+    payload.telegram_group_id = groupId;
+    payload.max_employees = maxEmp;
+  }
+
   try {
-    const res = await api(`/api/saas/companies/${companyId}/edit-details`, "POST", {
-      name: name,
-      owner_name: ownerName,
-      owner_telegram_id: ownerTg,
-      owner_phone: ownerPhone,
-      owner_extra_contact: ownerExtra,
-      company_inn: companyInn,
-      notes: notes,
-      new_password: password,
-      telegram_group_id: groupId,
-      max_employees: maxEmp
-    });
+    const res = await api(`/api/saas/companies/${companyId}/edit-details`, "POST", payload);
 
     if (res.success) {
-      showToast(res.message || "Firma ma'lumotlari muvaffaqiyatli yangilandi!", "success");
-      closeSaasEditCompanyModal();
-      loadSaasCompanies();
+      showToast(res.message || "Ma'lumotlar muvaffaqiyatli saqlandi!", "success");
+      if (field === "password") {
+        const pwdInput = document.getElementById("saas-edit-password");
+        if (pwdInput) pwdInput.value = "";
+      }
+      if (field === "all") {
+        closeSaasEditCompanyModal();
+      }
+      // Jadvalni va keshni yangilash
+      await loadSaasCompanies();
     } else {
       showToast(res.detail || res.message || "Xatolik yuz berdi!", "error");
     }
   } catch (e) {
     showToast(e.message || "Server bilan aloqa xatosi!", "error");
   }
+}
+
+// Fallback legacy support
+async function handleSaasEditCompanySubmit(event) {
+  if (event) event.preventDefault();
+  await saveSaasField("all");
 }
 
 // ==========================================

@@ -458,13 +458,9 @@ async def edit_company_details(
             )
 
         # Rahbar ma'lumotlarini yangilash
+        user_updates = []
+        user_params = []
         if owner_user:
-            user_updates = []
-            user_params = []
-            if owner_user["role"] != "DEVELOPER":
-                user_updates.append("role = 'ADMIN'")
-            user_params = []
-
             if req.owner_telegram_id is not None:
                 user_updates.append("telegram_id = ?")
                 user_params.append(req.owner_telegram_id)
@@ -479,6 +475,8 @@ async def edit_company_details(
                 user_params.append(pwd_hash)
 
             if user_updates:
+                if owner_user["role"] != "DEVELOPER":
+                    user_updates.append("role = 'ADMIN'")
                 user_params.append(owner_user["id"])
                 await conn.execute(
                     f"UPDATE users SET {', '.join(user_updates)} WHERE id = ?",

@@ -128,13 +128,13 @@ class ExtendSubscriptionRequest(BaseModel):
     new_expires_date: Optional[str] = Field(None, description="Yangi amal qilish sanasi (YYYY-MM-DD)")
 
 class UpdateCompanySettingsRequest(BaseModel):
-    name: Optional[str] = Field(None, min_length=2, max_length=100, description="Firma nomi")
+    name: Optional[str] = Field(None, max_length=100, description="Firma nomi")
     telegram_group_id: Optional[str] = Field(None, description="Telegram Guruh ID si")
     max_employees: Optional[int] = Field(None, ge=1, le=10000, description="Maksimal ruxsat etilgan faol xodimlar soni")
 
 class UpdateCompanyAdminDetailsRequest(BaseModel):
-    name: Optional[str] = Field(None, min_length=2, max_length=100, description="Firma nomi")
-    owner_name: Optional[str] = Field(None, min_length=2, max_length=100, description="Rahbar to'liq ismi")
+    name: Optional[str] = Field(None, max_length=100, description="Firma nomi")
+    owner_name: Optional[str] = Field(None, max_length=100, description="Rahbar to'liq ismi")
     owner_telegram_id: Optional[int] = Field(None, description="Rahbar Telegram ID si")
     owner_phone: Optional[str] = Field(None, max_length=35, description="Rahbar telefon raqami (+998...)")
     owner_extra_contact: Optional[str] = Field(None, max_length=100, description="Qo'shimcha aloqa (zaxira tel yoki @username)")

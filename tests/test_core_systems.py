@@ -329,5 +329,83 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
         for r in res_approved["data"]:
             self.assertEqual(r["status"], "APPROVED")
 
+    async def test_12_company_individual_field_updates(self):
+        """12. Firma ma'lumotlarini har biri alohida (mustaqil) tahrirlanishi tekshiruvi"""
+        from app.routes.saas import edit_company_details, update_my_company_settings
+        from app.models import UpdateCompanyAdminDetailsRequest, UpdateCompanySettingsRequest
+
+        super_admin = {"id": 1, "company_id": 1, "role": "DEVELOPER", "full_name": "Super Admin"}
+        test_comp_id = 9999
+
+        async with aiosqlite.connect(DB_PATH) as conn:
+            # Create a test company
+            await conn.execute("DELETE FROM companies WHERE id = ?", (test_comp_id,))
+            await conn.execute("DELETE FROM users WHERE company_id = ?", (test_comp_id,))
+            await conn.execute("""
+                INSERT INTO companies (id, name, slug, telegram_group_id, owner_telegram_id, owner_phone, max_employees)
+                VALUES (?, 'Boshlangich Firma', 'boshlangich-firma', '-100111222', 999111, '+998901112233', 25)
+            """, (test_comp_id,))
+            await conn.execute("""
+                INSERT INTO users (id, company_id, telegram_id, full_name, role, password_hash)
+                VALUES (9991, ?, 999111, 'Eski Rahbar', 'ADMIN', 'fakehash')
+            """, (test_comp_id,))
+            await conn.commit()
+
+        try:
+            # 1. Faqat nomini yangilash
+            req_name = UpdateCompanyAdminDetailsRequest(name="Alohida Yangilangan Firma")
+            res1 = await edit_company_details(company_id=test_comp_id, req=req_name, super_admin=super_admin)
+            self.assertTrue(res1["success"])
+
+            async with aiosqlite.connect(DB_PATH) as conn:
+                conn.row_factory = aiosqlite.Row
+                cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (test_comp_id,))
+                comp1 = await cur.fetchone()
+                self.assertEqual(comp1["name"], "Alohida Yangilangan Firma")
+                self.assertEqual(comp1["telegram_group_id"], "-100111222")
+                self.assertEqual(comp1["owner_phone"], "+998901112233")
+
+            # 2. Faqat guruh ID sini yangilash
+            req_grp = UpdateCompanyAdminDetailsRequest(telegram_group_id="-100999888")
+            res2 = await edit_company_details(company_id=test_comp_id, req=req_grp, super_admin=super_admin)
+            self.assertTrue(res2["success"])
+
+            async with aiosqlite.connect(DB_PATH) as conn:
+                conn.row_factory = aiosqlite.Row
+                cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (test_comp_id,))
+                comp2 = await cur.fetchone()
+                self.assertEqual(comp2["name"], "Alohida Yangilangan Firma")
+                self.assertEqual(comp2["telegram_group_id"], "-100999888")
+
+            # 3. Faqat telefon raqami va INN ni yangilash
+            req_contact = UpdateCompanyAdminDetailsRequest(owner_phone="+998977778899", company_inn="123456789")
+            res3 = await edit_company_details(company_id=test_comp_id, req=req_contact, super_admin=super_admin)
+            self.assertTrue(res3["success"])
+
+            async with aiosqlite.connect(DB_PATH) as conn:
+                conn.row_factory = aiosqlite.Row
+                cur = await conn.execute("SELECT * FROM companies WHERE id = ?", (test_comp_id,))
+                comp3 = await cur.fetchone()
+                self.assertEqual(comp3["owner_phone"], "+998977778899")
+                self.assertEqual(comp3["company_inn"], "123456789")
+
+            # 4. Rahbar tomonidan o'z kompaniyasi sozlamalarini (/my-company/settings) alohida yangilash
+            comp_admin = {"id": 9991, "company_id": test_comp_id, "role": "ADMIN", "full_name": "Eski Rahbar"}
+            req_my = UpdateCompanySettingsRequest(name="Rahbar O'zgartirgan Firma")
+            res4 = await update_my_company_settings(req=req_my, admin=comp_admin)
+            self.assertTrue(res4["success"])
+
+            async with aiosqlite.connect(DB_PATH) as conn:
+                conn.row_factory = aiosqlite.Row
+                cur = await conn.execute("SELECT name FROM companies WHERE id = ?", (test_comp_id,))
+                comp4 = await cur.fetchone()
+                self.assertEqual(comp4["name"], "Rahbar O'zgartirgan Firma")
+
+        finally:
+            async with aiosqlite.connect(DB_PATH) as conn:
+                await conn.execute("DELETE FROM companies WHERE id = ?", (test_comp_id,))
+                await conn.execute("DELETE FROM users WHERE company_id = ?", (test_comp_id,))
+                await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()

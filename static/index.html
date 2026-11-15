@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=880">
+  <link rel="stylesheet" href="/static/css/style.css?v=881">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -2096,138 +2096,254 @@
   <!-- FIRMA VA KOMPANIYA SOZLAMALARI MODALI      -->
   <!-- ========================================== -->
   <div class="modal-overlay" id="company-settings-modal" style="display: none;" onclick="handleCompanyModalOverlayClick(event)">
-    <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem;" onclick="event.stopPropagation()">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
+    <div class="modal-content" style="max-width: 500px; width: 100%; border-radius: 1.25rem; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.65rem;">
         <div>
-          <h3 class="card-title" style="font-size: 1.2rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+          <h3 class="card-title" style="font-size: 1.15rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
             <span>🏢</span> Tashkilot ma'lumotlari
           </h3>
-          <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--text-sub);">
+          <p style="margin: 0.2rem 0 0 0; font-size: 0.78rem; color: var(--text-sub);">
             Siz biriktirilgan firma va uning sozlamalari
           </p>
         </div>
-        <button type="button" class="btn-logout" style="padding: 0.3rem 0.65rem; font-size: 0.85rem;" onclick="closeCompanySettingsModal()">✕</button>
+        <button type="button" class="btn-logout" style="padding: 0.25rem 0.6rem; font-size: 0.85rem;" onclick="closeCompanySettingsModal()">✕</button>
       </div>
 
-      <div class="modal-info-box">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Tashkilot nomi:</span>
-          <b id="company-modal-name" style="font-size: 0.95rem; color: var(--text-main);">-</b>
+      <div class="modal-info-box" style="margin-bottom: 0.85rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Tashkilot nomi:</span>
+          <b id="company-modal-name" style="font-size: 0.92rem; color: var(--text-main);">-</b>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Tarif rejasi:</span>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Tarif rejasi:</span>
           <span id="company-modal-plan" class="badge" style="background: rgba(236, 72, 153, 0.2); color: #f472b6;">STANDARD</span>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Ijara holati / Qolgan vaqt:</span>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.45rem;">
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Ijara holati / Qolgan vaqt:</span>
           <b id="company-modal-days-left" style="color: #34d399;">-</b>
         </div>
         <div style="display: flex; justify-content: space-between;">
-          <span style="font-size: 0.85rem; color: var(--text-muted);">Tugash sanasi:</span>
-          <span id="company-modal-expires" style="font-size: 0.85rem; color: var(--text-muted);">-</span>
+          <span style="font-size: 0.82rem; color: var(--text-muted);">Tugash sanasi:</span>
+          <span id="company-modal-expires" style="font-size: 0.82rem; color: var(--text-muted);">-</span>
         </div>
       </div>
 
-      <form id="company-settings-form" onsubmit="handleCompanySettingsSubmit(event)">
-        <div class="form-group" style="margin-bottom: 1rem;">
-          <label class="form-label">Telegram Xabarnoma Guruh ID si</label>
-          <input type="text" id="company-modal-group-input" class="form-input" placeholder="Telegram Guruh ID">
-          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.4;">
-            Karta to'ldirish so'rovlari va hisobotlar ushbu Telegram guruhiga kelib tushadi. Botni guruhingizga admin qilib qo'shishingiz lozim.
-          </div>
+      <!-- Alohida tahrirlash: Firma nomi -->
+      <div class="saas-edit-box">
+        <div class="saas-edit-box-header">
+          <div class="saas-edit-box-title"><span>🏢</span> Firma / Tashkilot nomi</div>
         </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem;">
+          <input type="text" id="company-modal-name-input" class="form-input" placeholder="Firma nomi" style="height: 38px; font-size: 0.88rem; flex: 1;">
+          <button type="button" id="btn-company-save-name" class="btn-save-field" onclick="saveMyCompanyField('name')" style="display: none; white-space: nowrap;">
+            💾 Saqlash
+          </button>
+        </div>
+        <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.3rem;">
+          Tizim interfeysida ko'rinuvchi korporativ tashkilot nomi.
+        </div>
+      </div>
 
-        <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
-          <button type="button" class="btn btn-secondary" onclick="closeCompanySettingsModal()">Yopish</button>
-          <button type="submit" id="btn-company-save-settings" class="btn btn-primary" style="display: none;">💾 Saqlash</button>
+      <!-- Alohida tahrirlash: Telegram Xabarnoma Guruhi -->
+      <div class="saas-edit-box">
+        <div class="saas-edit-box-header">
+          <div class="saas-edit-box-title"><span>📢</span> Telegram Xabarnoma Guruhi</div>
+          <button type="button" onclick="testTelegramGroup('company-modal-group-input', 'company-modal-group-status')" style="background: none; border: none; font-size: 0.75rem; color: #818cf8; cursor: pointer; text-decoration: underline; font-weight: 600;">🔍 Tekshirish</button>
         </div>
-      </form>
+        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem;">
+          <input type="text" id="company-modal-group-input" class="form-input" placeholder="-100..." style="height: 38px; font-size: 0.88rem; flex: 1;">
+          <button type="button" id="btn-company-save-group" class="btn-save-field" onclick="saveMyCompanyField('group')" style="display: none; white-space: nowrap;">
+            💾 Saqlash
+          </button>
+        </div>
+        <div id="company-modal-group-status" style="font-size: 0.75rem; margin-top: 0.35rem; display: none;"></div>
+        <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.3rem; line-height: 1.4;">
+          Karta to'ldirish so'rovlari va hisobotlar ushbu Telegram guruhiga kelib tushadi. Botni guruhingizga admin qilib qo'shishingiz lozim.
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 0.85rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeCompanySettingsModal()">Yopish</button>
+      </div>
     </div>
   </div>
 
-  <!-- Dasturchi Admin: Firma va Rahbar Ma'lumotlarini Tahrirlash Modali -->
+  <!-- Dasturchi Admin: Firma va Rahbar Ma'lumotlarini Alohida Tahrirlash Modali -->
   <div class="modal-overlay" id="saas-edit-company-modal" style="display: none;" onclick="if(event.target.id === 'saas-edit-company-modal') closeSaasEditCompanyModal()">
-    <div class="modal-content" style="max-width: 480px; width: 100%; border-radius: 1.25rem; padding: 1.25rem;" onclick="event.stopPropagation()">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem;">
+    <div class="modal-content" style="max-width: 620px; width: 100%; border-radius: 1.25rem; padding: 1.25rem; max-height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+      
+      <!-- Modal Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.6rem; flex-shrink: 0;">
         <div>
-          <h3 class="card-title" style="font-size: 1.1rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
+          <h3 class="card-title" style="font-size: 1.15rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.45rem;">
             <span>✏️</span> Firmani Tahrirlash
           </h3>
           <p style="margin: 0.15rem 0 0 0; font-size: 0.76rem; color: var(--text-sub);">
-            Firma sozlamalari va Rahbar akkauntini yangilash
+            Firma: <b id="saas-edit-modal-comp-name" style="color: #818cf8;">-</b> <span id="saas-edit-modal-comp-id" class="badge" style="font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #a5b4fc;">#0</span>
           </p>
         </div>
         <button type="button" class="btn-logout" style="padding: 0.25rem 0.55rem; font-size: 0.85rem;" onclick="closeSaasEditCompanyModal()">✕</button>
       </div>
 
-      <form id="saas-edit-company-form" onsubmit="handleSaasEditCompanySubmit(event)">
-        <input type="hidden" id="saas-edit-company-id">
+      <input type="hidden" id="saas-edit-company-id">
 
-        <div class="form-group" style="margin-bottom: 0.65rem;">
-          <label class="form-label" style="font-size: 0.8rem;">Firma / Tashkilot nomi *</label>
-          <input type="text" id="saas-edit-name" class="form-input" style="height: 38px; font-size: 0.88rem;" required>
-        </div>
+      <!-- Navigatsiya tablari: har bir ma'lumotni alohida yoki barchasini ko'rish -->
+      <div class="saas-edit-nav" id="saas-edit-nav-tabs" style="flex-shrink: 0;">
+        <button type="button" class="saas-edit-tab-btn active" data-tab="all" onclick="switchSaasEditSection('all')">📋 Barchasi</button>
+        <button type="button" class="saas-edit-tab-btn" data-tab="name" onclick="switchSaasEditSection('name')">🏢 Nomi & INN</button>
+        <button type="button" class="saas-edit-tab-btn" data-tab="owner" onclick="switchSaasEditSection('owner')">👤 Rahbar</button>
+        <button type="button" class="saas-edit-tab-btn" data-tab="contact" onclick="switchSaasEditSection('contact')">📞 Aloqa</button>
+        <button type="button" class="saas-edit-tab-btn" data-tab="group" onclick="switchSaasEditSection('group')">📢 Guruh ID</button>
+        <button type="button" class="saas-edit-tab-btn" data-tab="password" onclick="switchSaasEditSection('password')">🔑 Parol</button>
+        <button type="button" class="saas-edit-tab-btn" data-tab="limit" onclick="switchSaasEditSection('limit')">⚙️ Limit & Izoh</button>
+      </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin-bottom: 0.65rem;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Rahbar F.I.SH *</label>
-            <input type="text" id="saas-edit-owner-name" class="form-input" style="height: 38px; font-size: 0.88rem;" required>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Rahbar TG ID *</label>
-            <input type="number" id="saas-edit-owner-tg" class="form-input" style="height: 38px; font-size: 0.88rem;" required>
-          </div>
-        </div>
+      <!-- Scrollable Tahrirlash Bo'limlari -->
+      <div style="overflow-y: auto; padding-right: 4px; flex: 1;">
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; margin-bottom: 0.65rem;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Rahbar telefon raqami</label>
-            <input type="tel" id="saas-edit-owner-phone" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="+998...">
+        <!-- 1. FIRMA NOMI VA STIR (INN) -->
+        <div class="saas-edit-box" id="saas-edit-sec-name">
+          <div class="saas-edit-box-header">
+            <div class="saas-edit-box-title"><span>🏢</span> Firma nomi va INN / STIR</div>
+            <span class="badge" style="font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #818cf8;">Asosiy Rekvizit</span>
           </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Qo'shimcha aloqa</label>
-            <input type="text" id="saas-edit-owner-extra" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="@username">
-          </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1.3fr; gap: 0.55rem; margin-bottom: 0.65rem;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Firma INN / STIR</label>
-            <input type="text" id="saas-edit-inn" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="301234567">
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Eslatma / Izoh</label>
-            <input type="text" id="saas-edit-notes" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="Mijoz haqida eslatma...">
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 0.65rem;">
-          <label class="form-label" style="font-size: 0.8rem;">Yangi parol </label>
-          <input type="text" id="saas-edit-password" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="O'zgarishsiz qoldirish">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 0.55rem; margin-bottom: 1.1rem;">
-          <div class="form-group" style="margin-bottom: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <label class="form-label" style="font-size: 0.8rem; margin-bottom: 0;">Telegram Guruh ID</label>
-              <button type="button" onclick="testTelegramGroup('saas-edit-group-id', 'saas-edit-group-status')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; cursor: pointer; text-decoration: underline; font-weight: 600; padding: 0;">🔍 Tekshirish</button>
+          <div style="display: grid; grid-template-columns: 1.4fr 1fr; gap: 0.6rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Firma / Tashkilot nomi *</label>
+              <input type="text" id="saas-edit-name" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="Firma nomi">
             </div>
-            <input type="text" id="saas-edit-group-id" class="form-input" style="height: 38px; font-size: 0.88rem; margin-top: 0.25rem;" placeholder="-100...">
-            <div id="saas-edit-group-status" style="font-size: 0.75rem; margin-top: 0.2rem; display: none;"></div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Firma INN / STIR</label>
+              <input type="text" id="saas-edit-inn" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="301234567">
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label" style="font-size: 0.8rem;">Xodimlar limiti *</label>
-            <input type="number" id="saas-edit-max-employees" class="form-input" style="height: 38px; font-size: 0.88rem;" min="1" max="10000" required>
+          <div class="saas-edit-box-footer">
+            <button type="button" class="btn-save-field" onclick="saveSaasField('name')">
+              💾 Firma nomi va INN ni saqlash
+            </button>
           </div>
         </div>
 
-        <div style="display: flex; gap: 0.55rem; justify-content: flex-end;">
-          <button type="button" class="btn btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.82rem;" onclick="closeSaasEditCompanyModal()">Bekor qilish</button>
-          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); font-weight: 700; border: none; padding: 0.45rem 1.15rem; font-size: 0.82rem;">
-            💾 Saqlash
-          </button>
+        <!-- 2. RAHBAR AKKAUNTI (F.I.SH VA TG ID) -->
+        <div class="saas-edit-box" id="saas-edit-sec-owner">
+          <div class="saas-edit-box-header">
+            <div class="saas-edit-box-title"><span>👤</span> Rahbar ma'lumotlari</div>
+            <span class="badge" style="font-size: 0.7rem; background: rgba(16, 185, 129, 0.15); color: #34d399;">Admin Akkaunt</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 0.6rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Rahbar F.I.SH *</label>
+              <input type="text" id="saas-edit-owner-name" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="Ism Familiya">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Rahbar Telegram ID *</label>
+              <input type="number" id="saas-edit-owner-tg" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="12345678">
+            </div>
+          </div>
+          <div class="saas-edit-box-footer">
+            <button type="button" class="btn-save-field" onclick="saveSaasField('owner')">
+              💾 Rahbar ma'lumotlarini saqlash
+            </button>
+          </div>
         </div>
-      </form>
+
+        <!-- 3. ALOQA MA'LUMOTLARI -->
+        <div class="saas-edit-box" id="saas-edit-sec-contact">
+          <div class="saas-edit-box-header">
+            <div class="saas-edit-box-title"><span>📞</span> Aloqa va Kontaktlar</div>
+            <span class="badge" style="font-size: 0.7rem; background: rgba(56, 189, 248, 0.15); color: #38bdf8;">Bog'lanish</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Telefon raqami</label>
+              <input type="tel" id="saas-edit-owner-phone" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="+998901234567">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Qo'shimcha aloqa (@username / zaxira)</label>
+              <input type="text" id="saas-edit-owner-extra" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="@foydalanuvchi">
+            </div>
+          </div>
+          <div class="saas-edit-box-footer">
+            <button type="button" class="btn-save-field" onclick="saveSaasField('contact')">
+              💾 Aloqa ma'lumotlarini saqlash
+            </button>
+          </div>
+        </div>
+
+        <!-- 4. TELEGRAM GURUH ID -->
+        <div class="saas-edit-box" id="saas-edit-sec-group">
+          <div class="saas-edit-box-header">
+            <div class="saas-edit-box-title"><span>📢</span> Telegram Xabarnoma Guruhi</div>
+            <button type="button" onclick="testTelegramGroup('saas-edit-group-id', 'saas-edit-group-status')" style="background: none; border: none; font-size: 0.74rem; color: #818cf8; cursor: pointer; text-decoration: underline; font-weight: 600;">🔍 Guruhni tekshirish</button>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <input type="text" id="saas-edit-group-id" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="-100...">
+            <div id="saas-edit-group-status" style="font-size: 0.75rem; margin-top: 0.25rem; display: none;"></div>
+            <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.4;">
+              Hisobotlar va karta to'ldirish xabarnomalari kelib tushadigan Telegram superguruh ID si.
+            </div>
+          </div>
+          <div class="saas-edit-box-footer">
+            <button type="button" class="btn-save-field" onclick="saveSaasField('group')">
+              💾 Guruh ID ni saqlash
+            </button>
+          </div>
+        </div>
+
+        <!-- 5. RAHBAR PAROLI -->
+        <div class="saas-edit-box" id="saas-edit-sec-password">
+          <div class="saas-edit-box-header">
+            <div class="saas-edit-box-title"><span>🔑</span> Rahbar Parolini Yangilash</div>
+            <span class="badge" style="font-size: 0.7rem; background: rgba(245, 158, 11, 0.15); color: #fbbf24;">Xavfsizlik</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="password" id="saas-edit-password" class="form-input" style="height: 38px; font-size: 0.88rem; flex: 1;" placeholder="Yangi parol (o'zgartirmaslik uchun bo'sh qoldiring)">
+            <button type="button" class="btn" style="padding: 0.35rem 0.6rem; font-size: 0.78rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 6px; white-space: nowrap;" onclick="generateRandomSaasPassword()" title="Tasodifiy kuchli parol generatsiya qilish">🎲 Generatsiya</button>
+            <button type="button" class="btn" style="padding: 0.35rem 0.6rem; font-size: 0.78rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 6px;" onclick="toggleSaasPasswordVisibility()" id="btn-toggle-saas-pwd" title="Parolni ko'rsatish/yashirish">👁️</button>
+          </div>
+          <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 0.35rem;">
+            Agar yangi parol kiritilsa, Rahbar ushbu parol bilan tizimga kiradi.
+          </div>
+          <div class="saas-edit-box-footer">
+            <button type="button" class="btn-save-field" onclick="saveSaasField('password')">
+              💾 Yangi parolni saqlash
+            </button>
+          </div>
+        </div>
+
+        <!-- 6. XODIMLAR LIMITI VA ESLATMA -->
+        <div class="saas-edit-box" id="saas-edit-sec-limit">
+          <div class="saas-edit-box-header">
+            <div class="saas-edit-box-title"><span>⚙️</span> Xodimlar limiti va Eslatma</div>
+            <span class="badge" style="font-size: 0.7rem; background: rgba(236, 72, 153, 0.15); color: #f472b6;">Tarif va Cheklov</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 0.6rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Xodimlar limiti *</label>
+              <input type="number" id="saas-edit-max-employees" class="form-input" style="height: 38px; font-size: 0.88rem;" min="1" max="10000" placeholder="20">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-size: 0.78rem;">Eslatma / Izoh</label>
+              <input type="text" id="saas-edit-notes" class="form-input" style="height: 38px; font-size: 0.88rem;" placeholder="Mijoz haqida eslatma...">
+            </div>
+          </div>
+          <div class="saas-edit-box-footer">
+            <button type="button" class="btn-save-field" onclick="saveSaasField('limit')">
+              💾 Limit va izohni saqlash
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="display: flex; gap: 0.55rem; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--border-color); flex-shrink: 0;">
+        <button type="button" class="btn btn-secondary" style="padding: 0.45rem 0.9rem; font-size: 0.82rem;" onclick="closeSaasEditCompanyModal()">Yopish</button>
+        <button type="button" id="btn-saas-save-all" class="btn btn-primary" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); font-weight: 700; border: none; padding: 0.45rem 1.15rem; font-size: 0.82rem;" onclick="saveSaasField('all')">
+          💾 Barcha o'zgarishlarni saqlash
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -2535,6 +2651,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=880"></script>
+  <script src="/static/js/app.js?v=881"></script>
 </body>
 </html>
