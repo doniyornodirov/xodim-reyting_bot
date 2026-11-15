@@ -177,5 +177,26 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
             await conn.execute("DELETE FROM daily_reports WHERE id = ?", (rep_id,))
             await conn.commit()
 
+    async def test_08_notify_card_topup_with_closed_report(self):
+        """8. Kassa yopilgan xodim uchun karta so'rovi yuborilganda bot xabari shakllanishi tekshiruvi"""
+        from app.bot import notify_card_topup_in_group
+        topup_data = {
+            "id": 999,
+            "transaction_number": 999,
+            "employee_name": "Doniyor operator",
+            "employee_tg_id": 8662254493,
+            "card_number": "8756 5734 7565 8476",
+            "card_holder": "DSOJV",
+            "amount_formatted": "1 000 000",
+            "surcharge_formatted": "1 030 000",
+            "is_repeat_today": False,
+            "has_approved_today": False,
+            "has_closed_report_today": True
+        }
+        try:
+            await notify_card_topup_in_group(topup_data)
+        except Exception as e:
+            self.fail(f"notify_card_topup_in_group kassa yopilgan xodim uchun xato berdi: {e}")
+
 if __name__ == "__main__":
     unittest.main()

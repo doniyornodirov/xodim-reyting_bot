@@ -1115,13 +1115,13 @@ async def notify_card_topup_in_group(topup_data: dict, group_id: str | None = No
     if topup_data.get("is_repeat_today"):
         repeat_warning = "\n\n⚠️ <b>DIQQAT: Bu kartaga bugun to'lov qilindi!</b> 🔄"
 
-    closed_report_warning = ""
-    if topup_data.get("has_closed_report_today"):
-        closed_report_warning = f"\n\n🚨 <b>DIQQAT: Bugun bu {emp_name} kassani yopdi!</b> 🔒"
-
     emp_tg_id = topup_data.get("employee_tg_id")
     emp_name = html.escape(str(topup_data.get("employee_name") or "Xodim"))
     emp_mention = f'<a href="tg://user?id={emp_tg_id}">{emp_name}</a>' if emp_tg_id else emp_name
+
+    closed_report_warning = ""
+    if topup_data.get("has_closed_report_today"):
+        closed_report_warning = f"\n\n🚨 <b>DIQQAT: Bugun bu {emp_name} kassani yopdi!</b> 🔒"
 
     text = (
         f"💳 <b>Karta to'ldirish so'rovi #{topup_data['transaction_number']}</b>\n\n"
