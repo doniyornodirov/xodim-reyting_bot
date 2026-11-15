@@ -263,6 +263,31 @@ class PostgresConnectionWrapper:
         for stmt in statements:
             await self.execute(stmt)
 
+    async def executemany(self, sql: str, seq_of_params: Any) -> PostgresCursorWrapper:
+        if not self._conn:
+            self._conn = await self._pool.acquire()
+
+        if not seq_of_params:
+            return PostgresCursorWrapper(rows=[], lastrowid=None, rowcount=0)
+
+        # Translate the base SQL query
+        pg_sql, _, _ = translate_query_for_postgres(sql, None)
+
+        # Sanitize all parameter tuples
+        sanitized_args = []
+        for params in seq_of_params:
+            if isinstance(params, (tuple, list)):
+                sanitized_args.append([sanitize_param_for_pg(p) for p in params])
+            else:
+                sanitized_args.append([sanitize_param_for_pg(params)])
+
+        try:
+            await self._conn.executemany(pg_sql, sanitized_args)
+            return PostgresCursorWrapper(rows=[], lastrowid=None, rowcount=len(sanitized_args))
+        except Exception as e:
+            logger.error(f"PostgreSQL executemany xatosi: {e} | SQL: {pg_sql}")
+            raise
+
     async def commit(self) -> None:
         # Autocommit is default in asyncpg
         pass
@@ -294,10 +319,21 @@ async def init_postgres_pool(database_url: str) -> asyncpg.Pool:
         statement_cache_size=0
     )
 
-    # Test the connection
+    # Test the connection and ensure scalar max/min functions exist
     async with _PG_POOL.acquire() as test_conn:
         version = await test_conn.fetchval("SELECT version();")
         logger.info(f"Supabase PostgreSQL ga muvaffaqiyatli ulandi! Versiya: {version[:40]}...")
+        try:
+            await test_conn.execute("""
+                CREATE OR REPLACE FUNCTION max(a numeric, b numeric) RETURNS numeric AS 'SELECT GREATEST(a, b);' LANGUAGE sql IMMUTABLE;
+                CREATE OR REPLACE FUNCTION max(a bigint, b bigint) RETURNS bigint AS 'SELECT GREATEST(a, b);' LANGUAGE sql IMMUTABLE;
+                CREATE OR REPLACE FUNCTION max(a double precision, b double precision) RETURNS double precision AS 'SELECT GREATEST(a, b);' LANGUAGE sql IMMUTABLE;
+                CREATE OR REPLACE FUNCTION min(a numeric, b numeric) RETURNS numeric AS 'SELECT LEAST(a, b);' LANGUAGE sql IMMUTABLE;
+                CREATE OR REPLACE FUNCTION min(a bigint, b bigint) RETURNS bigint AS 'SELECT LEAST(a, b);' LANGUAGE sql IMMUTABLE;
+                CREATE OR REPLACE FUNCTION min(a double precision, b double precision) RETURNS double precision AS 'SELECT LEAST(a, b);' LANGUAGE sql IMMUTABLE;
+            """)
+        except Exception as e:
+            logger.warning(f"PostgreSQL scalar helper funksiyalarini yaratishda ogohlantirish: {e}")
 
     _IS_PG_ACTIVE = True
 

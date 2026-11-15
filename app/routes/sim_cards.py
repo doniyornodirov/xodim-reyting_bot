@@ -297,7 +297,7 @@ async def get_sim_cards_summary(
                 MIN(s.serial_number) as start_serial,
                 MAX(s.serial_number) as end_serial,
                 COUNT(s.id) as total_count,
-                s.status,
+                MAX(s.status) as status,
                 s.distributed_at,
                 u.full_name as employee_name,
                 d.full_name as distributor_name
@@ -305,7 +305,7 @@ async def get_sim_cards_summary(
             JOIN users u ON s.employee_id = u.id
             JOIN users d ON s.distributed_by_id = d.id
             WHERE s.company_id = ?
-            GROUP BY s.operator_type, s.employee_id, s.distributed_by_id, s.distributed_at
+            GROUP BY s.operator_type, s.employee_id, s.distributed_by_id, s.distributed_at, u.full_name, d.full_name
             ORDER BY id DESC
             LIMIT 20
         """, (comp_id,))

@@ -294,3 +294,13 @@ ON CONFLICT (key) DO NOTHING;
 INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
 VALUES (1, 8686341550, 'Bosh Rahbar', 'ADMIN', '$2b$12$60/q787aI6a5f78sW7Q7z.0yZ62u8h4c8w6964kU0172h/365516S', 0, 1)
 ON CONFLICT (telegram_id) DO UPDATE SET role = 'ADMIN', is_active = 1;
+
+-- =========================================================================
+-- SQLITE MOSLASHUVCHAN HELPER FUNKSIYALARI (SCALAR MAX / MIN)
+-- =========================================================================
+CREATE OR REPLACE FUNCTION max(a numeric, b numeric) RETURNS numeric AS 'SELECT GREATEST(a, b);' LANGUAGE sql IMMUTABLE;
+CREATE OR REPLACE FUNCTION max(a bigint, b bigint) RETURNS bigint AS 'SELECT GREATEST(a, b);' LANGUAGE sql IMMUTABLE;
+CREATE OR REPLACE FUNCTION max(a double precision, b double precision) RETURNS double precision AS 'SELECT GREATEST(a, b);' LANGUAGE sql IMMUTABLE;
+CREATE OR REPLACE FUNCTION min(a numeric, b numeric) RETURNS numeric AS 'SELECT LEAST(a, b);' LANGUAGE sql IMMUTABLE;
+CREATE OR REPLACE FUNCTION min(a bigint, b bigint) RETURNS bigint AS 'SELECT LEAST(a, b);' LANGUAGE sql IMMUTABLE;
+CREATE OR REPLACE FUNCTION min(a double precision, b double precision) RETURNS double precision AS 'SELECT LEAST(a, b);' LANGUAGE sql IMMUTABLE;
