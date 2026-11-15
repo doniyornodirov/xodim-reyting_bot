@@ -104,6 +104,13 @@ async def init_db():
             except Exception as e:
                 logger.warning(f"PostgreSQL sequence sinxronlashda ogohlantirish: {e}")
 
+            # 5. daily_reports jadvallariga 5 ta operator ustunlarini qo'shish (PostgreSQL migratsiyasi)
+            for col_name in ["sim_uzmobile", "sim_beeline", "sim_ucell", "sim_mobiuz", "sim_perfectum"]:
+                try:
+                    await conn.execute(f"ALTER TABLE daily_reports ADD COLUMN IF NOT EXISTS {col_name} INTEGER NOT NULL DEFAULT 0;")
+                except Exception as e:
+                    logger.warning(f"PostgreSQL daily_reports {col_name} migratsiyasida ogohlantirish: {e}")
+
             await conn.commit()
         return
 

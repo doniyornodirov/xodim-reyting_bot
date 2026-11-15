@@ -491,21 +491,36 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
         comp_id = admin.get("company_id") or 1
 
         # 1. Joriy davrdagi kunlik hisobotlar (tasdiqlangan)
-        cur = await conn.execute("""
-            SELECT report_date,
-                   COALESCE(SUM(total_inflow), 0) as submitted_amount,
-                   COALESCE(SUM(net_amount), 0) as net_amount,
-                   COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold,
-                   COALESCE(SUM(sim_uzmobile), 0) as sim_uzmobile,
-                   COALESCE(SUM(sim_beeline), 0) as sim_beeline,
-                   COALESCE(SUM(sim_ucell), 0) as sim_ucell,
-                   COALESCE(SUM(sim_mobiuz), 0) as sim_mobiuz,
-                   COALESCE(SUM(sim_perfectum), 0) as sim_perfectum
-            FROM daily_reports
-            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
-            GROUP BY report_date
-        """, (start_str, end_str, comp_id))
-        rep_rows = await cur.fetchall()
+        try:
+            cur = await conn.execute("""
+                SELECT report_date,
+                       COALESCE(SUM(total_inflow), 0) as submitted_amount,
+                       COALESCE(SUM(net_amount), 0) as net_amount,
+                       COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold,
+                       COALESCE(SUM(sim_uzmobile), 0) as sim_uzmobile,
+                       COALESCE(SUM(sim_beeline), 0) as sim_beeline,
+                       COALESCE(SUM(sim_ucell), 0) as sim_ucell,
+                       COALESCE(SUM(sim_mobiuz), 0) as sim_mobiuz,
+                       COALESCE(SUM(sim_perfectum), 0) as sim_perfectum
+                FROM daily_reports
+                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
+                GROUP BY report_date
+            """, (start_str, end_str, comp_id))
+            rep_rows = await cur.fetchall()
+        except Exception as e:
+            logger.warning(f"Savdo monitoringi sim ustunlari bilan so'rovda ogohlantirish: {e}")
+            cur = await conn.execute("""
+                SELECT report_date,
+                       COALESCE(SUM(total_inflow), 0) as submitted_amount,
+                       COALESCE(SUM(net_amount), 0) as net_amount,
+                       COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold,
+                       0 as sim_uzmobile, 0 as sim_beeline, 0 as sim_ucell, 0 as sim_mobiuz, 0 as sim_perfectum
+                FROM daily_reports
+                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
+                GROUP BY report_date
+            """, (start_str, end_str, comp_id))
+            rep_rows = await cur.fetchall()
+
         reports_by_date = {r["report_date"]: dict(r) for r in rep_rows}
 
         # 2. Joriy davrdagi karta to'ldirishlar (tasdiqlangan)
@@ -543,25 +558,31 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
         prev_cards = prev_top["prev_cards"] if prev_top else 0
 
         # 4. Operatorlar bo'yicha taqsimot (Joriy davrdagi hisobotlar bo'yicha)
-        cur = await conn.execute("""
-            SELECT 
-                COALESCE(SUM(sim_uzmobile), 0) as uzmobile,
-                COALESCE(SUM(sim_beeline), 0) as beeline,
-                COALESCE(SUM(sim_ucell), 0) as ucell,
-                COALESCE(SUM(sim_mobiuz), 0) as mobiuz,
-                COALESCE(SUM(sim_perfectum), 0) as perfectum
-            FROM daily_reports
-            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
-        """, (start_str, end_str, comp_id))
-        op_sum = await cur.fetchone()
+        try:
+            cur = await conn.execute("""
+                SELECT 
+                    COALESCE(SUM(sim_uzmobile), 0) as uzmobile,
+                    COALESCE(SUM(sim_beeline), 0) as beeline,
+                    COALESCE(SUM(sim_ucell), 0) as ucell,
+                    COALESCE(SUM(sim_mobiuz), 0) as mobiuz,
+                    COALESCE(SUM(sim_perfectum), 0) as perfectum
+                FROM daily_reports
+                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
+            """, (start_str, end_str, comp_id))
+            op_sum = await cur.fetchone()
 
-        op_counts = {
-            "Uzmobile": int(op_sum["uzmobile"] or 0) if op_sum else 0,
-            "Beeline": int(op_sum["beeline"] or 0) if op_sum else 0,
-            "Ucell": int(op_sum["ucell"] or 0) if op_sum else 0,
-            "Mobiuz": int(op_sum["mobiuz"] or 0) if op_sum else 0,
-            "Perfectum": int(op_sum["perfectum"] or 0) if op_sum else 0
-        }
+            op_counts = {
+                "Uzmobile": int(op_sum["uzmobile"] or 0) if op_sum else 0,
+                "Beeline": int(op_sum["beeline"] or 0) if op_sum else 0,
+                "Ucell": int(op_sum["ucell"] or 0) if op_sum else 0,
+                "Mobiuz": int(op_sum["mobiuz"] or 0) if op_sum else 0,
+                "Perfectum": int(op_sum["perfectum"] or 0) if op_sum else 0
+            }
+        except Exception as e:
+            logger.warning(f"Operatorlar hisobot so'rovida ogohlantirish: {e}")
+            op_counts = {
+                "Uzmobile": 0, "Beeline": 0, "Ucell": 0, "Mobiuz": 0, "Perfectum": 0
+            }
 
         # Agar daily_reports da barcha operatorlar 0 bo'lsa (eski hisobotlar), sim_cards jadvalidan olish:
         if sum(op_counts.values()) == 0:
