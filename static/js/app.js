@@ -3060,7 +3060,7 @@ function renderOperatorChart(operators) {
       "Uzmobile": "/static/icons/operators/uzmobile.png",
       "Beeline": "/static/icons/operators/beeline.png",
       "Ucell": "/static/icons/operators/ucell.png",
-      "Mobiuz": "/static/icons/operators/mobiuz.png",
+      "Mobiuz": "/static/icons/operators/mobiuz.png?v=874",
       "Perfectum": "/static/icons/operators/perfectum.png"
     };
 
@@ -3364,7 +3364,7 @@ function openReportDetailsModal(reportId) {
             ${(r.sim_uzmobile > 0) ? `<span title="Uzmobile" class="op-badge"><img src="/static/icons/operators/uzmobile.png" class="op-badge-logo"> ${r.sim_uzmobile}</span>` : ''}
             ${(r.sim_beeline > 0) ? `<span title="Beeline" class="op-badge"><img src="/static/icons/operators/beeline.png" class="op-badge-logo"> ${r.sim_beeline}</span>` : ''}
             ${(r.sim_ucell > 0) ? `<span title="Ucell" class="op-badge"><img src="/static/icons/operators/ucell.png" class="op-badge-logo"> ${r.sim_ucell}</span>` : ''}
-            ${(r.sim_mobiuz > 0) ? `<span title="Mobiuz" class="op-badge"><img src="/static/icons/operators/mobiuz.png" class="op-badge-logo"> ${r.sim_mobiuz}</span>` : ''}
+            ${(r.sim_mobiuz > 0) ? `<span title="Mobiuz" class="op-badge"><img src="/static/icons/operators/mobiuz.png?v=874" class="op-badge-logo"> ${r.sim_mobiuz}</span>` : ''}
             ${(r.sim_perfectum > 0) ? `<span title="Perfectum" class="op-badge"><img src="/static/icons/operators/perfectum.png" class="op-badge-logo"> ${r.sim_perfectum}</span>` : ''}
           </div>
         </div>

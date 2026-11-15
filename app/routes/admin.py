@@ -603,7 +603,7 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
             "Uzmobile": "/static/icons/operators/uzmobile.png",
             "Beeline": "/static/icons/operators/beeline.png",
             "Ucell": "/static/icons/operators/ucell.png",
-            "Mobiuz": "/static/icons/operators/mobiuz.png",
+            "Mobiuz": "/static/icons/operators/mobiuz.png?v=874",
             "Perfectum": "/static/icons/operators/perfectum.png"
         }
 
