@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=875">
+  <link rel="stylesheet" href="/static/css/style.css?v=876">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -691,6 +691,19 @@
             <button type="button" class="btn" onclick="openLocationHistoryModal()" style="font-size: 0.82rem; padding: 0.45rem 0.95rem; display: inline-flex; align-items: center; gap: 0.4rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);">
               <span>📄</span> Geolokatsiya tarixini olish (DOCX)
             </button>
+            <!-- 🔍 Lokatsiya holati bo'yicha filter (Kordinatasi kiritilgan/kiritilmagan/ish joyida/tashqarida) -->
+            <div class="geo-filter-container" style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12)); padding: 0.2rem 0.4rem 0.2rem 0.65rem; border-radius: 8px;">
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                <span>🔍</span> Filtr:
+              </span>
+              <select id="geo-status-filter" class="form-input" onchange="applyAdminLocationFilter()" style="font-size: 0.82rem; padding: 0.35rem 0.65rem; border-radius: 6px; font-weight: 600; min-width: 220px; cursor: pointer; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+                <option value="all">🌐 Barcha xodimlar</option>
+                <option value="configured">🏢 Kordinatasi kiritilgan</option>
+                <option value="not_configured">⚠️ Kordinatasi kiritilmagan</option>
+                <option value="inside">🟢 Ish joyida bo'lganlar</option>
+                <option value="outside">🔴 Ish joyidan tashqarida</option>
+              </select>
+            </div>
           </div>
           <div style="width: 100%; padding: 0.65rem 0.95rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; font-size: 0.82rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
             <span>💡</span>
@@ -698,22 +711,34 @@
           </div>
         </div>
 
-        <!-- Statistika KPI kartochkalari -->
+        <!-- Statistika KPI kartochkalari (Tezkor filtr sifatida ham ishlaydi) -->
         <div class="grid-4" style="margin-bottom: 1.5rem; gap: 0.75rem;">
-          <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #6366f1; margin-bottom: 0;">
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">👥 Jami xodimlar</div>
+          <div id="geo-card-all" class="card-box geo-stat-card active" onclick="setGeoFilter('all')" title="Barcha xodimlarni ko'rsatish" style="padding: 0.85rem 1rem; border-top: 3px solid #6366f1; margin-bottom: 0; cursor: pointer;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+              <span>👥 Jami xodimlar</span>
+              <span class="geo-filter-pill-hint" style="font-size: 0.65rem; opacity: 0.7;">Barchasi</span>
+            </div>
             <div id="geo-stat-total" class="stat-num-indigo" style="font-size: 1.5rem; font-weight: 800;">0</div>
           </div>
-          <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #3b82f6; margin-bottom: 0;">
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">🏢 Kordinatasi kiritilgan</div>
+          <div id="geo-card-configured" class="card-box geo-stat-card" onclick="setGeoFilter('configured')" title="Faqat kordinatasi kiritilganlarni ko'rsatish" style="padding: 0.85rem 1rem; border-top: 3px solid #3b82f6; margin-bottom: 0; cursor: pointer;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+              <span>🏢 Kordinatasi kiritilgan</span>
+              <span class="geo-filter-pill-hint" style="font-size: 0.65rem; opacity: 0.7;">Filtrlash</span>
+            </div>
             <div id="geo-stat-configured" class="stat-num-blue" style="font-size: 1.5rem; font-weight: 800;">0</div>
           </div>
-          <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #10b981; margin-bottom: 0;">
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">🟢 Ish joyida bo'lganlar</div>
+          <div id="geo-card-inside" class="card-box geo-stat-card" onclick="setGeoFilter('inside')" title="Faqat ish joyida bo'lganlarni ko'rsatish" style="padding: 0.85rem 1rem; border-top: 3px solid #10b981; margin-bottom: 0; cursor: pointer;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+              <span>🟢 Ish joyida bo'lganlar</span>
+              <span class="geo-filter-pill-hint" style="font-size: 0.65rem; opacity: 0.7;">Filtrlash</span>
+            </div>
             <div id="geo-stat-inside" class="stat-num-green" style="font-size: 1.5rem; font-weight: 800;">0</div>
           </div>
-          <div class="card-box" style="padding: 0.85rem 1rem; border-top: 3px solid #ef4444; margin-bottom: 0;">
-            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600;">🔴 Ish joyidan tashqarida</div>
+          <div id="geo-card-outside" class="card-box geo-stat-card" onclick="setGeoFilter('outside')" title="Faqat ish joyidan tashqaridagilarni ko'rsatish" style="padding: 0.85rem 1rem; border-top: 3px solid #ef4444; margin-bottom: 0; cursor: pointer;">
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+              <span>🔴 Ish joyidan tashqarida</span>
+              <span class="geo-filter-pill-hint" style="font-size: 0.65rem; opacity: 0.7;">Filtrlash</span>
+            </div>
             <div id="geo-stat-outside" class="stat-num-red" style="font-size: 1.5rem; font-weight: 800;">0</div>
           </div>
         </div>
@@ -2449,6 +2474,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=875"></script>
+  <script src="/static/js/app.js?v=876"></script>
 </body>
 </html>

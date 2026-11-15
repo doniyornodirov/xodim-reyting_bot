@@ -4415,6 +4415,211 @@ function calculateClientDistanceMeters(lat1, lon1, lat2, lon2) {
 // ==========================================
 // RAHBAR UCHUN: GEOLOKATSIYA MONITORINGI TABI
 // ==========================================
+let currentAdminLocationFilter = "all";
+
+function setGeoFilter(filterVal) {
+  currentAdminLocationFilter = filterVal || "all";
+  const select = document.getElementById("geo-status-filter");
+  if (select) {
+    select.value = currentAdminLocationFilter;
+  }
+  applyAdminLocationFilter();
+}
+
+function applyAdminLocationFilter() {
+  const select = document.getElementById("geo-status-filter");
+  if (select) {
+    currentAdminLocationFilter = select.value || "all";
+  }
+
+  // Active klassini statistika kartochkalariga o'rnatish
+  const cardMap = {
+    "all": "geo-card-all",
+    "configured": "geo-card-configured",
+    "inside": "geo-card-inside",
+    "outside": "geo-card-outside"
+  };
+  document.querySelectorAll(".geo-stat-card").forEach(c => c.classList.remove("active"));
+  if (cardMap[currentAdminLocationFilter]) {
+    const activeCard = document.getElementById(cardMap[currentAdminLocationFilter]);
+    if (activeCard) activeCard.classList.add("active");
+  }
+
+  renderAdminLocationTable(currentAdminLocationFilter);
+}
+
+function renderAdminLocationTable(filterVal = "all") {
+  const tbody = document.getElementById("admin-location-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (!adminEmployeesLocationCache || adminEmployeesLocationCache.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
+    return;
+  }
+
+  // Tanlangan filtr bo'yicha saralash
+  const filtered = adminEmployeesLocationCache.filter(emp => {
+    if (filterVal === "all") return true;
+    if (filterVal === "configured") {
+      return emp.is_workplace_configured === true;
+    }
+    if (filterVal === "not_configured") {
+      return !emp.is_workplace_configured;
+    }
+    if (filterVal === "inside") {
+      return emp.is_within_hours !== false && emp.is_inside === true;
+    }
+    if (filterVal === "outside") {
+      return emp.is_within_hours !== false && emp.is_inside === false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    let filterLabel = "tanlangan filtr";
+    if (filterVal === "configured") filterLabel = "kordinatasi kiritilgan";
+    else if (filterVal === "not_configured") filterLabel = "kordinatasi kiritilmagan";
+    else if (filterVal === "inside") filterLabel = "ish joyida bo'lgan";
+    else if (filterVal === "outside") filterLabel = "ish joyidan tashqarida bo'lgan";
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="11" style="text-align: center; color: var(--text-muted); padding: 2.5rem 1rem;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.8rem;">🔍</span>
+            <span style="font-weight: 600; font-size: 0.95rem; color: var(--text-main);">Ushbu filtr bo'yicha xodimlar topilmadi</span>
+            <span style="font-size: 0.82rem; color: var(--text-muted);">Hozirda <b>${filterLabel}</b> xodimlar mavjud emas.</span>
+            <button type="button" class="btn" onclick="setGeoFilter('all')" style="margin-top: 0.4rem; font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer;">🌐 Barcha xodimlarni ko'rsatish</button>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  filtered.forEach(emp => {
+    const isConfigured = emp.is_workplace_configured;
+    const wpName = isConfigured ? `<b>${emp.workplace_name}</b>` : `<span style="color: #fbbf24; opacity: 0.85;">⚠️ Kordinata kiritilmagan</span>`;
+    const wpCoords = isConfigured ? `<code>${emp.workplace_latitude.toFixed(5)}, ${emp.workplace_longitude.toFixed(5)}</code>` : `<span style="opacity: 0.5;">-</span>`;
+    const wpRadius = isConfigured ? `<span class="badge" style="font-size: 0.75rem;">${emp.workplace_radius_meters} m</span>` : `<span style="opacity: 0.5;">-</span>`;
+
+    const workStart = emp.work_start_time || '09:00';
+    const workEnd = emp.work_end_time || '19:00';
+    const isWithin = emp.is_within_hours !== false;
+    const hoursBadge = `<span class="badge" style="background: ${isWithin ? 'rgba(99, 102, 241, 0.15)' : 'rgba(100, 116, 139, 0.15)'}; color: ${isWithin ? '#a5b4fc' : '#94a3b8'}; font-size: 0.75rem; white-space: nowrap;">⏰ ${workStart} - ${workEnd} ${isWithin ? '🟢' : '🌙'}</span>`;
+
+    let distCell = "";
+    let statusBadge = "";
+
+    if (emp.shift_status === "RESTING") {
+      distCell = `<span style="opacity: 0.85; font-size: 0.75rem; color: #fbbf24;">🌙 Damda (Rahbar belgilagan)</span>`;
+      statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.75rem;">🌙 Damda</span>`;
+    } else if (!isConfigured) {
+      distCell = `<span style="opacity: 0.5;">-</span>`;
+      statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 0.75rem;">⚪ Belgilanmagan</span>`;
+    } else if (!isWithin) {
+      distCell = `<span style="opacity: 0.65; font-size: 0.75rem; color: #94a3b8;">🌙 Ish vaqti emas</span>`;
+      statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; font-size: 0.75rem;">🌙 Dam olish vaqti</span>`;
+    } else if (emp.is_signal_lost) {
+      // Ish vaqtida, lekin 10+ daqiqadan beri signal kelmayapti (Interneti o'chiq / Oflayn)
+      if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
+        const distM = Math.round(emp.last_distance_meters);
+        const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
+        distCell = `<span style="color: #fb7185; font-size: 0.8rem; font-weight: 600;" title="Oxirgi ma'lum masofa">📍 ${distText} (Eski)</span>`;
+      } else {
+        distCell = `<span style="color: #fb7185; font-size: 0.78rem;">📵 Signal yo'q</span>`;
+      }
+      statusBadge = `<span class="badge" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.5); color: #fb7185; font-size: 0.75rem; font-weight: 700;" title="Xodimning telefoni interneti o'chiq yoki oxirgi ${emp.loc_lag_minutes || 0} daqiqadan beri signal kelmayapti">📵 Signal yo'q (Oflayn)</span>`;
+    } else if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
+      const distM = Math.round(emp.last_distance_meters);
+      const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
+      if (emp.is_inside) {
+        distCell = `<b style="color: #34d399;">📍 ${distText}</b>`;
+        statusBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 0.75rem;">🟢 Ish joyida (${distText})</span>`;
+      } else {
+        distCell = `<b style="color: #f87171;">📍 ${distText}</b>`;
+        statusBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.75rem;">🔴 Tashqarida (${distText})</span>`;
+      }
+    } else {
+      distCell = `<span style="opacity: 0.6; font-size: 0.78rem;">Kutilmoqda...</span>`;
+      statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size: 0.75rem;">⏳ Aniqlanmoqda</span>`;
+    }
+
+    // Smart Anti-Fraud Harakat Indikatori
+    let stillnessBadge = "";
+    if (emp.is_signal_lost) {
+      stillnessBadge = `<span class="badge" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.5); color: #fb7185; font-size: 0.73rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Xodimning telefoni interneti o'chiq yoki aloqa uzilgan (Oxirgi ${emp.loc_lag_minutes || 0} daqiqa)">📵 Signal kelmayapti (${emp.loc_lag_minutes || 0} daq)</span>`;
+    } else if (emp.stillness_code === "FROZEN_ALERT") {
+      stillnessBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; font-size: 0.73rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Diqqat: Telefon ${emp.stillness_minutes} daqiqadan beri mutlaqo qimirlamay stolda yotibdi (Absolyut 0 harakat!)">🔴 ⚠️ Stolda qotgan (${emp.stillness_minutes} daq)</span>`;
+    } else if (emp.stillness_code === "STILL_WARN") {
+      stillnessBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.73rem; display: inline-flex; align-items: center; gap: 3px;" title="Oxirgi 45-90 daqiqadan beri harakat qayd etilmadi">🟡 Qimirlamayapti (${emp.stillness_minutes} daq)</span>`;
+    } else if (emp.stillness_code === "ACTIVE") {
+      stillnessBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 0.73rem; display: inline-flex; align-items: center; gap: 3px;" title="Jonli tabiiy harakat mavjud (Xodim telefon bilan harakatda)">🟢 Jonli harakatda</span>`;
+    } else {
+      stillnessBadge = `<span style="opacity: 0.5; font-size: 0.75rem;">🌙 Dam olishda</span>`;
+    }
+
+    const timeAgo = formatLocationTimeAgo(emp.last_location_updated_at);
+    const exactTime = formatTashkentDateTime(emp.last_location_updated_at, true);
+    const timeCell = timeAgo 
+      ? `<span style="font-size: 0.75rem; color: ${emp.is_signal_lost ? '#fb7185; font-weight: 700' : 'var(--text-muted)'}; cursor: help;" title="Aniq Toshkent vaqti: ${exactTime}${emp.is_signal_lost ? ' (Signal uzilgan)' : ''}">🕒 ${timeAgo}</span>` 
+      : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
+
+    // Yagona va zamonaviy amallar tugmalari guruhi (advise.md qoidasi)
+    const configBtn = `
+      <button type="button" class="action-btn action-btn-primary" onclick="openSetEmployeeLocationModal(${emp.id})" title="${isConfigured ? 'Ish joyi va vaqtini tahrirlash' : 'Ish joyi va vaqtini biriktirish'}">
+        ${isConfigured ? '✏️ Sozlash' : '📍 Kordinata & Vaqt'}
+      </button>
+    `;
+
+    const historyBtn = `
+      <button type="button" class="action-btn action-btn-success" onclick="openLocationHistoryModal(${emp.id})" title="Ushbu xodimning geolokatsiya tarixi (DOCX)">
+        📄 Tarix
+      </button>
+    `;
+
+    // Xaritada ko'rish tugmasi (xodimning oxirgi jonli lokatsiyasi)
+    const mapBtn = (emp.last_latitude && emp.last_longitude)
+      ? `<a href="https://www.google.com/maps?q=${emp.last_latitude},${emp.last_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-info" title="Xodimning hozirgi/oxirgi joylashuvi xaritada">🗺️ Xodim</a>`
+      : "";
+
+    // Ish joyini xaritada ko'rish tugmasi (agar belgilangan bo'lsa)
+    const wpMapBtn = isConfigured
+      ? `<a href="https://www.google.com/maps?q=${emp.workplace_latitude},${emp.workplace_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-purple" title="Belgilangan ish joyi manzili xaritada">🏢 Ish joyi</a>`
+      : "";
+
+    // Ish joyini tozalash tugmasi
+    const clearBtn = isConfigured
+      ? `<button type="button" class="action-btn action-btn-danger" onclick="handleClearEmployeeWorkplace(${emp.id}, '${emp.full_name}')" title="Kordinatani tozalash">🗑️</button>`
+      : "";
+
+    tbody.innerHTML += `
+      <tr>
+        <td><b>${emp.full_name}</b></td>
+        <td><code>${emp.telegram_id}</code></td>
+        <td><span class="badge ${emp.role === 'CASHIER' ? 'badge-cashier' : 'badge-employee'}">${formatRoleName(emp.role)}</span></td>
+        <td>${wpName}</td>
+        <td>${hoursBadge}</td>
+        <td>${wpCoords}</td>
+        <td>${wpRadius}</td>
+        <td>${distCell}</td>
+        <td>${statusBadge}</td>
+        <td>${timeCell}</td>
+        <td style="white-space: nowrap; text-align: center;">
+          <div class="action-btn-group">
+            ${configBtn}
+            ${historyBtn}
+            ${mapBtn}
+            ${wpMapBtn}
+            ${clearBtn}
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+}
+
 async function loadAdminLocationTab(showToastNotice = false) {
   try {
     const res = await api("/api/location/employees");
@@ -4425,13 +4630,16 @@ async function loadAdminLocationTab(showToastNotice = false) {
     // 1. Statistika
     const total = adminEmployeesLocationCache.length;
     let configured = 0;
+    let notConfigured = 0;
     let inside = 0;
     let outside = 0;
 
     adminEmployeesLocationCache.forEach(emp => {
       if (emp.is_workplace_configured) configured++;
-      if (emp.is_within_hours && emp.is_inside === true) inside++;
-      else if (emp.is_within_hours && emp.is_inside === false) outside++;
+      else notConfigured++;
+
+      if (emp.is_within_hours !== false && emp.is_inside === true) inside++;
+      else if (emp.is_within_hours !== false && emp.is_inside === false) outside++;
     });
 
     const totalEl = document.getElementById("geo-stat-total");
@@ -4444,6 +4652,20 @@ async function loadAdminLocationTab(showToastNotice = false) {
     if (inEl) inEl.innerText = inside;
     if (outEl) outEl.innerText = outside;
 
+    // Dropdown filtr variantlarini live sonlar bilan yangilash
+    const filterSelect = document.getElementById("geo-status-filter");
+    if (filterSelect) {
+      const cur = currentAdminLocationFilter || filterSelect.value || "all";
+      filterSelect.innerHTML = `
+        <option value="all">🌐 Barcha xodimlar (${total})</option>
+        <option value="configured">🏢 Kordinatasi kiritilgan (${configured})</option>
+        <option value="not_configured">⚠️ Kordinatasi kiritilmagan (${notConfigured})</option>
+        <option value="inside">🟢 Ish joyida bo'lganlar (${inside})</option>
+        <option value="outside">🔴 Ish joyidan tashqarida (${outside})</option>
+      `;
+      filterSelect.value = cur;
+    }
+
     // Saralash: Oxirgi aniqlangan vaqti eng uzoq bo'lganlar (eskilar yoki umuman kordinata kiritilmaganlar) tepada bo'ladi
     adminEmployeesLocationCache.sort((a, b) => {
       const timeA = a.last_location_updated_at ? new Date(a.last_location_updated_at).getTime() : 0;
@@ -4454,136 +4676,8 @@ async function loadAdminLocationTab(showToastNotice = false) {
       return timeA - timeB;
     });
 
-    // 2. Jadval
-    const tbody = document.getElementById("admin-location-tbody");
-    if (!tbody) return;
-    tbody.innerHTML = "";
-
-    if (adminEmployeesLocationCache.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">Tizimda hozircha faol xodimlar mavjud emas.</td></tr>`;
-      return;
-    }
-
-    adminEmployeesLocationCache.forEach(emp => {
-      const isConfigured = emp.is_workplace_configured;
-      const wpName = isConfigured ? `<b>${emp.workplace_name}</b>` : `<span style="color: #fbbf24; opacity: 0.85;">⚠️ Kordinata kiritilmagan</span>`;
-      const wpCoords = isConfigured ? `<code>${emp.workplace_latitude.toFixed(5)}, ${emp.workplace_longitude.toFixed(5)}</code>` : `<span style="opacity: 0.5;">-</span>`;
-      const wpRadius = isConfigured ? `<span class="badge" style="font-size: 0.75rem;">${emp.workplace_radius_meters} m</span>` : `<span style="opacity: 0.5;">-</span>`;
-
-      const workStart = emp.work_start_time || '09:00';
-      const workEnd = emp.work_end_time || '19:00';
-      const isWithin = emp.is_within_hours !== false;
-      const hoursBadge = `<span class="badge" style="background: ${isWithin ? 'rgba(99, 102, 241, 0.15)' : 'rgba(100, 116, 139, 0.15)'}; color: ${isWithin ? '#a5b4fc' : '#94a3b8'}; font-size: 0.75rem; white-space: nowrap;">⏰ ${workStart} - ${workEnd} ${isWithin ? '🟢' : '🌙'}</span>`;
-
-      let distCell = "";
-      let statusBadge = "";
-
-      if (emp.shift_status === "RESTING") {
-        distCell = `<span style="opacity: 0.85; font-size: 0.75rem; color: #fbbf24;">🌙 Damda (Rahbar belgilagan)</span>`;
-        statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.75rem;">🌙 Damda</span>`;
-      } else if (!isConfigured) {
-        distCell = `<span style="opacity: 0.5;">-</span>`;
-        statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-size: 0.75rem;">⚪ Belgilanmagan</span>`;
-      } else if (!isWithin) {
-        distCell = `<span style="opacity: 0.65; font-size: 0.75rem; color: #94a3b8;">🌙 Ish vaqti emas</span>`;
-        statusBadge = `<span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; font-size: 0.75rem;">🌙 Dam olish vaqti</span>`;
-      } else if (emp.is_signal_lost) {
-        // Ish vaqtida, lekin 10+ daqiqadan beri signal kelmayapti (Interneti o'chiq / Oflayn)
-        if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
-          const distM = Math.round(emp.last_distance_meters);
-          const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
-          distCell = `<span style="color: #fb7185; font-size: 0.8rem; font-weight: 600;" title="Oxirgi ma'lum masofa">📍 ${distText} (Eski)</span>`;
-        } else {
-          distCell = `<span style="color: #fb7185; font-size: 0.78rem;">📵 Signal yo'q</span>`;
-        }
-        statusBadge = `<span class="badge" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.5); color: #fb7185; font-size: 0.75rem; font-weight: 700;" title="Xodimning telefoni interneti o'chiq yoki oxirgi ${emp.loc_lag_minutes || 0} daqiqadan beri signal kelmayapti">📵 Signal yo'q (Oflayn)</span>`;
-      } else if (emp.last_distance_meters !== null && emp.last_distance_meters !== undefined) {
-        const distM = Math.round(emp.last_distance_meters);
-        const distText = distM >= 1000 ? (distM / 1000).toFixed(1) + " km" : distM + " m";
-        if (emp.is_inside) {
-          distCell = `<b style="color: #34d399;">📍 ${distText}</b>`;
-          statusBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-size: 0.75rem;">🟢 Ish joyida (${distText})</span>`;
-        } else {
-          distCell = `<b style="color: #f87171;">📍 ${distText}</b>`;
-          statusBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; font-size: 0.75rem;">🔴 Tashqarida (${distText})</span>`;
-        }
-      } else {
-        distCell = `<span style="opacity: 0.6; font-size: 0.78rem;">Kutilmoqda...</span>`;
-        statusBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-size: 0.75rem;">⏳ Aniqlanmoqda</span>`;
-      }
-
-      // Smart Anti-Fraud Harakat Indikatori
-      let stillnessBadge = "";
-      if (emp.is_signal_lost) {
-        stillnessBadge = `<span class="badge" style="background: rgba(244, 63, 94, 0.2); border: 1px solid rgba(244, 63, 94, 0.5); color: #fb7185; font-size: 0.73rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Xodimning telefoni interneti o'chiq yoki aloqa uzilgan (Oxirgi ${emp.loc_lag_minutes || 0} daqiqa)">📵 Signal kelmayapti (${emp.loc_lag_minutes || 0} daq)</span>`;
-      } else if (emp.stillness_code === "FROZEN_ALERT") {
-        stillnessBadge = `<span class="badge" style="background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #f87171; font-size: 0.73rem; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;" title="Diqqat: Telefon ${emp.stillness_minutes} daqiqadan beri mutlaqo qimirlamay stolda yotibdi (Absolyut 0 harakat!)">🔴 ⚠️ Stolda qotgan (${emp.stillness_minutes} daq)</span>`;
-      } else if (emp.stillness_code === "STILL_WARN") {
-        stillnessBadge = `<span class="badge" style="background: rgba(245, 158, 11, 0.18); border: 1px solid rgba(245, 158, 11, 0.45); color: #fbbf24; font-size: 0.73rem; display: inline-flex; align-items: center; gap: 3px;" title="Oxirgi 45-90 daqiqadan beri harakat qayd etilmadi">🟡 Qimirlamayapti (${emp.stillness_minutes} daq)</span>`;
-      } else if (emp.stillness_code === "ACTIVE") {
-        stillnessBadge = `<span class="badge" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #34d399; font-size: 0.73rem; display: inline-flex; align-items: center; gap: 3px;" title="Jonli tabiiy harakat mavjud (Xodim telefon bilan harakatda)">🟢 Jonli harakatda</span>`;
-      } else {
-        stillnessBadge = `<span style="opacity: 0.5; font-size: 0.75rem;">🌙 Dam olishda</span>`;
-      }
-
-      const timeAgo = formatLocationTimeAgo(emp.last_location_updated_at);
-      const exactTime = formatTashkentDateTime(emp.last_location_updated_at, true);
-      const timeCell = timeAgo 
-        ? `<span style="font-size: 0.75rem; color: ${emp.is_signal_lost ? '#fb7185; font-weight: 700' : 'var(--text-muted)'}; cursor: help;" title="Aniq Toshkent vaqti: ${exactTime}${emp.is_signal_lost ? ' (Signal uzilgan)' : ''}">🕒 ${timeAgo}</span>` 
-        : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
-
-      // Yagona va zamonaviy amallar tugmalari guruhi (advise.md qoidasi)
-      const configBtn = `
-        <button type="button" class="action-btn action-btn-primary" onclick="openSetEmployeeLocationModal(${emp.id})" title="${isConfigured ? 'Ish joyi va vaqtini tahrirlash' : 'Ish joyi va vaqtini biriktirish'}">
-          ${isConfigured ? '✏️ Sozlash' : '📍 Kordinata & Vaqt'}
-        </button>
-      `;
-
-      const historyBtn = `
-        <button type="button" class="action-btn action-btn-success" onclick="openLocationHistoryModal(${emp.id})" title="Ushbu xodimning geolokatsiya tarixi (DOCX)">
-          📄 Tarix
-        </button>
-      `;
-
-      // Xaritada ko'rish tugmasi (xodimning oxirgi jonli lokatsiyasi)
-      const mapBtn = (emp.last_latitude && emp.last_longitude)
-        ? `<a href="https://www.google.com/maps?q=${emp.last_latitude},${emp.last_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-info" title="Xodimning hozirgi/oxirgi joylashuvi xaritada">🗺️ Xodim</a>`
-        : "";
-
-      // Ish joyini xaritada ko'rish tugmasi (agar belgilangan bo'lsa)
-      const wpMapBtn = isConfigured
-        ? `<a href="https://www.google.com/maps?q=${emp.workplace_latitude},${emp.workplace_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-purple" title="Belgilangan ish joyi manzili xaritada">🏢 Ish joyi</a>`
-        : "";
-
-      // Ish joyini tozalash tugmasi
-      const clearBtn = isConfigured
-        ? `<button type="button" class="action-btn action-btn-danger" onclick="handleClearEmployeeWorkplace(${emp.id}, '${emp.full_name}')" title="Kordinatani tozalash">🗑️</button>`
-        : "";
-
-      tbody.innerHTML += `
-        <tr>
-          <td><b>${emp.full_name}</b></td>
-          <td><code>${emp.telegram_id}</code></td>
-          <td><span class="badge ${emp.role === 'CASHIER' ? 'badge-cashier' : 'badge-employee'}">${formatRoleName(emp.role)}</span></td>
-          <td>${wpName}</td>
-          <td>${hoursBadge}</td>
-          <td>${wpCoords}</td>
-          <td>${wpRadius}</td>
-          <td>${distCell}</td>
-          <td>${statusBadge}</td>
-          <td>${timeCell}</td>
-          <td style="white-space: nowrap; text-align: center;">
-            <div class="action-btn-group">
-              ${configBtn}
-              ${historyBtn}
-              ${mapBtn}
-              ${wpMapBtn}
-              ${clearBtn}
-            </div>
-          </td>
-        </tr>
-      `;
-    });
+    // 2. Jadvalni joriy filtr bo'yicha chizish
+    applyAdminLocationFilter();
 
     if (showToastNotice) {
       showToast("Xodimlar geolokatsiyasi yangilandi", "info");
