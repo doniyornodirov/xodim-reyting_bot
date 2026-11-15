@@ -448,7 +448,8 @@ if dp:
                 SELECT id, full_name, role, is_active, company_id,
                        workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
                        work_start_time, work_end_time, shift_status,
-                       last_latitude, last_longitude, last_motion_at, last_motion_lat, last_motion_lon
+                       last_latitude, last_longitude, last_motion_at, last_motion_lat, last_motion_lon,
+                       loc_state, loc_state_changed_at, loc_max_distance, loc_signal_lost_at, loc_last_event_id
                 FROM users WHERE telegram_id = ?
             """, (user_tg_id,))
             user = await cur.fetchone()
@@ -634,6 +635,18 @@ if dp:
                 new_stillness_state,
                 user["id"]
             ))
+
+            # Tarixiy hodisalar jurnali (Location Events) ga muhrlash
+            from app.routes.location import record_location_event_update
+            tracking_res = await record_location_event_update(
+                conn=conn,
+                user=user,
+                lat=lat,
+                lon=lon,
+                live_period=live_period,
+                is_live_edit=is_live_edit,
+                source="TELEGRAM"
+            )
             await conn.commit()
 
             # Fondagi jonli harakatlar (Telegram Live update) bo'lsa, xodimni xabarlar bilan bezovta qilmasdan sukutda yangilaymiz
@@ -665,7 +678,13 @@ if dp:
                 hours_cnt = live_period // 3600
                 period_str = f"{hours_cnt} soat" if hours_cnt > 0 else f"{live_period // 60} daqiqa"
 
+            restarted_notice = ""
+            if tracking_res.get("restarted_warning"):
+                cnt = tracking_res.get("starts_today_count", 2)
+                restarted_notice = f"⚠️ <b>DIQQAT:</b> Bugun allaqachon jonli joylashuv yuborilgan (jami: {cnt}-marta). Ushbu qayta yuborilganlik Rahbar hisobotida qayd etildi!\n\n"
+
             reply_text = (
+                f"{restarted_notice}"
                 f"🛰 <b>KUNLIK JONLI JOYLASHUV FAOLLASHDI</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"{status_msg}\n"

@@ -347,6 +347,13 @@ async def start_retention_scheduler(interval_hours: int = 24):
                 logger.info("Tungi 03:00 ma'lumotlar saqlanish tozalashi boshlandi...")
                 asyncio.create_task(run_data_retention_cleanup())
 
+            # 5. Har 30 soniyada xodimlarning internet/geolokatsiya uzilishlarini tekshirish (15 daqiqadan oshsa SIGNAL_LOST yozish)
+            try:
+                from app.routes.location import check_employee_signal_loss
+                asyncio.create_task(check_employee_signal_loss())
+            except Exception:
+                pass
+
             # Har 30 soniyada tekshirish
             await asyncio.sleep(30)
         except asyncio.CancelledError:

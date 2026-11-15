@@ -164,6 +164,29 @@ CREATE INDEX IF NOT EXISTS idx_sim_cards_operator ON sim_cards(operator_type);
 CREATE INDEX IF NOT EXISTS idx_sim_cards_sold ON sim_cards(status, sold_at);
 CREATE INDEX IF NOT EXISTS idx_sim_distributions_created ON sim_distributions(created_at);
 
+-- =========================================================================
+-- 13. XODIMLARNING GEOLOKATSIYA VA JONLI MONITORING TARIXI (Location Events)
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS location_events (
+    id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL DEFAULT 1 REFERENCES companies(id),
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    event_date VARCHAR(20) NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    started_at TIMESTAMPTZ NOT NULL,
+    ended_at TIMESTAMPTZ,
+    duration_seconds INTEGER DEFAULT 0,
+    distance_meters DOUBLE PRECISION DEFAULT 0.0,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    details TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_location_events_user_date ON location_events(user_id, event_date);
+CREATE INDEX IF NOT EXISTS idx_location_events_company_date ON location_events(company_id, event_date);
+CREATE INDEX IF NOT EXISTS idx_location_events_type ON location_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_location_events_created ON location_events(created_at);
+
 -- Standart tizim dollar kursi
 INSERT INTO system_settings (key, value)
 VALUES ('usd_rate', '12000')

@@ -215,7 +215,12 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN bound_device_token TEXT",
             "ALTER TABLE users ADD COLUMN bound_device_name TEXT",
             "ALTER TABLE users ADD COLUMN device_bound_at TIMESTAMP",
-            "ALTER TABLE users ADD COLUMN allow_device_reset INTEGER DEFAULT 0"
+            "ALTER TABLE users ADD COLUMN allow_device_reset INTEGER DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN loc_state TEXT DEFAULT 'INSIDE'",
+            "ALTER TABLE users ADD COLUMN loc_state_changed_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN loc_max_distance REAL DEFAULT 0.0",
+            "ALTER TABLE users ADD COLUMN loc_signal_lost_at TIMESTAMP",
+            "ALTER TABLE users ADD COLUMN loc_last_event_id INTEGER"
         ]:
             try:
                 await conn.execute(col_sql)
@@ -346,6 +351,29 @@ async def init_db():
         """)
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);")
 
+        # 13. Xodimlar geolokatsiyasi va jonli kuzatuv tarixi (Location Events)
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS location_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL DEFAULT 1 REFERENCES companies(id),
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            event_date TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            started_at TIMESTAMP NOT NULL,
+            ended_at TIMESTAMP,
+            duration_seconds INTEGER DEFAULT 0,
+            distance_meters REAL DEFAULT 0.0,
+            latitude REAL,
+            longitude REAL,
+            details TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_location_events_user_date ON location_events(user_id, event_date);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_location_events_company_date ON location_events(company_id, event_date);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_location_events_type ON location_events(event_type);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_location_events_created ON location_events(created_at);")
+
         # Agar sim_distributions bo'sh bo'lsa va sim_cards da ma'lumot bo'lsa, mavjud tarqatishlarni partiya qilib o'tkazish
         cur_dist = await conn.execute("SELECT COUNT(*) FROM sim_distributions")
         dist_count = (await cur_dist.fetchone())[0]
@@ -396,7 +424,7 @@ async def init_db():
         saas_tables = [
             "users", "card_topups", "given_amounts", "daily_reports", 
             "cashier_handovers", "sim_cards", "sim_distributions", 
-            "cashier_history", "audit_logs"
+            "cashier_history", "audit_logs", "location_events"
         ]
         for tbl in saas_tables:
             try:

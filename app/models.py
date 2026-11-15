@@ -98,6 +98,11 @@ class VerifiedCheckinRequest(BaseModel):
     longitude: Optional[float] = Field(None, ge=-180.0, le=180.0, description="GPS Uzunlik")
     accuracy_meters: Optional[float] = Field(None, description="GPS aniqligi metrlarda")
 
+class LocationHistoryExportRequest(BaseModel):
+    start_date: str = Field(..., description="Boshlanish sanasi (YYYY-MM-DD)")
+    end_date: str = Field(..., description="Tugash sanasi (YYYY-MM-DD)")
+    user_id: Optional[int] = Field(None, description="Muayyan xodim ID si yoki barcha xodimlar uchun None")
+
 class CreateCompanyRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, description="Firma / Tashkilot nomi")
     owner_telegram_id: int = Field(..., description="Firma Rahbarining Telegram ID si")

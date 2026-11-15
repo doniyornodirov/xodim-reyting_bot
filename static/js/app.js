@@ -4410,6 +4410,9 @@ async function loadAdminLocationTab(showToastNotice = false) {
               <button type="button" class="btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="openSetEmployeeLocationModal(${emp.id})">
                 ${isConfigured ? '✏️ Sozlash' : '📍 Kordinata & Vaqt'}
               </button>
+              <button type="button" class="btn" style="padding: 3px 7px; font-size: 0.72rem; background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; font-weight: 600;" onclick="openLocationHistoryModal(${emp.id})" title="Ushbu xodimning geolokatsiya tarixi (DOCX)">
+                📄 Tarix
+              </button>
               ${mapBtn}
               ${wpMapBtn}
               ${clearBtn}
@@ -4455,6 +4458,166 @@ function handleEmployeeLocationModalOverlayClick(e) {
   if (e.target && e.target.id === "set-employee-location-modal") {
     closeSetEmployeeLocationModal();
   }
+}
+
+// ==========================================
+// RAHBAR UCHUN: GEOLOKATSIYA TARIXI (DOCX) MODALI
+// ==========================================
+function openLocationHistoryModal(userId = null) {
+  const modal = document.getElementById("location-history-modal");
+  if (!modal) return;
+
+  const startInput = document.getElementById("loc-hist-start-date");
+  const endInput = document.getElementById("loc-hist-end-date");
+  const empSelect = document.getElementById("loc-hist-emp-select");
+
+  const today = getTashkentDateString();
+  if (startInput) startInput.value = today;
+  if (endInput) endInput.value = today;
+
+  // Xodimlar dropdownini to'ldirish
+  if (empSelect) {
+    empSelect.innerHTML = `<option value="">👥 Barcha xodimlar (Umumiy hisobot)</option>`;
+    const emps = adminEmployeesLocationCache || [];
+    emps.forEach(u => {
+      const isSelected = (userId && u.id === userId) ? "selected" : "";
+      empSelect.innerHTML += `<option value="${u.id}" ${isSelected}>👤 ${escapeHtml(u.full_name)}</option>`;
+    });
+    if (userId) empSelect.value = userId;
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeLocationHistoryModal() {
+  const modal = document.getElementById("location-history-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function setLocHistQuickFilter(filterType) {
+  const startInput = document.getElementById("loc-hist-start-date");
+  const endInput = document.getElementById("loc-hist-end-date");
+  if (!startInput || !endInput) return;
+
+  const today = new Date();
+  const formatD = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = formatD(today);
+
+  if (filterType === "today") {
+    startInput.value = todayStr;
+    endInput.value = todayStr;
+  } else if (filterType === "yesterday") {
+    const yest = new Date(today);
+    yest.setDate(yest.getDate() - 1);
+    startInput.value = formatD(yest);
+    endInput.value = formatD(yest);
+  } else if (filterType === "7days") {
+    const past7 = new Date(today);
+    past7.setDate(past7.getDate() - 6);
+    startInput.value = formatD(past7);
+    endInput.value = todayStr;
+  } else if (filterType === "month") {
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    startInput.value = formatD(firstDay);
+    endInput.value = todayStr;
+  }
+}
+
+async function sendLocationHistoryDocxToTelegram() {
+  const startInput = document.getElementById("loc-hist-start-date");
+  const endInput = document.getElementById("loc-hist-end-date");
+  const empSelect = document.getElementById("loc-hist-emp-select");
+  const sendBtn = document.getElementById("btn-send-loc-hist-tg");
+
+  const startDate = startInput?.value;
+  const endDate = endInput?.value;
+  const userId = empSelect?.value ? parseInt(empSelect.value) : null;
+
+  if (!startDate || !endDate) {
+    showToast("Iltimos, boshlanish va tugash sanalarini belgilang!", "warning");
+    return;
+  }
+
+  const origBtnText = sendBtn ? sendBtn.innerHTML : "";
+  if (sendBtn) {
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = `<span>⏳</span> Tayyorlanmoqda...`;
+  }
+
+  try {
+    const res = await api("/api/location/history/export-docx", "POST", {
+      start_date: startDate,
+      end_date: endDate,
+      user_id: userId
+    });
+
+    if (res && res.success) {
+      showToast(res.message || "Geolokatsiya tarixi hisoboti Telegramingizga yuborildi!", "success");
+      closeLocationHistoryModal();
+    } else {
+      showToast(res?.detail || res?.message || "Yuborishda xatolik yuz berdi!", "danger");
+    }
+  } catch (err) {
+    showToast("Server bilan aloqa xatosi: " + err.message, "danger");
+  } finally {
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = origBtnText;
+    }
+  }
+}
+
+function downloadLocationHistoryDocx() {
+  const startInput = document.getElementById("loc-hist-start-date");
+  const endInput = document.getElementById("loc-hist-end-date");
+  const empSelect = document.getElementById("loc-hist-emp-select");
+
+  const startDate = startInput?.value;
+  const endDate = endInput?.value;
+  const userId = empSelect?.value ? parseInt(empSelect.value) : null;
+
+  if (!startDate || !endDate) {
+    showToast("Iltimos, boshlanish va tugash sanalarini belgilang!", "warning");
+    return;
+  }
+
+  const token = localStorage.getItem("access_token");
+  let url = `/api/location/history/download-docx?start_date=${startDate}&end_date=${endDate}`;
+  if (userId) url += `&user_id=${userId}`;
+
+  fetch(url, {
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Yuklab olishda xatolik yuz berdi!");
+      }
+      return response.blob();
+    })
+    .then((blob) => {
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `Geolokatsiya_tarixi_${startDate}_${endDate}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      showToast("Geolokatsiya tarixi (DOCX) kompyuteringizga yuklandi!", "success");
+      closeLocationHistoryModal();
+    })
+    .catch((err) => {
+      showToast(err.message, "danger");
+    });
 }
 
 async function handleSetEmployeeLocationSubmit(e) {
