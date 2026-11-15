@@ -2658,12 +2658,19 @@ function applyDateRangeFilterFromModal() {
 // Savdo Monitoringi & Diagrammalar (Analytics)
 // ==========================================
 
+let currentAnalyticsEmployeeId = "";
+
+function changeAnalyticsEmployee(empId) {
+  currentAnalyticsEmployeeId = empId || "";
+  loadAdminAnalytics(currentAnalyticsPeriod, currentAnalyticsEmployeeId);
+}
+
 function changeAnalyticsPeriod(period) {
   currentAnalyticsPeriod = period;
   document.querySelectorAll("#analytics-period-buttons .analytics-period-btn").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-period") === period);
   });
-  loadAdminAnalytics(period);
+  loadAdminAnalytics(period, currentAnalyticsEmployeeId);
 }
 
 function setChartMetric(metric) {
@@ -2676,14 +2683,33 @@ function setChartMetric(metric) {
   }
 }
 
-async function loadAdminAnalytics(period = currentAnalyticsPeriod) {
+async function loadAdminAnalytics(period = currentAnalyticsPeriod, userId = currentAnalyticsEmployeeId) {
   currentAnalyticsPeriod = period;
+  currentAnalyticsEmployeeId = userId || "";
   try {
-    const res = await api(`/api/admin/analytics/monitoring?period=${period}`);
+    let url = `/api/admin/analytics/monitoring?period=${period}`;
+    if (currentAnalyticsEmployeeId) {
+      url += `&user_id=${currentAnalyticsEmployeeId}`;
+    }
+    const res = await api(url);
     if (!res || !res.data) return;
 
     analyticsDataCache = res.data;
-    const { summary, timeline, operators } = res.data;
+    const { summary, timeline, operators, employees } = res.data;
+
+    // Xodimlar tanlash dropdownini to'ldirish
+    const empSelect = document.getElementById("analytics-employee-select");
+    if (empSelect && employees && employees.length > 0) {
+      const cur = currentAnalyticsEmployeeId || empSelect.value || "";
+      if (empSelect.options.length <= 1) {
+        empSelect.innerHTML = `<option value="">🌐 Barcha xodimlar</option>`;
+        employees.forEach(emp => {
+          const roleLabel = (emp.role === "CASHIER") ? "Kassir" : "Xodim";
+          empSelect.innerHTML += `<option value="${emp.id}">👤 ${emp.full_name} (${roleLabel})</option>`;
+        });
+      }
+      empSelect.value = cur;
+    }
 
     // 1. KPI kartochkalarini yangilash
     updateAnalyticsKpis(summary);

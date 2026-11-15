@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=876">
+  <link rel="stylesheet" href="/static/css/style.css?v=877">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -396,6 +396,16 @@
           </div>
 
           <div class="flex gap-2 items-center flex-wrap">
+            <!-- 👤 Xodimlar bo'yicha filter (User Request: Savdo monitoringi) -->
+            <div class="analytics-emp-filter-container inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                <span>👤</span> <span class="hidden sm:inline">Xodim:</span>
+              </span>
+              <select id="analytics-employee-select" class="form-input" onchange="changeAnalyticsEmployee(this.value)" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 170px; max-width: 230px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+                <option value="">🌐 Barcha xodimlar</option>
+              </select>
+            </div>
+
             <div class="analytics-period-selector inline-flex items-center p-1 rounded-lg gap-1" id="analytics-period-buttons">
               <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="today" onclick="changeAnalyticsPeriod('today')">Bugun</button>
               <button class="analytics-period-btn active px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="7d" onclick="changeAnalyticsPeriod('7d')">Oxirgi 7 kun</button>
@@ -2474,6 +2484,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=876"></script>
+  <script src="/static/js/app.js?v=877"></script>
 </body>
 </html>

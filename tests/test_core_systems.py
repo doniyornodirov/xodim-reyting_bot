@@ -130,7 +130,7 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(msg.answer.called, f"{name} uchun javob berilishi shart!")
 
     async def test_06_analytics_today_filter(self):
-        """6. Savdo monitoringi bo'yicha 'today' davr filtri ishlashi tekshiruvi"""
+        """6. Savdo monitoringi bo'yicha 'today' davr filtri va xodim bo'yicha filtr tekshiruvi"""
         from app.routes.admin import get_sales_monitoring
         admin_user = {"id": 1, "role": "ADMIN", "company_id": 1}
         res = await get_sales_monitoring(period="today", admin=admin_user)
@@ -138,6 +138,12 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res["data"]["summary"]["period"], "today")
         self.assertEqual(res["data"]["summary"]["days_count"], 1)
         self.assertEqual(len(res["data"]["timeline"]), 1)
+        self.assertIn("employees", res["data"])
+
+        # Xodim bo'yicha filtr tekshiruvi
+        res_emp = await get_sales_monitoring(period="today", user_id=4, admin=admin_user)
+        self.assertTrue(res_emp["success"])
+        self.assertEqual(res_emp["data"]["selected_user_id"], 4)
 
     async def test_07_cancel_daily_report_and_reopen(self):
         """7. Rahbar tomonidan hisobotni bekor qilish va qayta topshirish uchun ochish tekshiruvi"""

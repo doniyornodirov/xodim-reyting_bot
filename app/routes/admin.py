@@ -453,8 +453,12 @@ async def get_audit_logs(admin: dict = Depends(require_role(["ADMIN"]))):
         return {"success": True, "data": [dict(r) for r in rows]}
 
 @router.get("/analytics/monitoring")
-async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require_role(["ADMIN"]))):
-    """Faqat Rahbar uchun: Savdo monitoringi, vaqt bo'yicha dinamika (o'sish/pasayish)"""
+async def get_sales_monitoring(
+    period: str = "7d",
+    user_id: Optional[int] = None,
+    admin: dict = Depends(require_role(["ADMIN"]))
+):
+    """Faqat Rahbar uchun: Savdo monitoringi, vaqt bo'yicha dinamika (o'sish/pasayish) va xodim bo'yicha filtr"""
     now_tashkent = datetime.now(timezone.utc) + timedelta(hours=5)
     today = now_tashkent.date()
 
@@ -490,9 +494,13 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
         conn.row_factory = aiosqlite.Row
         comp_id = admin.get("company_id") or 1
 
+        # Xodim bo'yicha parametrli filtr
+        emp_filter = " AND employee_id = ?" if user_id else ""
+        emp_param = (user_id,) if user_id else ()
+
         # 1. Joriy davrdagi kunlik hisobotlar (tasdiqlangan)
         try:
-            cur = await conn.execute("""
+            cur = await conn.execute(f"""
                 SELECT report_date,
                        COALESCE(SUM(total_inflow), 0) as submitted_amount,
                        COALESCE(SUM(net_amount), 0) as net_amount,
@@ -503,63 +511,63 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
                        COALESCE(SUM(sim_mobiuz), 0) as sim_mobiuz,
                        COALESCE(SUM(sim_perfectum), 0) as sim_perfectum
                 FROM daily_reports
-                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
+                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ? {emp_filter}
                 GROUP BY report_date
-            """, (start_str, end_str, comp_id))
+            """, (start_str, end_str, comp_id) + emp_param)
             rep_rows = await cur.fetchall()
         except Exception as e:
             logger.warning(f"Savdo monitoringi sim ustunlari bilan so'rovda ogohlantirish: {e}")
-            cur = await conn.execute("""
+            cur = await conn.execute(f"""
                 SELECT report_date,
                        COALESCE(SUM(total_inflow), 0) as submitted_amount,
                        COALESCE(SUM(net_amount), 0) as net_amount,
                        COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold,
                        0 as sim_uzmobile, 0 as sim_beeline, 0 as sim_ucell, 0 as sim_mobiuz, 0 as sim_perfectum
                 FROM daily_reports
-                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
+                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ? {emp_filter}
                 GROUP BY report_date
-            """, (start_str, end_str, comp_id))
+            """, (start_str, end_str, comp_id) + emp_param)
             rep_rows = await cur.fetchall()
 
         reports_by_date = {r["report_date"]: dict(r) for r in rep_rows}
 
         # 2. Joriy davrdagi karta to'ldirishlar (tasdiqlangan)
-        cur = await conn.execute("""
+        cur = await conn.execute(f"""
             SELECT DATE(created_at, '+5 hours') as topup_date,
                    COALESCE(SUM(surcharge_amount), 0) as card_amount,
                    COUNT(*) as card_count
             FROM card_topups
-            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ? AND company_id = ?
+            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ? AND company_id = ? {emp_filter}
             GROUP BY DATE(created_at, '+5 hours')
-        """, (start_str, end_str, comp_id))
+        """, (start_str, end_str, comp_id) + emp_param)
         topup_rows = await cur.fetchall()
         topups_by_date = {r["topup_date"]: dict(r) for r in topup_rows}
 
         # 3. Oldingi davr yig'indilari (o'sish yoki pasayishni hisoblash uchun)
-        cur = await conn.execute("""
+        cur = await conn.execute(f"""
             SELECT COALESCE(SUM(total_inflow), 0) as prev_submitted,
                    COALESCE(SUM(net_amount), 0) as prev_net,
                    COALESCE(SUM(sim_cards_count), 0) as prev_sims
             FROM daily_reports
-            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
-        """, (prev_start_str, prev_end_str, comp_id))
+            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ? {emp_filter}
+        """, (prev_start_str, prev_end_str, comp_id) + emp_param)
         prev_rep = await cur.fetchone()
         prev_submitted = prev_rep["prev_submitted"] if prev_rep else 0
         prev_net = prev_rep["prev_net"] if prev_rep else 0
         prev_sims = prev_rep["prev_sims"] if prev_rep else 0
 
-        cur = await conn.execute("""
+        cur = await conn.execute(f"""
             SELECT COALESCE(SUM(surcharge_amount), 0) as prev_cards,
                    COUNT(*) as prev_card_count
             FROM card_topups
-            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ? AND company_id = ?
-        """, (prev_start_str, prev_end_str, comp_id))
+            WHERE status = 'APPROVED' AND DATE(created_at, '+5 hours') >= ? AND DATE(created_at, '+5 hours') <= ? AND company_id = ? {emp_filter}
+        """, (prev_start_str, prev_end_str, comp_id) + emp_param)
         prev_top = await cur.fetchone()
         prev_cards = prev_top["prev_cards"] if prev_top else 0
 
         # 4. Operatorlar bo'yicha taqsimot (Joriy davrdagi hisobotlar bo'yicha)
         try:
-            cur = await conn.execute("""
+            cur = await conn.execute(f"""
                 SELECT 
                     COALESCE(SUM(sim_uzmobile), 0) as uzmobile,
                     COALESCE(SUM(sim_beeline), 0) as beeline,
@@ -567,8 +575,8 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
                     COALESCE(SUM(sim_mobiuz), 0) as mobiuz,
                     COALESCE(SUM(sim_perfectum), 0) as perfectum
                 FROM daily_reports
-                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
-            """, (start_str, end_str, comp_id))
+                WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ? {emp_filter}
+            """, (start_str, end_str, comp_id) + emp_param)
             op_sum = await cur.fetchone()
 
             op_counts = {
@@ -586,18 +594,45 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
 
         # Agar daily_reports da barcha operatorlar 0 bo'lsa (eski hisobotlar), sim_cards jadvalidan olish:
         if sum(op_counts.values()) == 0:
-            cur = await conn.execute("""
+            cur = await conn.execute(f"""
                 SELECT operator_type, COUNT(*) as count
                 FROM sim_cards
-                WHERE status = 'SOLD' AND company_id = ?
+                WHERE status = 'SOLD' AND company_id = ? {emp_filter}
                 GROUP BY operator_type
                 ORDER BY count DESC
-            """, (comp_id,))
+            """, (comp_id,) + emp_param)
             op_rows = await cur.fetchall()
             for r in op_rows:
                 op_name = r["operator_type"]
                 if op_name in op_counts:
                     op_counts[op_name] = r["count"]
+
+        # 5. Tashkilotning faol xodimlari ro'yxati (Frontend filtri uchun)
+        cur = await conn.execute("""
+            SELECT id, full_name, role 
+            FROM users 
+            WHERE is_active = 1 AND role NOT IN ('ADMIN', 'DEVELOPER') AND company_id = ?
+            ORDER BY full_name ASC
+        """, (comp_id,))
+        emp_rows = await cur.fetchall()
+        employees = [{"id": r["id"], "full_name": r["full_name"], "role": r["role"]} for r in emp_rows]
+
+        operator_icons = {
+            "Uzmobile": "/static/icons/operators/uzmobile.png",
+            "Beeline": "/static/icons/operators/beeline.png",
+            "Ucell": "/static/icons/operators/ucell.png",
+            "Mobiuz": "/static/icons/operators/mobiuz.png?v=874",
+            "Perfectum": "/static/icons/operators/perfectum.png"
+        }
+
+        operators = [
+            {
+                "operator_type": name,
+                "count": op_counts[name],
+                "logo": operator_icons.get(name, "")
+            }
+            for name in ["Uzmobile", "Beeline", "Ucell", "Mobiuz", "Perfectum"]
+        ]
 
         operator_icons = {
             "Uzmobile": "/static/icons/operators/uzmobile.png",
@@ -701,7 +736,9 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
         "data": {
             "summary": summary,
             "timeline": timeline,
-            "operators": operators
+            "operators": operators,
+            "employees": employees,
+            "selected_user_id": user_id
         }
     }
 

@@ -5772,3 +5772,26 @@ body.theme-light .geo-stat-card:hover {
 body.theme-light .geo-stat-card.active {
   box-shadow: 0 0 0 2px #4f46e5, 0 4px 14px rgba(79, 70, 229, 0.2) !important;
 }
+
+/* ========================================================= */
+/* SAVDO MONITORINGI: XODIM FILTRI                           */
+/* ========================================================= */
+.analytics-emp-filter-container {
+  transition: all 0.2s ease;
+}
+
+.analytics-emp-filter-container:focus-within {
+  border-color: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+body.theme-light .analytics-emp-filter-container {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.theme-light #analytics-employee-select {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+}
