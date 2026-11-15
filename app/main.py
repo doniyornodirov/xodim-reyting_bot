@@ -8,8 +8,8 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
-from app.bot import start_bot_polling, bot
-from app.config import CORS_ORIGINS, DATABASE_URL
+from app.bot import start_bot_polling, bot, feed_bot_webhook_update
+from app.config import CORS_ORIGINS, DATABASE_URL, WEBHOOK_URL
 from app.pg_engine import init_postgres_pool, close_postgres_pool, is_postgres_active
 from app.routes import auth, cards, given, reports, cashier, admin, rating, sim_cards, settings, location, saas, leads
 
@@ -32,11 +32,21 @@ async def lifespan(app: FastAPI):
     logger.info("Ma'lumotlar bazasi initsializatsiya qilinmoqda...")
     await init_db()
     
-    # 2. Telegram Bot Pollingni fonda ishga tushirish
+    # 2. Telegram Bot (Webhook yoki Long Polling)
     bot_task = None
     if bot:
-        logger.info("Telegram Bot Polling boshlanmoqda...")
-        bot_task = asyncio.create_task(start_bot_polling())
+        if WEBHOOK_URL:
+            webhook_endpoint = f"{WEBHOOK_URL}/api/telegram/webhook"
+            logger.info(f"Telegram Bot Webhook rejimida ulanmoqda: {webhook_endpoint}")
+            try:
+                await bot.set_webhook(webhook_endpoint, drop_pending_updates=False)
+                logger.info("Telegram Bot Webhook muvaffaqiyatli ro'yxatdan o'tdi.")
+            except Exception as e:
+                logger.error(f"Webhook o'rnatishda xatolik: {e}. Polling rejimiga o'tilmoqda.")
+                bot_task = asyncio.create_task(start_bot_polling())
+        else:
+            logger.info("Telegram Bot Polling boshlanmoqda (WEBHOOK_URL berilmagan)...")
+            bot_task = asyncio.create_task(start_bot_polling())
     else:
         logger.warning("BOT_TOKEN ko'rsatilmagan, Telegram bot fonda ishlamaydi (Web CRM lokal rejimda ishlaydi).")
 
@@ -54,6 +64,11 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    if bot and WEBHOOK_URL:
+        try:
+            await bot.delete_webhook()
+        except Exception:
+            pass
     if bot_task:
         bot_task.cancel()
     if retention_task:
@@ -80,6 +95,15 @@ app.add_middleware(
 async def health_check():
     """Docker, Railway va monitoring uchun health check endpoint"""
     return {"status": "ok", "app": "XodimKPI CRM"}
+
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(update: dict):
+    """Telegram Webhook Update qabul qiluvchi endpoint (Yuqori yuklama uchun)"""
+    try:
+        await feed_bot_webhook_update(update)
+    except Exception as e:
+        logger.warning(f"Telegram webhook update qayta ishlashda ogohlantirish: {e}")
+    return {"ok": True}
 
 # API routerlarini ulash
 app.include_router(auth.router)

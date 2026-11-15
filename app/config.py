@@ -34,4 +34,5 @@ DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 cors_raw = os.getenv("CORS_ORIGINS", "*").strip()
 CORS_ORIGINS = [orig.strip() for orig in cors_raw.split(",") if orig.strip()] if cors_raw != "*" else ["*"]
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://crm.xodimkpi.uz").strip()
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "").strip().rstrip("/")
 

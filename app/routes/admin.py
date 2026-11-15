@@ -6,7 +6,7 @@ from app.config import DB_PATH
 from app.models import (
     CreateUserRequest, UpdatePasswordRequest, SetDebtRequest, AppointCashierRequest, ToggleShiftRequest
 )
-from app.dependencies import require_role, get_current_user
+from app.dependencies import require_role, get_current_user, invalidate_user_cache
 from app.security import hash_password
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"], dependencies=[Depends(require_role(["ADMIN"]))])
@@ -104,6 +104,7 @@ async def create_user(req: CreateUserRequest, admin: dict = Depends(require_role
             VALUES (?, 'USER', ?, 'CREATE', ?, ?)
         """, (comp_id, user_id, admin["full_name"], f"Yangi xodim qo'shildi: {req.full_name} (TG: {req.telegram_id})"))
         await conn.commit()
+        invalidate_user_cache(user_id)
 
     return {
         "success": True,
@@ -168,6 +169,7 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
             VALUES (?, 'USER', ?, 'STATUS_CHANGE', ?, ?)
         """, (comp_id, user_id, admin["full_name"], f"Xodim {user['full_name']} {status_name}"))
         await conn.commit()
+        invalidate_user_cache(user_id)
 
     return {"success": True, "message": f"Xodim {user['full_name']} muvaffaqiyatli {status_name}!"}
 
@@ -201,6 +203,7 @@ async def reset_user_device(
             VALUES (?, 'DEVICE', ?, 'RESET_DEVICE_PERM', ?, ?)
         """, (comp_id, user_id, admin["full_name"], details))
         await conn.commit()
+        invalidate_user_cache(user_id)
 
     return {
         "success": True,
@@ -246,6 +249,7 @@ async def toggle_employee_shift(
             VALUES (?, 'USER_SHIFT', ?, 'STATUS_CHANGE', ?, ?)
         """, (comp_id, user_id, admin["full_name"], f"Xodim '{user['full_name']}' ish statusi '{status_label}' ga o'zgartirildi"))
         await conn.commit()
+        invalidate_user_cache(user_id)
 
     return {
         "success": True,
@@ -282,6 +286,7 @@ async def assign_debt(user_id: int, req: SetDebtRequest, admin: dict = Depends(r
             VALUES (?, 'USER_DEBT', ?, 'ASSIGN', ?, ?)
         """, (comp_id, user_id, admin["full_name"], audit_details))
         await conn.commit()
+        invalidate_user_cache(user_id)
 
     return {
         "success": True,
@@ -311,6 +316,7 @@ async def update_password(user_id: int, req: UpdatePasswordRequest, admin: dict 
             VALUES (?, 'USER_PASSWORD', ?, 'UPDATE', ?, ?)
         """, (comp_id, user_id, admin["full_name"], f"{user['full_name']} paroli Rahbar tomonidan yangilandi"))
         await conn.commit()
+        invalidate_user_cache(user_id)
 
     return {"success": True, "message": f"{user['full_name']} paroli muvaffaqiyatli yangilandi!"}
 
@@ -375,6 +381,7 @@ async def appoint_cashier(req: AppointCashierRequest, admin: dict = Depends(requ
             VALUES (?, 'CASHIER', ?, 'APPOINT', ?, ?)
         """, (comp_id, req.user_id, admin["full_name"], f"{target_user['full_name']} yagona Kassir etib tayinlandi"))
         await conn.commit()
+        invalidate_user_cache()
 
         prev_names = [p["full_name"] for p in previous_cashiers if p["id"] != target_user["id"]]
         prev_info = f" (Oldingi kassir {', '.join(prev_names)} avtomatik oddiy xodimga aylandi)" if prev_names else ""
@@ -406,6 +413,7 @@ async def dismiss_cashier(req: AppointCashierRequest, admin: dict = Depends(requ
             VALUES (?, 'CASHIER', ?, 'DISMISS', ?, ?)
         """, (comp_id, req.user_id, admin["full_name"], f"{target_user['full_name']} kassirlikdan bo'shatilib oddiy xodim holatiga qaytarildi"))
         await conn.commit()
+        invalidate_user_cache(req.user_id)
 
     return {
         "success": True,
@@ -678,6 +686,7 @@ async def admin_clear_history(admin: dict = Depends(require_role(["ADMIN"]))):
         """, (comp_id, admin["full_name"]))
 
         await conn.commit()
+        invalidate_user_cache()
 
         return {
             "success": True,

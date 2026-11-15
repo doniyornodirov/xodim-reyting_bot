@@ -1841,11 +1841,23 @@ async def send_checkin_success_notification_to_employee(
         return False
 
 async def start_bot_polling():
-    """Botni fonda asinxron ishga tushirish"""
+    """Botni fonda asinxron ishga tushirish (Long Polling fallback)"""
     if bot and dp:
         try:
             logger.info("Telegram Bot Polling ishga tushmoqda...")
+            try:
+                # Agar oldin webhook yoqilgan bo'lsa, tozalab keyin polling boshlash (Conflict oldini olish)
+                await bot.delete_webhook(drop_pending_updates=False)
+            except Exception as w_err:
+                logger.warning(f"delete_webhook ogohlantirish: {w_err}")
             await dp.start_polling(bot, handle_signals=False)
         except Exception as e:
             logger.error(f"Bot pollingda to'xtadi: {e}")
+
+async def feed_bot_webhook_update(update_data: dict):
+    """Webhook orqali kelgan yangilanishni qayta ishlash"""
+    if bot and dp:
+        from aiogram.types import Update
+        update = Update.model_validate(update_data, context={"bot": bot})
+        await dp.feed_update(bot, update)
 

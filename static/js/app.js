@@ -1607,7 +1607,11 @@ function switchAdminTab(tabName) {
   else if (tabName === "users") loadAdminUsers();
   else if (tabName === "location") {
     loadAdminLocationTab();
-    adminLocationPollInterval = setInterval(() => loadAdminLocationTab(false), 15000);
+    adminLocationPollInterval = setInterval(() => {
+      // Smart Polling: agar brauzer fonda bo'lsa serverni behuda yuklamaymiz (advise.md standarti)
+      if (document.hidden) return;
+      loadAdminLocationTab(false);
+    }, 15000);
   }
   else if (tabName === "cashier") loadAdminCashierTab();
   else if (tabName === "sims") loadAdminSimsTab();
@@ -6840,6 +6844,16 @@ window.addEventListener("online", () => {
   if (myAssignedWorkplace) myAssignedWorkplace.is_signal_lost = false;
   if (!isLocationExemptUser()) {
     fetchMyWorkplaceStatus();
+  }
+});
+
+// Smart Polling: Sahifaga qaytganda ma'lumotlarni darhol yangilash
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    const locPane = document.getElementById("pane-admin-location");
+    if (locPane && locPane.style.display !== "none") {
+      loadAdminLocationTab(false);
+    }
   }
 });
 

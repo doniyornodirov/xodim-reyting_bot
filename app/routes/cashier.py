@@ -74,11 +74,17 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
         if await cursor.fetchone():
             raise HTTPException(status_code=400, detail=f"{emp['full_name']} bugungi kassa summasini allaqachon topshirgan!")
 
-        cursor = await conn.execute("""
-            INSERT INTO cashier_handovers (company_id, cashier_id, employee_id, handover_date, amount, amount_uzs, amount_usd, usd_rate)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (comp_id, user["id"], req.employee_id, today_str, total_amount, amount_uzs, amount_usd, usd_rate))
-        handover_id = cursor.lastrowid
+        try:
+            cursor = await conn.execute("""
+                INSERT INTO cashier_handovers (company_id, cashier_id, employee_id, handover_date, amount, amount_uzs, amount_usd, usd_rate)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (comp_id, user["id"], req.employee_id, today_str, total_amount, amount_uzs, amount_usd, usd_rate))
+            handover_id = cursor.lastrowid
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "unique" in err_msg or "duplicate key" in err_msg or "uq_cashier_handovers" in err_msg:
+                raise HTTPException(status_code=400, detail=f"{emp['full_name']} bugungi kassa summasini allaqachon topshirgan!")
+            raise e
 
         parts = []
         if amount_uzs > 0:

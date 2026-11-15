@@ -360,6 +360,17 @@ async def init_db():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_reports_date ON daily_reports(report_date);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_cashier_handovers_date ON cashier_handovers(handover_date);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_cashier_handovers_created ON cashier_handovers(created_at);")
+
+        # Race Condition va Double-submission himoyasi (Baza darajasidagi Unique indekslar)
+        try:
+            await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_cashier_handovers_emp_date ON cashier_handovers(company_id, employee_id, handover_date);")
+        except Exception as e:
+            logger.warning(f"uq_cashier_handovers_emp_date indeksi yaratishda ogohlantirish: {e}")
+
+        try:
+            await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_daily_reports_emp_date ON daily_reports(company_id, employee_id, report_date);")
+        except Exception as e:
+            logger.warning(f"uq_daily_reports_emp_date indeksi yaratishda ogohlantirish: {e}")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_cashier_history_created ON cashier_history(created_at);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_otp_codes_created ON otp_codes(created_at);")

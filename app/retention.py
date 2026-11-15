@@ -113,6 +113,14 @@ async def run_data_retention_cleanup(retention_days: int = RETENTION_DAYS) -> di
         deleted_counts["audit_logs"] = cur.rowcount
         total_deleted += cur.rowcount
 
+        # 10. location_events (90 kundan eski xodimlar geolokatsiyasi va harakat voqealari)
+        cur = await conn.execute(
+            "DELETE FROM location_events WHERE event_date < ? OR created_at < ? OR DATETIME(created_at, '+5 hours') < ?",
+            (cutoff_date, cutoff_utc_datetime, cutoff_datetime_tashkent)
+        )
+        deleted_counts["location_events"] = cur.rowcount
+        total_deleted += cur.rowcount
+
         # Audit logga tozalash natijasi yoziladi
         log_detail = (
             f"90 kunlik siyosat bo'yicha tarix ma'lumotlari tozalandi. "
@@ -158,7 +166,8 @@ async def get_retention_stats(retention_days: int = RETENTION_DAYS) -> dict:
         ("cashier_history", "created_at"),
         ("audit_logs", "created_at"),
         ("sim_cards", "distributed_at"),
-        ("sim_distributions", "created_at")
+        ("sim_distributions", "created_at"),
+        ("location_events", "event_date")
     ]
 
     async with aiosqlite.connect(DB_PATH) as conn:

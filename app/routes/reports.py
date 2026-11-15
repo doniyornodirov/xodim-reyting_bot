@@ -168,21 +168,27 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             report_id = existing["id"]
             action_desc = "Qayta topshirildi (Eskisi yangilandi va qiymatlar qayta hisoblandi)"
         else:
-            cursor = await conn.execute("""
-                INSERT INTO daily_reports (
-                    company_id, employee_id, report_date, paynet, card_amount, leviy,
-                    debt_snapshot, debt_paid, sim_cards_count, kunlik, terminal,
-                    given_amount, skidka, xarajat, total_inflow, total_outflow,
-                    net_amount, comment, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
-            """, (
-                comp_id, user["id"], today_str, req.paynet, card_amount, req.leviy,
-                debt_snapshot, req.debt_paid, req.sim_cards_count, req.kunlik, req.terminal,
-                given_amount, req.skidka, req.xarajat, total_inflow, total_outflow,
-                net_amount, comment
-            ))
-            report_id = cursor.lastrowid
-            action_desc = "Yangi topshirildi"
+            try:
+                cursor = await conn.execute("""
+                    INSERT INTO daily_reports (
+                        company_id, employee_id, report_date, paynet, card_amount, leviy,
+                        debt_snapshot, debt_paid, sim_cards_count, kunlik, terminal,
+                        given_amount, skidka, xarajat, total_inflow, total_outflow,
+                        net_amount, comment, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+                """, (
+                    comp_id, user["id"], today_str, req.paynet, card_amount, req.leviy,
+                    debt_snapshot, req.debt_paid, req.sim_cards_count, req.kunlik, req.terminal,
+                    given_amount, req.skidka, req.xarajat, total_inflow, total_outflow,
+                    net_amount, comment
+                ))
+                report_id = cursor.lastrowid
+                action_desc = "Yangi topshirildi"
+            except Exception as e:
+                err_msg = str(e).lower()
+                if "unique" in err_msg or "duplicate key" in err_msg or "uq_daily_reports" in err_msg:
+                    raise HTTPException(status_code=400, detail="Bugungi hisobotingiz allaqachon topshirilgan!")
+                raise e
 
         await conn.execute("""
             INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)

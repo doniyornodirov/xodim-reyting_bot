@@ -1,3 +1,5 @@
+import time
+from typing import NamedTuple
 from datetime import datetime, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -7,6 +9,20 @@ from app.database import get_db_connection
 from app.security import decode_access_token
 
 security = HTTPBearer(auto_error=False)
+
+class CachedUserData(NamedTuple):
+    user_dict: dict
+    expires_at: float
+
+_USER_CACHE: dict[int, CachedUserData] = {}
+CACHE_TTL_SECONDS = 30  # 30 soniyalik yuqori yuklamaga qarshi In-Memory kesh
+
+def invalidate_user_cache(user_id: int | None = None):
+    """Foydalanuvchi yoki butun auth keshini tozalash"""
+    if user_id is None:
+        _USER_CACHE.clear()
+    else:
+        _USER_CACHE.pop(user_id, None)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if not credentials:
@@ -24,6 +40,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         )
     
     user_id = int(payload["sub"])
+
+    # High-Load In-Memory Cache: 30 soniya ichida qayta kelgan so'rovlar bazani bezovta qilmaydi
+    now_mono = time.monotonic()
+    cached = _USER_CACHE.get(user_id)
+    if cached and now_mono < cached.expires_at:
+        return cached.user_dict.copy()
+
     async with get_db_connection() as conn:
         cursor = await conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         user = await cursor.fetchone()
@@ -98,6 +121,9 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     user_dict["company_telegram_group_id"] = company_group_id
     user_dict["company_subscription_expires_at"] = company_expires_at
     user_dict["is_super_admin"] = is_super_admin
+
+    # Keshga saqlash
+    _USER_CACHE[user_id] = CachedUserData(user_dict=user_dict, expires_at=now_mono + CACHE_TTL_SECONDS)
     return user_dict
 
 def require_role(allowed_roles: list[str]):
