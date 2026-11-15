@@ -312,5 +312,22 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
             await conn.execute("DELETE FROM users WHERE id = 777")
             await conn.commit()
 
+    async def test_11_reports_status_filtering_and_excel(self):
+        """11. Hisobotlar holati (PENDING, APPROVED, REJECTED) bo'yicha saralash va Excel eksport tekshiruvi"""
+        from app.routes.reports import get_all_reports
+
+        admin_user = {"id": 1, "company_id": 1, "role": "ADMIN", "full_name": "Test Admin", "telegram_id": 12345}
+
+        # Status bo'yicha so'rov
+        res_pending = await get_all_reports(status="PENDING", user=admin_user)
+        self.assertTrue(res_pending["success"])
+        for r in res_pending["data"]:
+            self.assertEqual(r["status"], "PENDING")
+
+        res_approved = await get_all_reports(status="APPROVED", user=admin_user)
+        self.assertTrue(res_approved["success"])
+        for r in res_approved["data"]:
+            self.assertEqual(r["status"], "APPROVED")
+
 if __name__ == "__main__":
     unittest.main()

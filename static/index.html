@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=877">
+  <link rel="stylesheet" href="/static/css/style.css?v=878">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -344,8 +344,21 @@
             <span class="card-desc">Xodimlar topshirgan kassa hisobotlari va to'liq tafsilotlar</span>
           </div>
 
-          <!-- Kalendar bo'yicha saralash filtri (Alohida ochiluvchi chiroyli Date Range Picker) -->
+          <!-- Kalendar va Holat bo'yicha saralash filtri -->
           <div class="filter-actions-bar flex items-center gap-2 flex-wrap">
+            <!-- 🔍 Holat filtri (Kutilmoqda / Rad etildi / Tasdiqlandi) -->
+            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                <span>🔍</span> Holat:
+              </span>
+              <select id="admin-reports-status-filter" class="form-input" onchange="applyAdminReportsFilter()" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 165px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+                <option value="all">🌐 Barcha hisobotlar</option>
+                <option value="PENDING">⏳ Kutilmoqda</option>
+                <option value="APPROVED">✅ Tasdiqlandi</option>
+                <option value="REJECTED">❌ Rad etildi</option>
+              </select>
+            </div>
+
             <button type="button" class="date-range-trigger-btn" id="admin-reports-calendar-btn" onclick="openDateRangeModal()">
               <span class="cal-icon">📅</span>
               <span id="admin-reports-date-display">Sanani tanlash</span>
@@ -539,7 +552,28 @@
     <!-- Rahbar 2: Olingan summalarni tasdiqlash -->
     <section class="tab-pane admin-pane" id="pane-admin-givens" style="display: none;">
       <div class="card-box">
-        <h2 class="card-title">💵 Olingan summalar</h2>
+        <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
+          <div>
+            <h2 class="card-title mb-0.5">💵 Olingan summalar</h2>
+            <span class="card-desc text-xs block mb-0">Xodimlar olgan pul mablag'lari va tasdiqlash</span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                <span>🔍</span> Holat:
+              </span>
+              <select id="admin-givens-status-filter" class="form-input" onchange="applyAdminGivensFilter()" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 160px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+                <option value="all">🌐 Barchasi</option>
+                <option value="PENDING">⏳ Kutilmoqda</option>
+                <option value="APPROVED">✅ Tasdiqlandi</option>
+                <option value="REJECTED">❌ Rad etildi</option>
+              </select>
+            </div>
+            <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminGivens()" title="Yangilash">
+              <span>🔄</span>
+            </button>
+          </div>
+        </div>
         <div class="table-container table-scroll-5">
           <table class="custom-table">
             <thead>
@@ -590,9 +624,25 @@
             <h2 class="card-title mb-0.5">⚖️ Kassa taqqoslash</h2>
             <span class="card-desc text-xs block mb-0">Xodim topshirgan sof kassa va kassir qabul qilgan mablag'lar solishtirmasi</span>
           </div>
-          <button type="button" class="btn-success-sm" onclick="exportComparisonToExcel()" title="Kassa taqqoslash jadvalini Excelga yuklash">
-            <span>📥</span> Excel (.xlsx)
-          </button>
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- ⚖️ Tafovut filtri (Tafovut bor / Tafovut yo'q) -->
+            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+                <span>⚖️</span> Filtr:
+              </span>
+              <select id="admin-comparison-filter" class="form-input" onchange="applyAdminComparisonFilter()" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 175px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+                <option value="all">🌐 Barchasi</option>
+                <option value="with_diff">⚠️ Tafovut bor</option>
+                <option value="no_diff">✅ Tafovut yo'q (Mos)</option>
+              </select>
+            </div>
+            <button type="button" class="btn-success-sm" onclick="exportComparisonToExcel()" title="Kassa taqqoslash jadvalini Excelga yuklash">
+              <span>📥</span> Excel (.xlsx)
+            </button>
+            <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminComparison()" title="Yangilash">
+              <span>🔄</span>
+            </button>
+          </div>
         </div>
         <div class="table-container">
           <table class="custom-table">
@@ -2484,6 +2534,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=877"></script>
+  <script src="/static/js/app.js?v=878"></script>
 </body>
 </html>

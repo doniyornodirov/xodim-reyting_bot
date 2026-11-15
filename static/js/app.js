@@ -3207,85 +3207,130 @@ async function loadAdminReports() {
     }
 
     const res = await api(`/api/reports/all${query}`);
-    const tbody = document.getElementById("admin-reports-tbody");
-    tbody.innerHTML = "";
+    adminReportsCache = res.data || [];
+    renderAdminReportsTable();
+  } catch (e) {
+    console.warn("loadAdminReports error:", e);
+  }
+}
 
-    if (!res.data || res.data.length === 0) {
-      const emptyMsg = (startDate || endDate)
-        ? `📅 <b>${label || 'Tanlangan sana'}</b> oralig'ida topshirilgan hisobotlar topilmadi`
-        : "Hozircha hisobotlar mavjud emas";
-      tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">${emptyMsg}</td></tr>`;
-      adminReportsCache = [];
-      return;
+function applyAdminReportsFilter() {
+  renderAdminReportsTable();
+}
+
+function renderAdminReportsTable() {
+  const tbody = document.getElementById("admin-reports-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const startDate = adminReportDateFilter?.startDate;
+  const endDate = adminReportDateFilter?.endDate;
+  const label = adminReportDateFilter?.label;
+
+  const total = (adminReportsCache || []).length;
+  const pending = (adminReportsCache || []).filter(r => r.status === "PENDING").length;
+  const approved = (adminReportsCache || []).filter(r => r.status === "APPROVED").length;
+  const rejected = (adminReportsCache || []).filter(r => r.status === "REJECTED" || r.status === "CANCELLED").length;
+
+  // Holat filtri optsiyalariga sanog'ini yangilash
+  const sel = document.getElementById("admin-reports-status-filter");
+  if (sel && sel.options && sel.options.length >= 4) {
+    const curVal = sel.value;
+    sel.options[0].textContent = `🌐 Barcha hisobotlar (${total})`;
+    sel.options[1].textContent = `⏳ Kutilmoqda (${pending})`;
+    sel.options[2].textContent = `✅ Tasdiqlandi (${approved})`;
+    sel.options[3].textContent = `❌ Rad etildi (${rejected})`;
+    sel.value = curVal;
+  }
+
+  if (total === 0) {
+    const emptyMsg = (startDate || endDate)
+      ? `📅 <b>${label || 'Tanlangan sana'}</b> oralig'ida topshirilgan hisobotlar topilmadi`
+      : "Hozircha hisobotlar mavjud emas";
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">${emptyMsg}</td></tr>`;
+    return;
+  }
+
+  const filterStatus = sel ? sel.value : "all";
+  let list = adminReportsCache;
+  if (filterStatus === "PENDING") {
+    list = list.filter(r => r.status === "PENDING");
+  } else if (filterStatus === "APPROVED") {
+    list = list.filter(r => r.status === "APPROVED");
+  } else if (filterStatus === "REJECTED") {
+    list = list.filter(r => r.status === "REJECTED" || r.status === "CANCELLED");
+  }
+
+  if (list.length === 0) {
+    const statusText = filterStatus === "PENDING" ? "kutilayotgan" : (filterStatus === "APPROVED" ? "tasdiqlangan" : "rad etilgan");
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">🔍 Tanlangan <b>${statusText}</b> statusida hisobotlar topilmadi</td></tr>`;
+    return;
+  }
+
+  list.forEach(r => {
+    let actions = "";
+    if (r.status === "PENDING") {
+      actions = `
+        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+          <button class="btn-success" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'APPROVED')">✅ Tasdiqlash</button>
+          <button class="btn-danger" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'REJECTED')">❌ Rad etish</button>
+        </div>
+      `;
+    } else if (r.status === "APPROVED") {
+      actions = `
+        <div style="display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start;">
+          ${formatStatusBadge(r.status)}
+          <button class="btn-logout" style="padding: 0.22rem 0.55rem; font-size: 0.72rem; border-color: rgba(239, 68, 68, 0.4); color: #f87171; display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 6px; cursor: pointer;" onclick="cancelAndReopenReport(${r.id}, '${escapeHtml(r.employee_name)}', '${r.report_date}')" title="Ushbu hisobotni bekor qilish va xodimga boshqatdan topshirishga ruxsat berish">
+            <span>🔄</span> Bekor qilish
+          </button>
+        </div>
+      `;
+    } else if (r.status === "CANCELLED") {
+      actions = `
+        <div style="display: flex; flex-direction: column; gap: 0.2rem; align-items: flex-start;">
+          ${formatStatusBadge("CANCELLED")}
+          <span style="font-size: 0.68rem; color: #fbbf24;">(Qayta topshirish ochiq)</span>
+        </div>
+      `;
+    } else {
+      actions = formatStatusBadge(r.status);
     }
 
-    adminReportsCache = res.data;
+    const effectiveDebt = Math.max(0, (r.debt_snapshot || 0) - (r.debt_paid || 0));
 
-    res.data.forEach(r => {
-      let actions = "";
-      if (r.status === "PENDING") {
-        actions = `
-          <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-            <button class="btn-success" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'APPROVED')">✅ Tasdiqlash</button>
-            <button class="btn-danger" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'REJECTED')">❌ Rad etish</button>
+    tbody.innerHTML += `
+      <tr>
+        <td><b>${formatDateOnly(r.report_date)}</b></td>
+        <td><b>${r.employee_name}</b></td>
+        <td>
+          <div class="val-inflow">${formatNumberSpaces(r.total_inflow)} so'm</div>
+          <div class="val-sub">
+            Paynet: ${formatNumberSpaces(r.paynet)} | Karta: ${formatNumberSpaces(r.card_amount)} | Lev: ${formatNumberSpaces(r.leviy)}${r.debt_paid > 0 ? ` | Qarz to'lov: ${formatNumberSpaces(r.debt_paid)}` : ''}
           </div>
-        `;
-      } else if (r.status === "APPROVED") {
-        actions = `
-          <div style="display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start;">
-            ${formatStatusBadge(r.status)}
-            <button class="btn-logout" style="padding: 0.22rem 0.55rem; font-size: 0.72rem; border-color: rgba(239, 68, 68, 0.4); color: #f87171; display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 6px; cursor: pointer;" onclick="cancelAndReopenReport(${r.id}, '${escapeHtml(r.employee_name)}', '${r.report_date}')" title="Ushbu hisobotni bekor qilish va xodimga boshqatdan topshirishga ruxsat berish">
-              <span>🔄</span> Bekor qilish
-            </button>
+        </td>
+        <td>
+          <div class="val-outflow">${formatNumberSpaces(r.total_outflow)} so'm</div>
+          <div class="val-sub">
+            Kunlik: ${formatNumberSpaces(r.kunlik)} | Term: ${formatNumberSpaces(r.terminal)} | Berildi: ${formatNumberSpaces(r.given_amount)}
           </div>
-        `;
-      } else if (r.status === "CANCELLED") {
-        actions = `
-          <div style="display: flex; flex-direction: column; gap: 0.2rem; align-items: flex-start;">
-            ${formatStatusBadge("CANCELLED")}
-            <span style="font-size: 0.68rem; color: #fbbf24;">(Qayta topshirish ochiq)</span>
-          </div>
-        `;
-      } else {
-        actions = formatStatusBadge(r.status);
-      }
-
-      const effectiveDebt = Math.max(0, (r.debt_snapshot || 0) - (r.debt_paid || 0));
-
-      tbody.innerHTML += `
-        <tr>
-          <td><b>${formatDateOnly(r.report_date)}</b></td>
-          <td><b>${r.employee_name}</b></td>
-          <td>
-            <div class="val-inflow">${formatNumberSpaces(r.total_inflow)} so'm</div>
-            <div class="val-sub">
-              Paynet: ${formatNumberSpaces(r.paynet)} | Karta: ${formatNumberSpaces(r.card_amount)} | Lev: ${formatNumberSpaces(r.leviy)}${r.debt_paid > 0 ? ` | Qarz to'lov: ${formatNumberSpaces(r.debt_paid)}` : ''}
-            </div>
-          </td>
-          <td>
-            <div class="val-outflow">${formatNumberSpaces(r.total_outflow)} so'm</div>
-            <div class="val-sub">
-              Kunlik: ${formatNumberSpaces(r.kunlik)} | Term: ${formatNumberSpaces(r.terminal)} | Berildi: ${formatNumberSpaces(r.given_amount)}
-            </div>
-          </td>
-          <td>
-            <b class="val-net">${formatNumberSpaces(r.net_amount)} so'm</b>
-          </td>
-          <td>
-            <span class="val-debt-paid">${formatNumberSpaces(r.debt_paid)} so'm</span>
-            ${effectiveDebt > 0 ? `<div class="val-debt-remaining">(Qoldiq: ${formatNumberSpaces(effectiveDebt)})</div>` : ''}
-          </td>
-          <td><span class="badge badge-sim">${r.sim_cards_count} dona</span></td>
-          <td>
-            <button class="btn-details" onclick="openReportDetailsModal(${r.id})">
-              👁️ Batafsil
-            </button>
-          </td>
-          <td>${actions}</td>
-        </tr>
-      `;
-    });
-  } catch (e) {}
+        </td>
+        <td>
+          <b class="val-net">${formatNumberSpaces(r.net_amount)} so'm</b>
+        </td>
+        <td>
+          <span class="val-debt-paid">${formatNumberSpaces(r.debt_paid)} so'm</span>
+          ${effectiveDebt > 0 ? `<div class="val-debt-remaining">(Qoldiq: ${formatNumberSpaces(effectiveDebt)})</div>` : ''}
+        </td>
+        <td><span class="badge badge-sim">${r.sim_cards_count} dona</span></td>
+        <td>
+          <button class="btn-details" onclick="openReportDetailsModal(${r.id})">
+            👁️ Batafsil
+          </button>
+        </td>
+        <td>${actions}</td>
+      </tr>
+    `;
+  });
 }
 
 async function updateReportStatus(id, status) {
@@ -3439,35 +3484,83 @@ async function updateReportStatusFromModal(id, status) {
 }
 
 // Admin 2: Olingan summalarni tasdiqlash
+let adminGivensCache = [];
+
 async function loadAdminGivens() {
   try {
     const res = await api("/api/given/all");
-    const tbody = document.getElementById("admin-givens-tbody");
-    tbody.innerHTML = "";
+    adminGivensCache = res.data || [];
+    renderAdminGivensTable();
+  } catch (e) {
+    console.warn("loadAdminGivens error:", e);
+  }
+}
 
-    if (!res.data || res.data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-sub);">Hozircha yozuvlar yo'q</td></tr>`;
-      return;
-    }
+function applyAdminGivensFilter() {
+  renderAdminGivensTable();
+}
 
-    res.data.forEach(g => {
-      const actions = g.status === "PENDING" ? `
-        <button class="btn-success" onclick="updateGivenStatus(${g.id}, 'APPROVED')">✅ Tasdiqlash</button>
-        <button class="btn-danger" onclick="updateGivenStatus(${g.id}, 'REJECTED')">❌ Rad etish</button>
-      ` : formatStatusBadge(g.status);
+function renderAdminGivensTable() {
+  const tbody = document.getElementById("admin-givens-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
 
-      tbody.innerHTML += `
-        <tr>
-          <td>#${g.id}</td>
-          <td><b>${g.employee_name}</b></td>
-          <td><b>${formatNumberSpaces(g.amount)} so'm</b></td>
-          <td>${g.comment}</td>
-          <td style="font-size: 0.8rem; color: var(--text-sub);">${formatTashkentDateTime(g.created_at)}</td>
-          <td>${actions}</td>
-        </tr>
-      `;
-    });
-  } catch (e) {}
+  const total = (adminGivensCache || []).length;
+  const pending = (adminGivensCache || []).filter(g => g.status === "PENDING").length;
+  const approved = (adminGivensCache || []).filter(g => g.status === "APPROVED").length;
+  const rejected = (adminGivensCache || []).filter(g => g.status === "REJECTED").length;
+
+  // Holat filtri dropdown optsiyalariga sanog'ini yangilash
+  const sel = document.getElementById("admin-givens-status-filter");
+  if (sel && sel.options && sel.options.length >= 4) {
+    const curVal = sel.value;
+    sel.options[0].textContent = `🌐 Barchasi (${total})`;
+    sel.options[1].textContent = `⏳ Kutilmoqda (${pending})`;
+    sel.options[2].textContent = `✅ Tasdiqlandi (${approved})`;
+    sel.options[3].textContent = `❌ Rad etildi (${rejected})`;
+    sel.value = curVal;
+  }
+
+  if (total === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">Hozircha olingan summalar mavjud emas</td></tr>`;
+    return;
+  }
+
+  const filterStatus = sel ? sel.value : "all";
+  let list = adminGivensCache;
+  if (filterStatus === "PENDING") {
+    list = list.filter(g => g.status === "PENDING");
+  } else if (filterStatus === "APPROVED") {
+    list = list.filter(g => g.status === "APPROVED");
+  } else if (filterStatus === "REJECTED") {
+    list = list.filter(g => g.status === "REJECTED");
+  }
+
+  if (list.length === 0) {
+    const statusText = filterStatus === "PENDING" ? "kutilayotgan" : (filterStatus === "APPROVED" ? "tasdiqlangan" : "rad etilgan");
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">🔍 Tanlangan <b>${statusText}</b> statusida yozuvlar topilmadi</td></tr>`;
+    return;
+  }
+
+  list.forEach(g => {
+    const actions = g.status === "PENDING" ? `
+      <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+        <button class="btn-success" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateGivenStatus(${g.id}, 'APPROVED')">✅ Tasdiqlash</button>
+        <button class="btn-danger" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateGivenStatus(${g.id}, 'REJECTED')">❌ Rad etish</button>
+      </div>
+    ` : formatStatusBadge(g.status);
+
+    tbody.innerHTML += `
+      <tr>
+        <td>#${g.id}</td>
+        <td><b>${g.employee_name}</b></td>
+        <td><b>${formatNumberSpaces(g.amount)} so'm</b></td>
+        <td>${g.comment || '-'}</td>
+        <td style="font-size: 0.8rem; color: var(--text-sub);">${formatTashkentDateTime(g.created_at)}</td>
+        <td>${actions}</td>
+      </tr>
+    `;
+  });
 }
 
 async function updateGivenStatus(id, status) {
@@ -3527,39 +3620,78 @@ async function loadAdminComparison() {
   try {
     const res = await api("/api/cashier/comparison");
     adminComparisonCache = res.data || [];
-    const tbody = document.getElementById("admin-comparison-tbody");
-    tbody.innerHTML = "";
+    renderAdminComparisonTable();
+  } catch (e) {
+    console.warn("loadAdminComparison error:", e);
+  }
+}
 
-    if (!res.data || res.data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">Taqqoslash uchun ma'lumotlar yo'q</td></tr>`;
-      return;
-    }
+function applyAdminComparisonFilter() {
+  renderAdminComparisonTable();
+}
 
-    res.data.forEach(row => {
-      const diffBadge = row.difference === 0 && row.report_status !== "TOPSHIRILMAGAN"
-        ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.35); font-weight: 700;">MOS (0 so'm)</span>`
-        : `<span class="badge badge-admin" style="font-weight: 800;">FARQ: ${formatNumberSpaces(row.difference)} so'm</span>`;
+function renderAdminComparisonTable() {
+  const tbody = document.getElementById("admin-comparison-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
 
-      const uzs = row.cashier_amount_uzs || 0;
-      const usd = row.cashier_amount_usd || 0;
-      const cashierDisplay = `
-        <div class="val-net">${formatNumberSpaces(row.cashier_amount)} so'm</div>
-        <div class="val-sub">
-          So'mda: ${formatNumberSpaces(uzs)} | Dollarda: ${formatNumberSpaces(usd)} $
-        </div>
-      `;
+  const total = (adminComparisonCache || []).length;
+  const withDiff = (adminComparisonCache || []).filter(row => (row.difference !== 0 || row.report_status === "TOPSHIRILMAGAN")).length;
+  const noDiff = (adminComparisonCache || []).filter(row => (row.difference === 0 && row.report_status !== "TOPSHIRILMAGAN")).length;
 
-      tbody.innerHTML += `
-        <tr>
-          <td><b>${row.employee_name}</b></td>
-          <td><b>${formatNumberSpaces(row.report_amount)} so'm</b> (${formatStatusBadge(row.report_status)})</td>
-          <td>${cashierDisplay}</td>
-          <td>${diffBadge}</td>
-          <td><b>${row.cashier_names}</b></td>
-        </tr>
-      `;
-    });
-  } catch (e) {}
+  // Filtr dropdown optsiyalariga sanog'ini yangilash
+  const sel = document.getElementById("admin-comparison-filter");
+  if (sel && sel.options && sel.options.length >= 3) {
+    const curVal = sel.value;
+    sel.options[0].textContent = `🌐 Barchasi (${total})`;
+    sel.options[1].textContent = `⚠️ Tafovut bor (${withDiff})`;
+    sel.options[2].textContent = `✅ Tafovut yo'q (${noDiff})`;
+    sel.value = curVal;
+  }
+
+  if (total === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">Taqqoslash uchun ma'lumotlar yo'q</td></tr>`;
+    return;
+  }
+
+  const filterMode = sel ? sel.value : "all";
+  let list = adminComparisonCache;
+  if (filterMode === "with_diff") {
+    list = list.filter(row => (row.difference !== 0 || row.report_status === "TOPSHIRILMAGAN"));
+  } else if (filterMode === "no_diff") {
+    list = list.filter(row => (row.difference === 0 && row.report_status !== "TOPSHIRILMAGAN"));
+  }
+
+  if (list.length === 0) {
+    const modeText = filterMode === "with_diff" ? "tafovut (farq) mavjud bo'lgan" : "tafovutsiz (to'liq mos)";
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">🔍 Tanlangan bo'yicha (${modeText}) yozuvlar topilmadi</td></tr>`;
+    return;
+  }
+
+  list.forEach(row => {
+    const diffBadge = row.difference === 0 && row.report_status !== "TOPSHIRILMAGAN"
+      ? `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.35); font-weight: 700;">MOS (0 so'm)</span>`
+      : `<span class="badge badge-admin" style="font-weight: 800;">FARQ: ${formatNumberSpaces(row.difference)} so'm</span>`;
+
+    const uzs = row.cashier_amount_uzs || 0;
+    const usd = row.cashier_amount_usd || 0;
+    const cashierDisplay = `
+      <div class="val-net">${formatNumberSpaces(row.cashier_amount)} so'm</div>
+      <div class="val-sub">
+        So'mda: ${formatNumberSpaces(uzs)} | Dollarda: ${formatNumberSpaces(usd)} $
+      </div>
+    `;
+
+    tbody.innerHTML += `
+      <tr>
+        <td><b>${row.employee_name}</b></td>
+        <td><b>${formatNumberSpaces(row.report_amount)} so'm</b> (${formatStatusBadge(row.report_status)})</td>
+        <td>${cashierDisplay}</td>
+        <td>${diffBadge}</td>
+        <td><b>${row.cashier_names}</b></td>
+      </tr>
+    `;
+  });
 }
 
 // Admin 5: Xodimlar va Qarz boshqaruvi
@@ -6477,6 +6609,10 @@ async function exportAdminReportsToExcel() {
     const params = [];
     if (s) params.push(`start_date=${encodeURIComponent(s)}`);
     if (e && e !== s) params.push(`end_date=${encodeURIComponent(e)}`);
+    const statusVal = document.getElementById("admin-reports-status-filter")?.value;
+    if (statusVal && statusVal !== "all") {
+      params.push(`status=${encodeURIComponent(statusVal)}`);
+    }
     if (params.length > 0) url += `?${params.join("&")}`;
 
     const resp = await fetch(url, {
@@ -6519,12 +6655,22 @@ async function exportAdminReportsToExcel() {
     showToast("Excel kutubxonasi yuklanmadi. Sahifani qayta yangilang!", "error");
     return;
   }
-  if (!adminReportsCache || adminReportsCache.length === 0) {
+  let dataList = adminReportsCache || [];
+  const repFilter = document.getElementById("admin-reports-status-filter")?.value || "all";
+  if (repFilter === "PENDING") {
+    dataList = dataList.filter(r => r.status === "PENDING");
+  } else if (repFilter === "APPROVED") {
+    dataList = dataList.filter(r => r.status === "APPROVED");
+  } else if (repFilter === "REJECTED") {
+    dataList = dataList.filter(r => r.status === "REJECTED" || r.status === "CANCELLED");
+  }
+
+  if (dataList.length === 0) {
     showToast("Eksport qilish uchun hisobotlar topilmadi!", "warning");
     return;
   }
 
-  const exportData = adminReportsCache.map((r, idx) => ({
+  const exportData = dataList.map((r, idx) => ({
     "№": idx + 1,
     "Sana": formatDateOnly(r.report_date),
     "Xodim F.I.SH": r.employee_name || "-",
@@ -6573,7 +6719,20 @@ function exportComparisonToExcel() {
     return;
   }
 
-  const exportData = adminComparisonCache.map((row, idx) => ({
+  let dataList = adminComparisonCache;
+  const compFilter = document.getElementById("admin-comparison-filter")?.value || "all";
+  if (compFilter === "with_diff") {
+    dataList = dataList.filter(row => (row.difference !== 0 || row.report_status === "TOPSHIRILMAGAN"));
+  } else if (compFilter === "no_diff") {
+    dataList = dataList.filter(row => (row.difference === 0 && row.report_status !== "TOPSHIRILMAGAN"));
+  }
+
+  if (dataList.length === 0) {
+    showToast("Tanlangan filtr bo'yicha eksport qilish uchun ma'lumotlar topilmadi!", "warning");
+    return;
+  }
+
+  const exportData = dataList.map((row, idx) => ({
     "№": idx + 1,
     "Xodim F.I.SH": row.employee_name || "-",
     "Xodim hisoboti (so'm)": row.report_amount || 0,

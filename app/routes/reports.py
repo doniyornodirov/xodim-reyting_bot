@@ -305,22 +305,30 @@ async def get_all_reports(
             WHERE r.company_id = ?
         """
         params = [comp_id]
-        if start_date and start_date.strip() and end_date and end_date.strip():
-            sql += " AND r.report_date BETWEEN ? AND ?"
-            params.extend([start_date.strip(), end_date.strip()])
-        elif start_date and start_date.strip():
-            sql += " AND r.report_date >= ?"
-            params.append(start_date.strip())
-        elif end_date and end_date.strip():
-            sql += " AND r.report_date <= ?"
-            params.append(end_date.strip())
-        elif date and date.strip():
-            sql += " AND r.report_date = ?"
-            params.append(date.strip())
+        s_date = start_date.strip() if isinstance(start_date, str) and start_date.strip() else None
+        e_date = end_date.strip() if isinstance(end_date, str) and end_date.strip() else None
+        d_date = date.strip() if isinstance(date, str) and date.strip() else None
+        st_val = status.strip() if isinstance(status, str) and status.strip() else None
 
-        if status and status.strip():
-            sql += " AND r.status = ?"
-            params.append(status.strip())
+        if s_date and e_date:
+            sql += " AND r.report_date BETWEEN ? AND ?"
+            params.extend([s_date, e_date])
+        elif s_date:
+            sql += " AND r.report_date >= ?"
+            params.append(s_date)
+        elif e_date:
+            sql += " AND r.report_date <= ?"
+            params.append(e_date)
+        elif d_date:
+            sql += " AND r.report_date = ?"
+            params.append(d_date)
+
+        if st_val and st_val != "all":
+            if st_val == "REJECTED":
+                sql += " AND (r.status = 'REJECTED' OR r.status = 'CANCELLED')"
+            else:
+                sql += " AND r.status = ?"
+                params.append(st_val)
 
         sql += " ORDER BY r.report_date DESC, r.id DESC LIMIT 500"
 
@@ -565,6 +573,7 @@ async def export_reports_excel_endpoint(
     end_date: Optional[str] = None,
     target_date: Optional[str] = None,
     date: Optional[str] = None,
+    status: Optional[str] = None,
     send_telegram: bool = True,
     user: dict = Depends(require_role(["ADMIN"]))
 ):
@@ -632,6 +641,14 @@ async def export_reports_excel_endpoint(
 
         reports_rows = await cur_r.fetchall()
         reports_list = [dict(r) for r in reports_rows]
+
+        # Status bo'yicha saralash filtri (agar tanlangan bo'lsa)
+        if status and status.strip() and status.strip() != "all":
+            st = status.strip()
+            if st == "REJECTED":
+                reports_list = [r for r in reports_list if r.get("status") in ("REJECTED", "CANCELLED")]
+            else:
+                reports_list = [r for r in reports_list if r.get("status") == st]
 
     # Excel baytlarini generatsiya qilish (Event Loop ni bloklamaslik uchun alohida thread pool da bajariladi)
     excel_bytes = await asyncio.to_thread(generate_reports_excel, comp_name, reports_list, date_display)
