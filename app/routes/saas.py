@@ -355,8 +355,16 @@ async def edit_company_details(
         comp_params = []
 
         if req.name and req.name.strip():
+            new_name = req.name.strip()
             comp_updates.append("name = ?")
-            comp_params.append(req.name.strip())
+            comp_params.append(new_name)
+            # Slug yangilash va unikal bo'lishini ta'minlash
+            new_slug = generate_slug(new_name)
+            cur_slug = await conn.execute("SELECT id FROM companies WHERE slug = ? AND id != ?", (new_slug, company_id))
+            if await cur_slug.fetchone():
+                new_slug = f"{new_slug}-{company_id}"
+            comp_updates.append("slug = ?")
+            comp_params.append(new_slug)
 
         if req.telegram_group_id is not None:
             clean_grp = req.telegram_group_id.strip() if req.telegram_group_id.strip() else None
@@ -399,8 +407,8 @@ async def edit_company_details(
         owner_user = await cur_user.fetchone()
         if not owner_user and old_owner_tg:
             cur_user = await conn.execute(
-                "SELECT * FROM users WHERE telegram_id = ? AND company_id = ? LIMIT 1",
-                (old_owner_tg, company_id)
+                "SELECT * FROM users WHERE telegram_id = ? LIMIT 1",
+                (old_owner_tg,)
             )
             owner_user = await cur_user.fetchone()
 
@@ -429,7 +437,10 @@ async def edit_company_details(
 
         # Rahbar ma'lumotlarini yangilash
         if owner_user:
-            user_updates = ["role = 'ADMIN'"]
+            user_updates = []
+            user_params = []
+            if owner_user["role"] != "DEVELOPER":
+                user_updates.append("role = 'ADMIN'")
             user_params = []
 
             if req.owner_telegram_id is not None:

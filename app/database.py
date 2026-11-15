@@ -418,7 +418,8 @@ async def init_db():
         except Exception:
             pass
         try:
-            await conn.execute("UPDATE companies SET max_employees = 9999 WHERE id = 1;")
+            # Faqat boshlang'ich bo'sh yoki default 20 bo'lganda 9999 qilib belgilash (Dasturchi Admin o'zgartirgan bo'lsa qayta yozilmaydi)
+            await conn.execute("UPDATE companies SET max_employees = 9999 WHERE id = 1 AND (max_employees IS NULL OR max_employees = 20);")
         except Exception:
             pass
 

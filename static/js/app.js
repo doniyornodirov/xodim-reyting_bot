@@ -4997,19 +4997,28 @@ function renderSaasCompaniesTable(companies) {
     const safeOwnerName = (c.owner_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
     let actionsHtml = `<div style="display: inline-flex; gap: 0.3rem; align-items: center; white-space: nowrap; flex-wrap: wrap;">`;
+    
+    // Tahrirlash tugmasi BARCHA tashkilotlar (shu jumladan Bosh Tashkilot) uchun to'liq ochiq
+    actionsHtml += `
+      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; font-weight: 600;" onclick="openSaasEditCompanyModal(${c.id})" title="Firma va Rahbar ma'lumotlarini tahrirlash">
+        ✏️ Tahrirlash
+      </button>
+    `;
+
+    // Rahbar kabinetiga kirib ko'rish (Impersonate) va Telegram orqali rekvizit jo'natish barcha firmalarga ruxsat etiladi
+    actionsHtml += `
+      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 6px; font-weight: 600;" onclick="handleImpersonateCompany(${c.id}, '${safeCompName}')" title="Firma kabinetiga uning Rahbari sifatida kirib ko'rish">
+        👁️ Kirish
+      </button>
+    `;
+
+    actionsHtml += `
+      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; font-weight: 600;" onclick="handleSendCompanyCredentials(${c.id}, '${safeCompName}', '${safeOwnerName}')" title="Rahbarga Telegram bot orqali kirish ma'lumotlarini jo'natish">
+        ✉️ Rekvizit
+      </button>
+    `;
+
     if (!isMain) {
-      actionsHtml += `
-        <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; font-weight: 600;" onclick="handleImpersonateCompany(${c.id}, '${safeCompName}')" title="Firma kabinetiga uning Rahbari sifatida kirib ko'rish">
-          👁️ Kirish
-        </button>
-      `;
-
-      actionsHtml += `
-        <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; font-weight: 600;" onclick="handleSendCompanyCredentials(${c.id}, '${safeCompName}', '${safeOwnerName}')" title="Rahbarga Telegram bot orqali kirish ma'lumotlarini jo'natish">
-          ✉️ Rekvizit
-        </button>
-      `;
-
       if (c.plan !== "UNLIMITED") {
         actionsHtml += `
           <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600; border-radius: 6px;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Obuna muddatini uzaytirish">
@@ -5038,7 +5047,7 @@ function renderSaasCompaniesTable(companies) {
         </button>
       `;
     } else {
-      actionsHtml += `<span style="font-size: 0.75rem; color: #94a3b8;">Bosh Tashkilot (Daxlsiz)</span>`;
+      actionsHtml += `<span class="badge" style="font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 600;">🏛️ Asosiy Baza (Daxlsiz)</span>`;
     }
     actionsHtml += `</div>`;
 
@@ -5051,7 +5060,7 @@ function renderSaasCompaniesTable(companies) {
               <b style="color: var(--text-main); font-size: 0.95rem; display: block;">${escapeHtml(c.name)}</b>
               <span style="font-size: 0.75rem; color: #94a3b8;">${escapeHtml(c.slug)}</span>
             </div>
-            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Nomni tahrirlash">✏️</button>` : ''}
+            <button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Nomni tahrirlash">✏️</button>
           </div>
         </td>
         <td>
@@ -5066,18 +5075,18 @@ function renderSaasCompaniesTable(companies) {
               ${c.company_inn ? `<span style="display: inline-block; font-size: 0.68rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1; padding: 1px 4px; border-radius: 4px; margin-top: 2px;">INN: ${escapeHtml(c.company_inn)}</span>` : ''}
               ${c.notes ? `<div style="font-size: 0.71rem; color: #f59e0b; margin-top: 2px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(c.notes)}">📝 ${escapeHtml(c.notes)}</div>` : ''}
             </div>
-            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va aloqa ma'lumotlarini tahrirlash">✏️</button>` : ''}
+            <button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Rahbar va aloqa ma'lumotlarini tahrirlash">✏️</button>
           </div>
         </td>
         <td>
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;">
             <code style="font-size: 0.75rem;">${escapeHtml(c.telegram_group_id || 'Mavjud emas')}</code>
-            ${!isMain ? `<button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Guruh ID tahrirlash">✏️</button>` : ''}
+            <button type="button" onclick="openSaasEditCompanyModal(${c.id})" style="background: none; border: none; font-size: 0.8rem; color: #818cf8; cursor: pointer; padding: 2px;" title="Guruh ID tahrirlash">✏️</button>
           </div>
         </td>
         <td>
           ${planBadge}
-          ${!isMain ? `<button type="button" onclick="openSaasPlanModal(${c.id}, '${c.plan}', '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">🔄 Tarifni o'zgartirish</button>` : ''}
+          <button type="button" onclick="openSaasPlanModal(${c.id}, '${c.plan}', '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">🔄 Tarifni o'zgartirish</button>
         </td>
         <td>
           <div>${expiryText}</div>
@@ -5086,7 +5095,7 @@ function renderSaasCompaniesTable(companies) {
         <td>
           <b style="color: #6366f1;">${c.employees_count || 0} / ${c.max_employees || 20} ta</b>
           ${c.cashiers_count ? `<span style="font-size: 0.75rem; color: #f59e0b; display: block;">(${c.cashiers_count} kassir)</span>` : ''}
-          ${!isMain ? `<button type="button" onclick="openSaasLimitModal(${c.id}, ${c.max_employees || 20}, '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">⚙️ Limitni o'zgartirish</button>` : ''}
+          <button type="button" onclick="openSaasLimitModal(${c.id}, ${c.max_employees || 20}, '${safeCompName}')" style="background: none; border: none; font-size: 0.72rem; color: #818cf8; text-decoration: underline; cursor: pointer; padding: 0; display: block; margin-top: 3px;">⚙️ Limitni o'zgartirish</button>
         </td>
         <td>
           <div style="font-size: 0.82rem; font-weight: 700; color: #10b981;">${formatNumberSpaces(c.total_turnover || 0)} so'm</div>
