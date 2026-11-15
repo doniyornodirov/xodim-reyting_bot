@@ -48,6 +48,7 @@ async def list_companies(super_admin: dict = Depends(require_super_admin)):
                    u.full_name as owner_name
             FROM companies c
             LEFT JOIN users u ON u.telegram_id = c.owner_telegram_id AND u.company_id = c.id
+            WHERE c.id > 0
             ORDER BY c.id ASC
         """)
         companies_raw = await cur.fetchall()
@@ -295,10 +296,10 @@ async def toggle_company_active(
     super_admin: dict = Depends(require_super_admin)
 ):
     """Super Admin tomonidan firmadagi xizmatni vaqtinchalik to'xtatish yoki faollashtirish"""
-    if company_id == 1:
+    if company_id <= 1:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bosh Tashkilotni (1-kompaniya) to'xtatib bo'lmaydi!"
+            detail="Bosh Tashkilot yoki Platforma hisobini to'xtatib bo'lmaydi!"
         )
 
     async with aiosqlite.connect(DB_PATH) as conn:
@@ -916,10 +917,10 @@ async def delete_company(
     super_admin: dict = Depends(require_super_admin)
 ):
     """Super Admin tomonidan firmani va uning barcha bog'langan ma'lumotlarini tozalash / o'chirish"""
-    if company_id == 1:
+    if company_id <= 1:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Bosh Tashkilotni (1-kompaniya) o'chirib bo'lmaydi!"
+            detail="Bosh Tashkilot yoki Platforma hisobini o'chirib bo'lmaydi!"
         )
 
     async with aiosqlite.connect(DB_PATH) as conn:
