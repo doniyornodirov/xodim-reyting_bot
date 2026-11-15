@@ -1745,14 +1745,18 @@ select,
 select.form-input,
 .sim-styled-select,
 .styled-select {
-  min-height: 48px;
-  font-size: 0.95rem;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  font-size: 0.92rem;
   font-weight: 600;
-  border-radius: 10px !important;
-  padding: 0.6rem 2.5rem 0.6rem 0.95rem !important;
+  border-radius: 8px !important;
+  padding: 0.45rem 2.5rem 0.45rem 0.85rem !important;
   background-color: #ffffff !important;
   color: #0f172a !important;
-  border: 1.5px solid #cbd5e1 !important;
+  border: 1px solid #cbd5e1 !important;
   appearance: none !important;
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
@@ -1798,6 +1802,12 @@ body.theme-light select,
 body.theme-light select.form-input,
 body.theme-light .sim-styled-select,
 body.theme-light .styled-select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  border-radius: 8px !important;
   background-color: #0f172a !important;
   color: #ffffff !important;
   border-color: #334155 !important;

@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=855">
+  <link rel="stylesheet" href="/static/css/style.css?v=857">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -1092,7 +1092,7 @@
             </div>
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">Tarif rejasi *</label>
-              <select id="saas-new-plan" class="form-input" style="height: 42px;" onchange="handleSaasPlanChange(this.value)">
+              <select id="saas-new-plan" class="form-input" style="height: 42px; width: 100%; box-sizing: border-box;" onchange="handleSaasPlanChange(this.value)">
                 <option value="STANDARD" selected>📅 STANDARD (Sana bo'yicha)</option>
                 <option value="5_YEARS">⭐ 5 YIL (5 yillik obuna)</option>
                 <option value="UNLIMITED">♾️ UNLIMITED (Cheksiz)</option>
@@ -1100,8 +1100,8 @@
             </div>
             <div class="form-group" id="saas-new-date-container" style="margin-bottom: 0;">
               <label class="form-label">Amal qilish muddati *</label>
-              <div style="position: relative;">
-                <input type="text" id="saas-new-expires-date" class="form-input custom-date-input" style="height: 42px; cursor: pointer; padding-right: 2.2rem; font-weight: 700;" readonly onclick="openCompactSaasDatePicker(this, 'Yangi Firma Amal Qilish Sanasi')" placeholder="YYYY-MM-DD" required>
+              <div style="position: relative; width: 100%; box-sizing: border-box;">
+                <input type="text" id="saas-new-expires-date" class="form-input custom-date-input" style="height: 42px; width: 100%; box-sizing: border-box; cursor: pointer; padding-right: 2.2rem; font-weight: 700;" readonly onclick="openCompactSaasDatePicker(this, 'Yangi Firma Amal Qilish Sanasi')" placeholder="YYYY-MM-DD" required>
                 <span class="date-input-icon" onclick="openCompactSaasDatePicker(document.getElementById('saas-new-expires-date'), 'Yangi Firma Amal Qilish Sanasi')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.8; font-size: 1rem;">📅</span>
               </div>
             </div>
@@ -2396,6 +2396,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=856"></script>
+  <script src="/static/js/app.js?v=857"></script>
 </body>
 </html>
