@@ -11,12 +11,13 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json?v=873">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=873">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=873">
+  <link rel="manifest" href="/manifest.json?v=880">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png?v=880">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=880">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=873', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=880', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=879">
+  <link rel="stylesheet" href="/static/css/style.css?v=880">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -95,7 +96,7 @@
   <div id="app-splash-screen" class="app-splash-screen" aria-label="Yuklanmoqda...">
     <div class="splash-content">
       <div class="splash-logo-wrap">
-        <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="splash-logo-img">
+        <img src="/static/icons/icon-512.png?v=880" alt="XodimKPI" class="splash-logo-img">
         <div class="splash-logo-glow"></div>
       </div>
       <div class="splash-brand-text">
@@ -131,7 +132,7 @@
 
         <a href="#" class="brand flex items-center gap-2 sm:gap-2.5 no-underline" title="XodimKPI CRM">
           <div class="brand-icon w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-            <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="w-full h-full object-contain">
+            <img src="/static/icons/icon-192.png?v=880" alt="XodimKPI" class="w-full h-full object-contain">
           </div>
           <div class="brand-text-wrap flex flex-col justify-center leading-none">
             <span class="brand-title text-[13.5px] sm:text-[15px] font-extrabold tracking-tight leading-none whitespace-nowrap">
@@ -182,7 +183,7 @@
     <div class="sidebar-header">
       <div class="brand flex items-center gap-2.5">
         <div class="brand-icon w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
-          <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="w-full h-full object-contain">
+          <img src="/static/icons/icon-192.png?v=880" alt="XodimKPI" class="w-full h-full object-contain">
         </div>
         <div class="brand-text-wrap flex flex-col justify-center leading-none">
           <span class="brand-title text-[15px] font-extrabold tracking-tight whitespace-nowrap">
@@ -1750,8 +1751,8 @@
       <!-- 1-Qadam: Login & Parol -->
       <div id="login-step-1">
         <div style="text-align: center; margin-bottom: 1.5rem;">
-          <div class="brand-icon" style="margin: 0 auto 0.75rem; width: 56px; height: 56px; background: transparent; border: none; box-shadow: none;">
-            <img src="/static/icons/icon.svg?v=848" alt="XodimKPI" class="w-full h-full object-contain" style="border-radius: 14px; filter: drop-shadow(0 8px 20px rgba(99, 102, 241, 0.45));">
+          <div class="brand-icon" style="margin: 0 auto 0.75rem; width: 64px; height: 64px; background: transparent; border: none; box-shadow: none;">
+            <img src="/static/icons/icon-512.png?v=880" alt="XodimKPI" class="w-full h-full object-contain" style="filter: drop-shadow(0 8px 20px rgba(16, 185, 129, 0.45));">
           </div>
           <h2 style="font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em;">Xodim<span style="color: #818cf8;">KPI</span> CRM</h2>
         </div>
@@ -2534,6 +2535,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=879"></script>
+  <script src="/static/js/app.js?v=880"></script>
 </body>
 </html>
