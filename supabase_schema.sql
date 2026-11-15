@@ -290,10 +290,20 @@ INSERT INTO system_settings (key, value)
 VALUES ('workplace_name', 'Bosh Ofis')
 ON CONFLICT (key) DO NOTHING;
 
+-- Boshlang'ich Kompaniyalar: Platforma Admin (0) va Bosh Tashkilot (1)
+INSERT INTO companies (id, name, slug, plan, max_employees, is_active)
+VALUES (0, 'Platforma Admin', 'platform-admin', 'UNLIMITED', 99999, 1)
+ON CONFLICT (id) DO NOTHING;
+
 -- Boshlang'ich Bosh Rahbar (8686341550)
 INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
 VALUES (1, 8686341550, 'Bosh Rahbar', 'ADMIN', '$2b$12$60/q787aI6a5f78sW7Q7z.0yZ62u8h4c8w6964kU0172h/365516S', 0, 1)
 ON CONFLICT (telegram_id) DO UPDATE SET role = 'ADMIN', is_active = 1;
+
+-- Boshlang'ich Dasturchi Admin (8694797293)
+INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
+VALUES (0, 8694797293, 'Dasturchi Admin', 'DEVELOPER', '$2b$12$hhJlIOTDNOdovhwUncqw..Q6MOEnBcsXdLQCIODnU.3xq/1pNmL9W', 0, 1)
+ON CONFLICT (telegram_id) DO UPDATE SET role = 'DEVELOPER', company_id = 0, is_active = 1;
 
 -- =========================================================================
 -- SQLITE MOSLASHUVCHAN HELPER FUNKSIYALARI (SCALAR MAX / MIN)

@@ -45,8 +45,17 @@ async def init_db():
     owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
 
     if is_postgres_active():
-        # PostgreSQL rejimi: Sxema Supabase orqali yaratilgan, faqat boshlang'ich hisoblar ta'minlanadi
+        # PostgreSQL rejimi: Sxema Supabase orqali yaratilgan, boshlang'ich hisoblar va administratorlar ta'minlanadi
+        from app.config import DEVELOPER_ID
+        from app.security import hash_password
+        dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
         async with aiosqlite.connect(DB_PATH) as conn:
+            # 1. Platforma Admin (id=0) va Bosh Tashkilot (id=1)
+            await conn.execute("""
+                INSERT INTO companies (id, name, slug, plan, max_employees, is_active)
+                VALUES (0, 'Platforma Admin', 'platform-admin', 'UNLIMITED', 99999, 1)
+                ON CONFLICT (id) DO NOTHING;
+            """)
             await conn.execute("""
                 INSERT INTO companies (id, name, slug, telegram_group_id, owner_telegram_id, plan, max_employees, is_active)
                 VALUES (1, 'Bosh Tashkilot', 'bosh-tashkilot', ?, ?, 'UNLIMITED', 9999, 1)
@@ -57,6 +66,23 @@ async def init_db():
                 VALUES (1, 100)
                 ON CONFLICT (company_id) DO NOTHING;
             """)
+
+            # 2. Bosh Rahbar (8686341550)
+            rahbar_pwd = hash_password(str(owner_id_val))
+            await conn.execute("""
+                INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
+                VALUES (1, ?, 'Bosh Rahbar', 'ADMIN', ?, 0, 1)
+                ON CONFLICT (telegram_id) DO UPDATE SET role = 'ADMIN', company_id = 1, is_active = 1;
+            """, (owner_id_val, rahbar_pwd))
+
+            # 3. Dasturchi Admin (8694797293)
+            dev_pwd = hash_password(str(dev_id_val))
+            await conn.execute("""
+                INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
+                VALUES (0, ?, 'Dasturchi Admin', 'DEVELOPER', ?, 0, 1)
+                ON CONFLICT (telegram_id) DO UPDATE SET role = 'DEVELOPER', company_id = 0, is_active = 1;
+            """, (dev_id_val, dev_pwd))
+            await conn.commit()
         return
 
     async with aiosqlite.connect(DB_PATH) as conn:
