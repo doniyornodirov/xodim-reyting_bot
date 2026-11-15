@@ -1,9 +1,12 @@
 import re
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 import aiosqlite
 from app.config import DB_PATH
 from app.models import GivenAmountCreate, StatusActionRequest
 from app.dependencies import get_current_user, require_role, require_active_shift
+
+logger = logging.getLogger("given")
 
 router = APIRouter(prefix="/api/given", tags=["Given Amount"])
 
@@ -38,13 +41,16 @@ async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(requi
             INSERT INTO given_amounts (company_id, employee_id, amount, comment, status)
             VALUES (?, ?, ?, ?, 'PENDING')
         """, (comp_id, user["id"], amount, validated_comment))
-        given_id = cursor.lastrowid
+        given_id = cursor.lastrowid or 0
 
-        await conn.execute("""
-            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
-            VALUES (?, 'GIVEN_AMOUNT', ?, 'CREATE', ?, ?)
-        """, (comp_id, given_id, user["full_name"], f"Berilgan summa: {amount:,} so'm, Izoh: {validated_comment}"))
-        await conn.commit()
+        try:
+            await conn.execute("""
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'GIVEN_AMOUNT', ?, 'CREATE', ?, ?)
+            """, (comp_id, given_id, user["full_name"], f"Berilgan summa: {amount:,} so'm, Izoh: {validated_comment}"))
+            await conn.commit()
+        except Exception as e:
+            logger.warning(f"Berilgan summa audit log yozishda ogohlantirish: {e}")
 
     return {
         "success": True,

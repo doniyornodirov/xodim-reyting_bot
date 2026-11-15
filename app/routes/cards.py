@@ -1,5 +1,6 @@
 import re
 import math
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 import aiosqlite
 from app.config import DB_PATH
@@ -7,6 +8,8 @@ from app.database import get_db_connection, get_next_transaction_number
 from app.models import CardTopupCreate, StatusActionRequest
 from app.dependencies import get_current_user, require_role, require_active_shift
 from app.bot import notify_card_topup_in_group
+
+logger = logging.getLogger("cards")
 
 router = APIRouter(prefix="/api/cards", tags=["Cards"])
 
@@ -84,15 +87,18 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
                 amount, surcharge_amount, status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
         """, (comp_id, new_tx_number, user["id"], formatted_card, validated_holder, amount, surcharge_amount))
-        topup_id = cursor.lastrowid
+        topup_id = cursor.lastrowid or 0
         await conn.commit()
 
-        # Audit log
-        await conn.execute("""
-            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
-            VALUES (?, 'CARD_TOPUP', ?, 'CREATE', ?, ?)
-        """, (comp_id, topup_id, user["full_name"], f"Karta: {formatted_card}, Summa: {amount:,} so'm"))
-        await conn.commit()
+        # Audit log (Xavfsiz yozish: audit xatosi asosiy amaliyotni to'xtatmaydi)
+        try:
+            await conn.execute("""
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'CARD_TOPUP', ?, 'CREATE', ?, ?)
+            """, (comp_id, topup_id, user["full_name"], f"Karta: {formatted_card}, Summa: {amount:,} so'm"))
+            await conn.commit()
+        except Exception as e:
+            logger.warning(f"Karta to'ldirish audit log yozishda ogohlantirish: {e}")
 
     # Telegram guruhga xabar yuborish (firma guruhiga yoki umumiy guruhga)
     topup_data = {
@@ -233,11 +239,14 @@ async def reject_card_topup(
             WHERE id = ? AND company_id = ?
         """, (approved_label, topup_id, comp_id))
 
-        await conn.execute("""
-            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
-            VALUES (?, 'CARD_TOPUP', ?, 'REJECT', ?, ?)
-        """, (comp_id, topup_id, user["full_name"], f"Xodim #{topup['transaction_number']} sonli karta so'rovini rad etdi"))
-        await conn.commit()
+        try:
+            await conn.execute("""
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'CARD_TOPUP', ?, 'REJECT', ?, ?)
+            """, (comp_id, topup_id, user["full_name"], f"Xodim #{topup['transaction_number']} sonli karta so'rovini rad etdi"))
+            await conn.commit()
+        except Exception as e:
+            logger.warning(f"Karta rad etish audit log yozishda ogohlantirish: {e}")
 
     if topup["telegram_message_id"]:
         import asyncio

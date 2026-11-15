@@ -122,6 +122,9 @@ async function api(endpoint, method = "GET", data = null) {
       json = rawText ? JSON.parse(rawText) : {};
     } catch (parseErr) {
       if (!res.ok) {
+        if (res.status >= 500 && res.status <= 504) {
+          throw new Error("Serverda vaqtincha yangilanish bormoqda. Iltimos, 5 soniyadan so'ng qayta urinib ko'ring.");
+        }
         throw new Error(`Server xatosi (${res.status}): ${rawText.slice(0, 100) || res.statusText}`);
       }
     }
@@ -133,6 +136,9 @@ async function api(endpoint, method = "GET", data = null) {
       }
       if (res.status === 403 && json && json.detail && json.detail.includes("Obunangizni uzaytiring")) {
         showSubscriptionExpiredModal(json.detail);
+      }
+      if (res.status >= 500 && res.status <= 504) {
+        throw new Error((json && (json.detail || json.message)) || "Serverda vaqtincha yangilanish bormoqda. Iltimos, 5 soniyadan so'ng qayta urinib ko'ring.");
       }
       throw new Error((json && (json.detail || json.message)) || `Server xatosi (${res.status})`);
     }
