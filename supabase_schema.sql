@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS cashier_handovers (
 -- 6. Kassirlik tarixi (cashier_history)
 CREATE TABLE IF NOT EXISTS cashier_history (
     id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL DEFAULT 1 REFERENCES companies(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     action TEXT NOT NULL,
     assigned_by_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
@@ -165,6 +166,7 @@ CREATE TABLE IF NOT EXISTS otp_codes (
 -- 8. Tizim audit jurnali (audit_logs)
 CREATE TABLE IF NOT EXISTS audit_logs (
     id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL DEFAULT 1 REFERENCES companies(id) ON DELETE CASCADE,
     entity_type TEXT NOT NULL,
     entity_id BIGINT NOT NULL,
     action TEXT NOT NULL,
