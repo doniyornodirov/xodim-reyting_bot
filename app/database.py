@@ -40,6 +40,25 @@ async def get_next_transaction_number(conn: aiosqlite.Connection, company_id: in
 
 async def init_db():
     """Baza sxemasini yaratish va boshlang'ich ma'lumotlarni kiritish"""
+    from app.pg_engine import is_postgres_active
+    from app.config import TELEGRAM_GROUP_ID, RAHBAR_ID
+    owner_id_val = int(RAHBAR_ID) if RAHBAR_ID and RAHBAR_ID.isdigit() else 8686341550
+
+    if is_postgres_active():
+        # PostgreSQL rejimi: Sxema Supabase orqali yaratilgan, faqat boshlang'ich hisoblar ta'minlanadi
+        async with aiosqlite.connect(DB_PATH) as conn:
+            await conn.execute("""
+                INSERT INTO companies (id, name, slug, telegram_group_id, owner_telegram_id, plan, max_employees, is_active)
+                VALUES (1, 'Bosh Tashkilot', 'bosh-tashkilot', ?, ?, 'UNLIMITED', 9999, 1)
+                ON CONFLICT (id) DO UPDATE SET max_employees = 9999, is_active = 1;
+            """, (TELEGRAM_GROUP_ID, owner_id_val))
+            await conn.execute("""
+                INSERT INTO company_counters (company_id, last_transaction_number)
+                VALUES (1, 100)
+                ON CONFLICT (company_id) DO NOTHING;
+            """)
+        return
+
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
 

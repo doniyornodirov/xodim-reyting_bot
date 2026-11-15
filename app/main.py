@@ -9,7 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
 from app.bot import start_bot_polling, bot
-from app.config import CORS_ORIGINS
+from app.config import CORS_ORIGINS, DATABASE_URL
+from app.pg_engine import init_postgres_pool, close_postgres_pool, is_postgres_active
 from app.routes import auth, cards, given, reports, cashier, admin, rating, sim_cards, settings, location, saas, leads
 
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +20,14 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 0. Supabase PostgreSQL ulanishini tekshirish
+    if DATABASE_URL and (DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")):
+        try:
+            logger.info("Bulutli PostgreSQL (Supabase) ulanishi aniqlandi, ulanish o'rnatilmoqda...")
+            await init_postgres_pool(DATABASE_URL)
+        except Exception as e:
+            logger.critical(f"Supabase PostgreSQL ga ulanishda xatolik: {e}. SQLite rejimiga qaytilmoqda.")
+
     # 1. Baza sxemasini tekshirish va ishga tushirish
     logger.info("Ma'lumotlar bazasi initsializatsiya qilinmoqda...")
     await init_db()
@@ -49,6 +58,8 @@ async def lifespan(app: FastAPI):
         bot_task.cancel()
     if retention_task:
         retention_task.cancel()
+    if is_postgres_active():
+        await close_postgres_pool()
 
 app = FastAPI(
     title="XodimKPI & Paynet CRM",
