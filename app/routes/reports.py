@@ -394,6 +394,91 @@ async def update_report_status(
 
     return {"success": True, "message": f"Hisobot muvaffaqiyatli {status_label} holatiga o'tkazildi!"}
 
+@router.post("/{report_id}/cancel")
+async def cancel_daily_report(
+    report_id: int,
+    user: dict = Depends(require_role(["ADMIN"]))
+):
+    """
+    Rahbar tomonidan xodimning hisobotini bekor qilish.
+    Bu xodimga o'sha kun uchun hisobotni boshqatdan topshirish imkonini ochadi.
+    Agar hisobot oldin tasdiqlangan bo'lsa, uning qarzdorlik va sim-karta yozuvlari
+    avtomatik ravishda xavfsiz rollback qilinadi.
+    """
+    comp_id = user.get("company_id") or 1
+    async with get_db_connection() as conn:
+        cursor = await conn.execute(
+            "SELECT * FROM daily_reports WHERE id = ? AND company_id = ?",
+            (report_id, comp_id)
+        )
+        report = await cursor.fetchone()
+        if not report:
+            raise HTTPException(status_code=404, detail="Hisobot topilmadi!")
+
+        old_status = report["status"]
+        emp_id = report["employee_id"]
+        debt_paid = report["debt_paid"] or 0
+        sim_sold = report["sim_cards_count"] or 0
+
+        # Agar oldin tasdiqlangan bo'lsa - qarz va sim-kartalarni xavfsiz qaytarish (rollback)
+        if old_status == "APPROVED":
+            if debt_paid > 0:
+                await conn.execute("""
+                    UPDATE users 
+                    SET debt_amount = debt_amount + ?
+                    WHERE id = ? AND company_id = ?
+                """, (debt_paid, emp_id, comp_id))
+
+            if sim_sold > 0:
+                await conn.execute("""
+                    UPDATE sim_cards 
+                    SET status = 'GIVEN', sold_at = NULL
+                    WHERE id IN (
+                        SELECT id FROM sim_cards 
+                        WHERE employee_id = ? AND status = 'SOLD' AND company_id = ?
+                        ORDER BY id DESC
+                        LIMIT ?
+                    )
+                """, (emp_id, comp_id, sim_sold))
+
+        # Statusni CANCELLED holatiga o'tkazish
+        await conn.execute("""
+            UPDATE daily_reports 
+            SET status = 'CANCELLED', reviewed_by = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND company_id = ?
+        """, (user["id"], report_id, comp_id))
+
+        # Audit log
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'DAILY_REPORT', ?, 'CANCEL', ?, ?)
+        """, (comp_id, report_id, user["full_name"], "Hisobot bekor qilindi va xodimga boshqatdan topshirish uchun ochildi"))
+
+        # Xodim ma'lumotini olish
+        cursor = await conn.execute("SELECT telegram_id, full_name FROM users WHERE id = ? AND company_id = ?", (emp_id, comp_id))
+        emp_user = await cursor.fetchone()
+        emp_tg_id = emp_user["telegram_id"] if emp_user else None
+        emp_name = emp_user["full_name"] if emp_user else "Xodim"
+
+        await conn.commit()
+
+    # Xodimning shaxsiy Telegramiga bildirishnoma yuborish
+    if emp_tg_id:
+        try:
+            asyncio.create_task(send_report_status_to_telegram(
+                int(emp_tg_id), 
+                str(report["report_date"]), 
+                "CANCELLED", 
+                user["full_name"]
+            ))
+        except Exception as e:
+            logger.warning(f"Hisobot bekor qilinganini telegramga yuborishda xatolik: {e}")
+
+    return {
+        "success": True, 
+        "message": f"{emp_name} xodimining hisoboti bekor qilindi va boshqatdan topshirish imkoniyati ochildi!"
+    }
+
 @router.post("/send-daily-digest")
 async def trigger_daily_digest(
     target_date: Optional[str] = None,

@@ -1115,6 +1115,10 @@ async def notify_card_topup_in_group(topup_data: dict, group_id: str | None = No
     if topup_data.get("is_repeat_today"):
         repeat_warning = "\n\n⚠️ <b>DIQQAT: Bu kartaga bugun to'lov qilindi!</b> 🔄"
 
+    closed_report_warning = ""
+    if topup_data.get("has_closed_report_today"):
+        closed_report_warning = f"\n\n🚨 <b>DIQQAT: Bugun bu {emp_name} kassani yopdi!</b> 🔒"
+
     emp_tg_id = topup_data.get("employee_tg_id")
     emp_name = html.escape(str(topup_data.get("employee_name") or "Xodim"))
     emp_mention = f'<a href="tg://user?id={emp_tg_id}">{emp_name}</a>' if emp_tg_id else emp_name
@@ -1127,7 +1131,7 @@ async def notify_card_topup_in_group(topup_data: dict, group_id: str | None = No
         f"💰 {topup_data['amount_formatted']} so'm\n"
         f"📈 {topup_data['surcharge_formatted']} so'm (+3%)\n"
         f"⏰ {tashkent_now}\n"
-        f"⏳ Kutilmoqda ⏳{repeat_warning}"
+        f"⏳ Kutilmoqda ⏳{repeat_warning}{closed_report_warning}"
     )
 
     keyboard = get_topup_keyboard(topup_data["id"], "PENDING")
@@ -1155,6 +1159,21 @@ async def notify_card_topup_in_group(topup_data: dict, group_id: str | None = No
                 ),
                 timeout=2.5
             )
+            # Agar xodim bugun hisobotni (kassani) yopgan bo'lsa, alohida diqqatga sazovor ogohlantirish xabarini yuboramiz
+            if topup_data.get("has_closed_report_today"):
+                try:
+                    await asyncio.wait_for(
+                        bot.send_message(
+                            chat_id=cid,
+                            text=f"🚨 <b>OGOHLANTIRISH: Bugun bu {emp_mention} kassani yopdi!</b>\n<i>(Hisobot topshirilgandan keyin yangi karta so'rovi yuborildi. Rahbar hisobotlar bo'limidan uning hisobotini bekor qilib, qayta topshirishga ruxsat berishi mumkin).</i>",
+                            reply_to_message_id=msg.message_id,
+                            parse_mode="HTML"
+                        ),
+                        timeout=2.0
+                    )
+                except Exception as ex_warn:
+                    logger.warning(f"Kassa yopilganlik ogohlantirish xabarini yuborishda ogohlantirish: {ex_warn}")
+
             return msg.message_id
         except Exception as e:
             logger.warning(f"Telegram guruhga ({cid}) yuborishda urinish natijasi: {e}")
@@ -1421,10 +1440,18 @@ async def send_report_status_to_telegram(employee_tg_id: int, report_date: str, 
     if not bot or not employee_tg_id:
         return False
     try:
-        is_approved = (status_str == "APPROVED")
-        icon = "✅" if is_approved else "❌"
-        status_text = "TASDIQLANDI" if is_approved else "RAD ETILDI"
-        advice = "Reyting ballaringiz yangilandi." if is_approved else "Iltimos, ma'lumotlarni tekshirib qayta yuboring."
+        if status_str == "CANCELLED":
+            icon = "🔄"
+            status_text = "BEKOR QILINDI (Qayta topshirish)"
+            advice = "Rahbar hisobotingizni bekor qildi. Tizimga kirib ma'lumotlarni tekshirib, hisobotni boshqatdan topshirishingiz mumkin."
+        elif status_str == "APPROVED":
+            icon = "✅"
+            status_text = "TASDIQLANDI"
+            advice = "Reyting ballaringiz yangilandi."
+        else:
+            icon = "❌"
+            status_text = "RAD ETILDI"
+            advice = "Iltimos, ma'lumotlarni tekshirib qayta yuboring."
 
         text = (
             f"{icon} <b>KUNLIK HISOBOT {status_text}</b>\n"

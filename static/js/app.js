@@ -523,6 +523,7 @@ function formatStatusBadge(status, extraText = "") {
   const s = String(status).toUpperCase();
   if (s === "APPROVED") return `<span class="status-badge status-approved">Tasdiqlandi ✅${extra}</span>`;
   if (s === "REJECTED") return `<span class="status-badge status-rejected">Rad etildi ❌${extra}</span>`;
+  if (s === "CANCELLED") return `<span class="status-badge status-rejected" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">Bekor qilindi 🔄${extra}</span>`;
   if (s === "PENDING") return `<span class="status-badge status-pending">Kutilmoqda ⏳</span>`;
   if (s === "TOPSHIRILMAGAN") return `<span class="status-badge status-pending" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">Topshirilmagan ⚠️</span>`;
   return `<span class="status-badge status-pending">${status}</span>`;
@@ -1908,16 +1909,24 @@ async function loadDailyReportPrefill() {
         banner.style.borderColor = "var(--accent-success)";
         banner.innerHTML = `✅ <b>Bugungi hisobotingiz tasdiqlangan (Tasdiqlandi).</b>`;
         document.getElementById("btn-submit-report").disabled = true;
+      } else if (res.existing_report.status === "CANCELLED") {
+        banner.className = "alert-card-danger";
+        banner.style.borderColor = "var(--accent-warning)";
+        banner.innerHTML = `🔄 <b>Bugungi hisobotingiz Rahbar tomonidan bekor qilindi. Ma'lumotlarni tekshirib, hisobotni boshqatdan topshirishingiz mumkin.</b>`;
+        document.getElementById("btn-submit-report").disabled = false;
+        document.getElementById("btn-submit-report").innerText = "🔄 Qayta topshirish";
       } else if (res.existing_report.status === "REJECTED") {
         banner.className = "alert-card-danger";
         banner.style.borderColor = "var(--accent-danger)";
         banner.innerHTML = `❌ <b>Bugungi hisobotingiz rad etilgan (Rad etildi). Iltimos, ma'lumotlarni tekshirib qayta yuboring.</b>`;
         document.getElementById("btn-submit-report").disabled = false;
+        document.getElementById("btn-submit-report").innerText = "🔄 Qayta topshirish";
       } else {
         banner.className = "alert-card-danger";
         banner.style.borderColor = "var(--accent-warning)";
         banner.innerHTML = `⏳ <b>Bugungi hisobotingiz ko'rib chiqilmoqda (Kutilmoqda).</b>`;
         document.getElementById("btn-submit-report").disabled = false;
+        document.getElementById("btn-submit-report").innerText = "💾 Topshirish";
       }
 
       // Mavjud qiymatlarni forma maydonlariga joylash
@@ -3118,12 +3127,33 @@ async function loadAdminReports() {
     adminReportsCache = res.data;
 
     res.data.forEach(r => {
-      const actions = r.status === "PENDING" ? `
-        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-          <button class="btn-success" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'APPROVED')">✅ Tasdiqlash</button>
-          <button class="btn-danger" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'REJECTED')">❌ Rad etish</button>
-        </div>
-      ` : formatStatusBadge(r.status);
+      let actions = "";
+      if (r.status === "PENDING") {
+        actions = `
+          <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+            <button class="btn-success" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'APPROVED')">✅ Tasdiqlash</button>
+            <button class="btn-danger" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="updateReportStatus(${r.id}, 'REJECTED')">❌ Rad etish</button>
+          </div>
+        `;
+      } else if (r.status === "APPROVED") {
+        actions = `
+          <div style="display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start;">
+            ${formatStatusBadge(r.status)}
+            <button class="btn-logout" style="padding: 0.22rem 0.55rem; font-size: 0.72rem; border-color: rgba(239, 68, 68, 0.4); color: #f87171; display: inline-flex; align-items: center; gap: 0.25rem; border-radius: 6px; cursor: pointer;" onclick="cancelAndReopenReport(${r.id}, '${escapeHtml(r.employee_name)}', '${r.report_date}')" title="Ushbu hisobotni bekor qilish va xodimga boshqatdan topshirishga ruxsat berish">
+              <span>🔄</span> Bekor qilish
+            </button>
+          </div>
+        `;
+      } else if (r.status === "CANCELLED") {
+        actions = `
+          <div style="display: flex; flex-direction: column; gap: 0.2rem; align-items: flex-start;">
+            ${formatStatusBadge("CANCELLED")}
+            <span style="font-size: 0.68rem; color: #fbbf24;">(Qayta topshirish ochiq)</span>
+          </div>
+        `;
+      } else {
+        actions = formatStatusBadge(r.status);
+      }
 
       const effectiveDebt = Math.max(0, (r.debt_snapshot || 0) - (r.debt_paid || 0));
 
@@ -3169,6 +3199,29 @@ async function updateReportStatus(id, status) {
     showToast(res.message, "success");
     loadAdminReports();
   } catch (e) {}
+}
+
+async function cancelAndReopenReport(reportId, empName, reportDate) {
+  const ok = await appConfirm({
+    title: "Hisobotni bekor qilish",
+    message: `'${empName}' xodimining ${reportDate} kungi tasdiqlangan hisobotini bekor qilib, xodimga hisobotni boshqatdan to'g'rilab topshirish imkoniyatini ochmoqchimisiz?\n\n(Qarzdorlik va sim-kartalar avtomatik ravishda xavfsiz qaytariladi)`,
+    confirmText: "Ha, bekor qilish",
+    type: "danger"
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/api/reports/${reportId}/cancel`, "POST");
+    showToast(res.message || "Hisobot bekor qilindi va xodimga qayta topshirish imkoni berildi!", "success");
+    await loadAdminReports();
+  } catch (err) {
+    showToast("Xatolik: " + err.message, "danger");
+  }
+}
+
+async function cancelAndReopenReportFromModal(id, empName, reportDate) {
+  closeReportDetailsModal();
+  await cancelAndReopenReport(id, empName, reportDate);
 }
 
 function openReportDetailsModal(reportId) {
@@ -3260,6 +3313,11 @@ function openReportDetailsModal(reportId) {
     actionBtns = `
       <button type="button" class="btn-success" onclick="updateReportStatusFromModal(${r.id}, 'APPROVED')">✅ Tasdiqlash</button>
       <button type="button" class="btn-danger" onclick="updateReportStatusFromModal(${r.id}, 'REJECTED')">❌ Rad etish</button>
+      <button type="button" class="btn-logout" onclick="closeReportDetailsModal()">Yopish</button>
+    `;
+  } else if (r.status === "APPROVED") {
+    actionBtns = `
+      <button type="button" class="btn-danger" onclick="cancelAndReopenReportFromModal(${r.id}, '${escapeHtml(r.employee_name)}', '${r.report_date}')">🔄 Hisobotni bekor qilish (Qayta topshirishga ruxsat)</button>
       <button type="button" class="btn-logout" onclick="closeReportDetailsModal()">Yopish</button>
     `;
   }

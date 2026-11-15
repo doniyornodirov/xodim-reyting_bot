@@ -77,6 +77,19 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         is_repeat_today = (repeat_count >= 1)
         has_approved_today = (approved_count >= 1)
 
+        # Xodim bugun kunlik hisobotini topshirganmi (kassani yopganmi)?
+        cursor = await conn.execute("""
+            SELECT status FROM daily_reports
+            WHERE employee_id = ? AND company_id = ?
+              AND (
+                  report_date = DATE('now', '+5 hours')
+                  OR report_date = DATE('now')
+              )
+              AND status IN ('APPROVED', 'PENDING')
+        """, (user["id"], comp_id))
+        report_row = await cursor.fetchone()
+        has_closed_report_today = bool(report_row)
+
         # Tartib raqamini hisoblash — 100% Atomik, hech qachon dublikat chiqarmaydi
         new_tx_number = await get_next_transaction_number(conn, comp_id)
 
@@ -111,7 +124,8 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         "amount_formatted": f"{int(amount):,}".replace(",", " "),
         "surcharge_formatted": f"{int(surcharge_amount):,}".replace(",", " "),
         "is_repeat_today": is_repeat_today,
-        "has_approved_today": has_approved_today
+        "has_approved_today": has_approved_today,
+        "has_closed_report_today": has_closed_report_today
     }
     msg_id = await notify_card_topup_in_group(topup_data, group_id=user.get("company_telegram_group_id"))
     if msg_id:
@@ -123,9 +137,10 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             await conn.commit()
 
     repeat_msg = " ⚠️ Diqqat: Bu kartaga bugun to'lov qilindi!" if is_repeat_today else ""
+    closed_msg = " ⚠️ Diqqat: Siz bugun hisobotni (kassani) yopgansiz!" if has_closed_report_today else ""
     return {
         "success": True,
-        "message": f"Karta to'ldirish so'rovi muvaffaqiyatli yuborildi!{repeat_msg}",
+        "message": f"Karta to'ldirish so'rovi muvaffaqiyatli yuborildi!{repeat_msg}{closed_msg}",
         "data": {
             "id": topup_id,
             "transaction_number": new_tx_number,
@@ -135,7 +150,8 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             "surcharge_amount": surcharge_amount,
             "status": "PENDING",
             "is_repeat_today": is_repeat_today,
-            "has_approved_today": has_approved_today
+            "has_approved_today": has_approved_today,
+            "has_closed_report_today": has_closed_report_today
         }
     }
 

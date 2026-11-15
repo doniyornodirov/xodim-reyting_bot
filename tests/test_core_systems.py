@@ -139,5 +139,43 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(res["data"]["summary"]["days_count"], 1)
         self.assertEqual(len(res["data"]["timeline"]), 1)
 
+    async def test_07_cancel_daily_report_and_reopen(self):
+        """7. Rahbar tomonidan hisobotni bekor qilish va qayta topshirish uchun ochish tekshiruvi"""
+        from app.routes.reports import cancel_daily_report
+        from app.security import get_tashkent_today_str
+
+        test_date = get_tashkent_today_str()
+        comp_id = 1
+        emp_id = 4
+        admin_user = {"id": 1, "role": "ADMIN", "company_id": 1, "full_name": "Bosh Rahbar"}
+
+        async with aiosqlite.connect(DB_PATH) as conn:
+            # Sinov hisoboti kiritamiz
+            cursor = await conn.execute("""
+                INSERT INTO daily_reports (
+                    company_id, employee_id, report_date, paynet, card_amount, leviy,
+                    debt_snapshot, debt_paid, sim_cards_count, kunlik, terminal,
+                    given_amount, skidka, xarajat, total_inflow, total_outflow,
+                    net_amount, status
+                ) VALUES (?, ?, ?, 100000, 50000, 0, 100000, 20000, 1, 0, 0, 0, 0, 0, 150000, 0, 150000, 'APPROVED')
+            """, (comp_id, emp_id, test_date))
+            rep_id = cursor.lastrowid
+            await conn.commit()
+
+        # Bekor qilish funksiyasini chaqiramiz
+        res = await cancel_daily_report(rep_id, admin_user)
+        self.assertTrue(res["success"])
+
+        # Bazada holat CANCELLED bo'lganini tekshiramiz
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cursor = await conn.execute("SELECT status FROM daily_reports WHERE id = ?", (rep_id,))
+            r = await cursor.fetchone()
+            self.assertEqual(r["status"], "CANCELLED")
+
+            # Tozalash
+            await conn.execute("DELETE FROM daily_reports WHERE id = ?", (rep_id,))
+            await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()
