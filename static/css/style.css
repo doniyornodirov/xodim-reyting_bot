@@ -156,10 +156,9 @@ body.theme-light .card-desc {
 /* KUNDUZGI (DAY) REJIMDA KIRITISH MAYDONLARI (LINEAR/STRIPE)*/
 /* Toza oppoq (#ffffff) fon, nafis hoshiya, aniq qora matn  */
 /* ========================================================= */
-body.theme-light .form-input,
-body.theme-light select.form-input,
+body.theme-light .form-input:not(select),
 body.theme-light textarea.form-input {
-  background: #0f172a !important;
+  background-color: #0f172a !important;
   border: 1px solid #334155 !important;
   color: #ffffff !important;
   border-radius: 8px;
@@ -1663,11 +1662,10 @@ body.theme-light .btn-secondary-sm:hover {
 /* TUNGI (DARK) REJIMDA KIRITISH MAYDONLARI (LINEAR/STRIPE)  */
 /* Midnight Slate (#131d2e) fon, nafis hoshiya, oq (#f8fafc) */
 /* ========================================================= */
-.form-input,
-select.form-input,
+.form-input:not(select),
 textarea.form-input {
   width: 100%;
-  background: #ffffff !important;
+  background-color: #ffffff !important;
   border: 1px solid #cbd5e1 !important;
   border-radius: 8px;
   padding: 0.45rem 0.8rem;
@@ -1743,6 +1741,7 @@ select.form-input option {
 /* BUTUN TIZIM UCHUN PREMIUM OCHILADIGAN RO'YXAT (SELECT)   */
 /* ========================================================= */
 
+select,
 select.form-input,
 .sim-styled-select,
 .styled-select {
@@ -1766,6 +1765,7 @@ select.form-input,
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+select:focus,
 select.form-input:focus,
 .sim-styled-select:focus,
 .styled-select:focus {
@@ -1773,6 +1773,7 @@ select.form-input:focus,
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22) !important;
 }
 
+select option,
 select.form-input option,
 .sim-styled-select option,
 .styled-select option {
@@ -1793,6 +1794,7 @@ select.form-input option,
 }
 
 /* Light Mode / Dark Mode Theme Support */
+body.theme-light select,
 body.theme-light select.form-input,
 body.theme-light .sim-styled-select,
 body.theme-light .styled-select {
@@ -1800,8 +1802,12 @@ body.theme-light .styled-select {
   color: #ffffff !important;
   border-color: #334155 !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23818cf8' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.85rem center !important;
+  background-size: 1.15rem 1.15rem !important;
 }
 
+body.theme-light select option,
 body.theme-light select.form-input option,
 body.theme-light .sim-styled-select option,
 body.theme-light .styled-select option {
