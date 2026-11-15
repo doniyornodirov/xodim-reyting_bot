@@ -2652,15 +2652,21 @@ async function loadAdminAnalytics(period = currentAnalyticsPeriod) {
 }
 
 function updateAnalyticsKpis(s) {
+  const isToday = s.period === "today" || s.days_count === 1;
+
   // 1. Topshirilgan summa
   const revEl = document.getElementById("kpi-revenue-val");
   if (revEl) revEl.innerText = `${formatNumberSpaces(s.total_submitted_amount)} so'm`;
   setTrendBadge("kpi-revenue-trend", s.submitted_growth_pct);
+  const revSub = document.getElementById("kpi-revenue-sub");
+  if (revSub) revSub.innerText = isToday ? "Kechagi kunga nisbatan" : "O'tgan davrga nisbatan";
 
   // 2. Sim-kartalar
   const simEl = document.getElementById("kpi-sims-val");
   if (simEl) simEl.innerText = `${s.total_sim_cards} dona`;
   setTrendBadge("kpi-sims-trend", s.sim_growth_pct);
+  const simSub = document.getElementById("kpi-sims-sub");
+  if (simSub) simSub.innerText = isToday ? "Bugungi sotuvlar soni" : "Faol sotuvlar soni";
 
   // 3. Karta to'ldirish
   const cardEl = document.getElementById("kpi-cards-val");
@@ -2674,7 +2680,11 @@ function updateAnalyticsKpis(s) {
   if (netEl) netEl.innerText = `${formatNumberSpaces(s.total_net_amount)} so'm`;
   setTrendBadge("kpi-net-trend", s.net_growth_pct);
   const netSub = document.getElementById("kpi-net-sub");
-  if (netSub) netSub.innerText = `O'rtacha kunlik: ~${formatNumberSpaces(s.avg_daily_submitted)} so'm`;
+  if (netSub) {
+    netSub.innerText = isToday
+      ? "Bugungi sof kassa qoldig'i"
+      : `O'rtacha kunlik: ~${formatNumberSpaces(s.avg_daily_submitted)} so'm`;
+  }
 }
 
 function setTrendBadge(badgeId, pct) {

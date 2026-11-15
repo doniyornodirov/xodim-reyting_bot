@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import aiosqlite
 from app.config import DB_PATH
 from app.models import (
@@ -455,10 +455,12 @@ async def get_audit_logs(admin: dict = Depends(require_role(["ADMIN"]))):
 @router.get("/analytics/monitoring")
 async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require_role(["ADMIN"]))):
     """Faqat Rahbar uchun: Savdo monitoringi, vaqt bo'yicha dinamika (o'sish/pasayish)"""
-    now_tashkent = datetime.utcnow() + timedelta(hours=5)
+    now_tashkent = datetime.now(timezone.utc) + timedelta(hours=5)
     today = now_tashkent.date()
 
-    if period == "30d":
+    if period in ("today", "1d"):
+        days_count = 1
+    elif period == "30d":
         days_count = 30
     elif period == "this_month":
         days_count = today.day
@@ -563,7 +565,7 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
     total_sims = 0
     total_cards = 0.0
     total_card_count = 0
-    prev_day_sub = None
+    prev_day_sub = float(prev_submitted) if days_count == 1 else None
 
     for i in range(days_count):
         curr_d = start_date + timedelta(days=i)

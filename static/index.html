@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json?v=867">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=867">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=867">
+  <link rel="manifest" href="/manifest.json?v=868">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=868">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=868">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=867', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=868', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=867">
+  <link rel="stylesheet" href="/static/css/style.css?v=868">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -391,6 +391,7 @@
 
           <div class="flex gap-2 items-center flex-wrap">
             <div class="analytics-period-selector inline-flex items-center p-1 rounded-lg gap-1" id="analytics-period-buttons">
+              <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="today" onclick="changeAnalyticsPeriod('today')">Bugun</button>
               <button class="analytics-period-btn active px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="7d" onclick="changeAnalyticsPeriod('7d')">Oxirgi 7 kun</button>
               <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="30d" onclick="changeAnalyticsPeriod('30d')">Oxirgi 30 kun</button>
               <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="this_month" onclick="changeAnalyticsPeriod('this_month')">Joriy oy</button>
@@ -2404,6 +2405,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=867"></script>
+  <script src="/static/js/app.js?v=868"></script>
 </body>
 </html>

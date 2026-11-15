@@ -129,5 +129,15 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
             await handle_start(msg)
             self.assertTrue(msg.answer.called, f"{name} uchun javob berilishi shart!")
 
+    async def test_06_analytics_today_filter(self):
+        """6. Savdo monitoringi bo'yicha 'today' davr filtri ishlashi tekshiruvi"""
+        from app.routes.admin import get_sales_monitoring
+        admin_user = {"id": 1, "role": "ADMIN", "company_id": 1}
+        res = await get_sales_monitoring(period="today", admin=admin_user)
+        self.assertTrue(res["success"])
+        self.assertEqual(res["data"]["summary"]["period"], "today")
+        self.assertEqual(res["data"]["summary"]["days_count"], 1)
+        self.assertEqual(len(res["data"]["timeline"]), 1)
+
 if __name__ == "__main__":
     unittest.main()
