@@ -82,6 +82,30 @@ async def init_db():
                 VALUES (0, ?, 'Dasturchi Admin', 'DEVELOPER', ?, 0, 1)
                 ON CONFLICT (telegram_id) DO UPDATE SET role = 'DEVELOPER', company_id = 0, is_active = 1;
             """, (dev_id_val, dev_pwd))
+
+            # 4. PostgreSQL Sequences (Serial ID hisoblagichlari)ni haqiqiy MAX(id) bilan sinxronlash
+            try:
+                cur_seq = await conn.execute("""
+                    SELECT table_name, column_name 
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'public' AND column_default LIKE 'nextval%'
+                """)
+                seq_cols = await cur_seq.fetchall()
+                for r in seq_cols:
+                    tbl = r["table_name"]
+                    col = r["column_name"]
+                    cur_s = await conn.execute(f"SELECT pg_get_serial_sequence('{tbl}', '{col}')")
+                    seq_res = await cur_s.fetchone()
+                    seq_name = seq_res[0] if seq_res else None
+                    if seq_name:
+                        cur_m = await conn.execute(f"SELECT COALESCE(MAX({col}), 1) FROM {tbl}")
+                        max_res = await cur_m.fetchone()
+                        max_id = max_res[0] if max_res else 1
+                        await conn.execute(f"SELECT setval('{seq_name}', GREATEST({max_id}, 1))")
+                logger.info("PostgreSQL barcha jadvallarining sequence hisoblagichlari muvaffaqiyatli sinxronlandi.")
+            except Exception as e:
+                logger.warning(f"PostgreSQL sequence sinxronlashda ogohlantirish: {e}")
+
             await conn.commit()
         return
 
