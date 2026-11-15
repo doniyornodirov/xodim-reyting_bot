@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json?v=854">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=854">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=854">
+  <link rel="manifest" href="/manifest.json?v=860">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=860">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=860">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=854', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=860', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=859">
+  <link rel="stylesheet" href="/static/css/style.css?v=860">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -819,11 +819,11 @@
         <h2 class="card-title">📲 Yangi sim-karta tarqatish</h2>
         <form id="admin-distribute-sim-form" onsubmit="handleDistributeSim(event, 'admin')">
           <!-- 1-qator: Operator tanlash va Xodimni tanlash -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-grid-2">
             <!-- Sim-karta operatori -->
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">📶 Sim-karta operatori *</label>
-              <select id="admin-sim-operator" class="form-input sim-styled-select" required>
+              <select id="admin-sim-operator" class="form-input sim-styled-select" style="width: 100% !important; height: 42px; box-sizing: border-box;" required>
                 <option value="Uzmobile">🔵 Uzmobile (GSM / CDMA)</option>
                 <option value="Beeline">🟡 Beeline (Unitel)</option>
                 <option value="Ucell">🟣 Ucell (COSCOM)</option>
@@ -833,34 +833,36 @@
             </div>
 
             <!-- Xodimni tanlash -->
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">👤 Xodimni tanlang *</label>
-              <select id="admin-sim-employee-select" class="form-input sim-styled-select" required>
+              <select id="admin-sim-employee-select" class="form-input sim-styled-select" style="width: 100% !important; height: 42px; box-sizing: border-box;" required>
                 <option value="">👤 -- Xodimni tanlang --</option>
               </select>
             </div>
           </div>
 
           <!-- 2-qator: Boshlang'ich va Tugash seriyasi -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
-            <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-grid-2" style="margin-bottom: 1.25rem;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">🔢 Boshlang'ich seriya (18 ta raqam) *</label>
               <input 
                 type="text" 
                 id="admin-sim-start" 
                 class="form-input sim-serial-input" 
+                style="width: 100% !important; height: 42px; box-sizing: border-box;"
                 maxlength="18" 
                 required 
                 placeholder="18 xonali seriya raqami"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">🔢 Tugash seriyasi (Ixtiyoriy - paket uchun)</label>
               <input 
                 type="text" 
                 id="admin-sim-end" 
                 class="form-input sim-serial-input" 
+                style="width: 100% !important; height: 42px; box-sizing: border-box;"
                 maxlength="18" 
                 placeholder="899981234567890010"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
@@ -868,7 +870,7 @@
             </div>
           </div>
 
-          <button type="submit" class="btn-success" style="margin-top: 0.5rem; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
+          <button type="submit" class="btn-success" style="width: 100%; margin-top: 0.5rem; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 700; border-radius: 8px;">
             📲 Sim-kartalarni xodimga biriktirish
           </button>
         </form>
@@ -1499,11 +1501,11 @@
         <h2 class="card-title">📲 Sim-karta tarqatish (Kassir)</h2>
         <form id="cashier-distribute-sim-form" onsubmit="handleDistributeSim(event, 'cashier')">
           <!-- 1-qator: Operator tanlash va Xodimni tanlash -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+          <div class="form-grid-2">
             <!-- Sim-karta operatori -->
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">📶 Sim-karta operatori *</label>
-              <select id="cashier-sim-operator" class="form-input sim-styled-select" required>
+              <select id="cashier-sim-operator" class="form-input sim-styled-select" style="width: 100% !important; height: 42px; box-sizing: border-box;" required>
                 <option value="Uzmobile">🔵 Uzmobile (GSM / CDMA)</option>
                 <option value="Beeline">🟡 Beeline (Unitel)</option>
                 <option value="Ucell">🟣 Ucell (COSCOM)</option>
@@ -1513,34 +1515,36 @@
             </div>
 
             <!-- Xodimni tanlash -->
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">👤 Xodimni tanlang *</label>
-              <select id="cashier-sim-employee-select" class="form-input sim-styled-select" required>
+              <select id="cashier-sim-employee-select" class="form-input sim-styled-select" style="width: 100% !important; height: 42px; box-sizing: border-box;" required>
                 <option value="">👤 -- Xodimni tanlang --</option>
               </select>
             </div>
           </div>
 
           <!-- 2-qator: Boshlang'ich va Tugash seriyasi -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
-            <div class="form-group" style="margin-bottom: 0;">
+          <div class="form-grid-2" style="margin-bottom: 1.5rem;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">🔢 Boshlang'ich seriya (18 ta raqam) *</label>
               <input 
                 type="text" 
                 id="cashier-sim-start" 
                 class="form-input sim-serial-input" 
+                style="width: 100% !important; height: 42px; box-sizing: border-box;"
                 maxlength="18" 
                 required 
                 placeholder="18 xonali seriya raqami"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label" style="font-weight: 600;">🔢 Tugash seriyasi (Ixtiyoriy - paket uchun)</label>
               <input 
                 type="text" 
                 id="cashier-sim-end" 
                 class="form-input sim-serial-input" 
+                style="width: 100% !important; height: 42px; box-sizing: border-box;"
                 maxlength="18" 
                 placeholder="899981234567890010"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
@@ -1548,7 +1552,7 @@
             </div>
           </div>
 
-          <button type="submit" class="btn-success" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
+          <button type="submit" class="btn-success" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 700; border-radius: 8px;">
             📲 Sim-kartalarni xodimga biriktirish
           </button>
         </form>
@@ -2396,6 +2400,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=859"></script>
+  <script src="/static/js/app.js?v=860"></script>
 </body>
 </html>

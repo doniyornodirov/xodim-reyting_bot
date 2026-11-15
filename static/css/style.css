@@ -1741,10 +1741,28 @@ select.form-input option {
 /* BUTUN TIZIM UCHUN PREMIUM OCHILADIGAN RO'YXAT (SELECT)   */
 /* ========================================================= */
 
+/* Unifikatsiyalangan 2 ustunli formalar gridi (advise.md Standarti) */
+.form-grid-2 {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 1rem !important;
+  margin-bottom: 1rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 640px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+}
+
 select,
 select.form-input,
 .sim-styled-select,
 .styled-select {
+  display: block !important;
   width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
@@ -1789,12 +1807,18 @@ select.form-input option,
 }
 
 .sim-serial-input {
-  min-height: 48px !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  box-sizing: border-box !important;
   font-family: 'Courier New', Courier, monospace !important;
-  font-size: 1.05rem !important;
+  font-size: 1rem !important;
   font-weight: 700 !important;
   letter-spacing: 0.05em !important;
-  border-radius: 10px !important;
+  border-radius: 8px !important;
+  padding: 0.45rem 0.85rem !important;
 }
 
 /* Light Mode / Dark Mode Theme Support */
