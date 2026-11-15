@@ -217,6 +217,11 @@ async def init_db():
             debt_snapshot REAL NOT NULL DEFAULT 0,
             debt_paid REAL NOT NULL DEFAULT 0,
             sim_cards_count INTEGER NOT NULL DEFAULT 0,
+            sim_uzmobile INTEGER NOT NULL DEFAULT 0,
+            sim_beeline INTEGER NOT NULL DEFAULT 0,
+            sim_ucell INTEGER NOT NULL DEFAULT 0,
+            sim_mobiuz INTEGER NOT NULL DEFAULT 0,
+            sim_perfectum INTEGER NOT NULL DEFAULT 0,
             kunlik REAL NOT NULL DEFAULT 0,
             terminal REAL NOT NULL DEFAULT 0,
             given_amount REAL NOT NULL DEFAULT 0,
@@ -260,6 +265,19 @@ async def init_db():
             except Exception:
                 pass
         await conn.execute("UPDATE cashier_handovers SET amount_uzs = amount WHERE amount_uzs = 0 AND amount_usd = 0")
+
+        # Migratsiyalar: daily_reports (5 ta operator bo'yicha sim-karta soni)
+        for col_sql in [
+            "ALTER TABLE daily_reports ADD COLUMN sim_uzmobile INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE daily_reports ADD COLUMN sim_beeline INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE daily_reports ADD COLUMN sim_ucell INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE daily_reports ADD COLUMN sim_mobiuz INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE daily_reports ADD COLUMN sim_perfectum INTEGER NOT NULL DEFAULT 0"
+        ]:
+            try:
+                await conn.execute(col_sql)
+            except Exception:
+                pass
 
         # Migratsiyalar: users jadvaliga har bir xodim uchun alohida geolokatsiya va ish/dam statusi ustunlari
         for col_sql in [

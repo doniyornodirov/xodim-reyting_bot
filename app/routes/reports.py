@@ -149,19 +149,25 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
         total_outflow = round(req.kunlik + req.terminal + given_amount + req.skidka + req.xarajat, 2)
         net_amount = round(total_inflow - total_outflow, 2)
 
+        # 5 ta operator bo'yicha sim-karta hisobi
+        total_op_sims = int(req.sim_uzmobile) + int(req.sim_beeline) + int(req.sim_ucell) + int(req.sim_mobiuz) + int(req.sim_perfectum)
+        final_sims = total_op_sims if total_op_sims > 0 else int(req.sim_cards_count or 0)
+
         if existing:
             # Rollback & Overwrite: Eski kutilayotgan hisobot o'rniga yangisi toza bazaviy holatdan yangilanadi
             await conn.execute("""
                 UPDATE daily_reports SET
                     paynet = ?, card_amount = ?, leviy = ?, debt_snapshot = ?,
-                    debt_paid = ?, sim_cards_count = ?, kunlik = ?, terminal = ?,
+                    debt_paid = ?, sim_cards_count = ?, sim_uzmobile = ?, sim_beeline = ?,
+                    sim_ucell = ?, sim_mobiuz = ?, sim_perfectum = ?, kunlik = ?, terminal = ?,
                     given_amount = ?, skidka = ?, xarajat = ?, total_inflow = ?,
                     total_outflow = ?, net_amount = ?, comment = ?, status = 'PENDING',
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND company_id = ?
             """, (
                 req.paynet, card_amount, req.leviy, debt_snapshot,
-                req.debt_paid, req.sim_cards_count, req.kunlik, req.terminal,
+                req.debt_paid, final_sims, req.sim_uzmobile, req.sim_beeline,
+                req.sim_ucell, req.sim_mobiuz, req.sim_perfectum, req.kunlik, req.terminal,
                 given_amount, req.skidka, req.xarajat, total_inflow,
                 total_outflow, net_amount, comment, existing["id"], comp_id
             ))
@@ -194,13 +200,15 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
                 cursor = await conn.execute("""
                     INSERT INTO daily_reports (
                         company_id, employee_id, report_date, paynet, card_amount, leviy,
-                        debt_snapshot, debt_paid, sim_cards_count, kunlik, terminal,
+                        debt_snapshot, debt_paid, sim_cards_count, sim_uzmobile, sim_beeline,
+                        sim_ucell, sim_mobiuz, sim_perfectum, kunlik, terminal,
                         given_amount, skidka, xarajat, total_inflow, total_outflow,
                         net_amount, comment, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
                 """, (
                     comp_id, user["id"], today_str, req.paynet, card_amount, req.leviy,
-                    debt_snapshot, req.debt_paid, req.sim_cards_count, req.kunlik, req.terminal,
+                    debt_snapshot, req.debt_paid, final_sims, req.sim_uzmobile, req.sim_beeline,
+                    req.sim_ucell, req.sim_mobiuz, req.sim_perfectum, req.kunlik, req.terminal,
                     given_amount, req.skidka, req.xarajat, total_inflow, total_outflow,
                     net_amount, comment
                 ))
@@ -232,7 +240,12 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             "leviy": req.leviy,
             "debt_snapshot": debt_snapshot,
             "debt_paid": req.debt_paid,
-            "sim_cards_count": req.sim_cards_count,
+            "sim_cards_count": final_sims,
+            "sim_uzmobile": req.sim_uzmobile,
+            "sim_beeline": req.sim_beeline,
+            "sim_ucell": req.sim_ucell,
+            "sim_mobiuz": req.sim_mobiuz,
+            "sim_perfectum": req.sim_perfectum,
             "kunlik": req.kunlik,
             "terminal": req.terminal,
             "given_amount": given_amount,

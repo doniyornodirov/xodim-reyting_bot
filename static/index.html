@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json?v=871">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=871">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=871">
+  <link rel="manifest" href="/manifest.json?v=872">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=872">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=872">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=871', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=872', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=871">
+  <link rel="stylesheet" href="/static/css/style.css?v=872">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -486,9 +486,11 @@
           <h3 class="card-title text-sm font-bold flex items-center gap-2 mb-3">
             <span>📲</span> Operatorlar Bo'yicha Sim-karta Savdosi
           </h3>
-          <div class="relative h-[260px] w-full">
+          <div class="relative h-[220px] w-full">
             <canvas id="monitoring-operator-chart"></canvas>
           </div>
+          <!-- 5 ta operatorning jonli statistikasi va logotiplari -->
+          <div id="monitoring-operator-chips" class="flex flex-wrap items-center justify-center gap-2 mt-3 pt-3 border-t border-slate-700/50"></div>
         </div>
       </div>
 
@@ -1339,18 +1341,54 @@
             </div>
           </div>
 
-          <!-- Sim karta (soni) -->
+          <!-- Sim karta (5 ta operator bo'yicha sotuv) -->
           <div class="sim-karta-compact-box">
             <div class="sim-karta-info">
               <span class="sim-karta-icon">📱</span>
               <div>
-                <div class="sim-karta-title">Sim-karta sotuvi</div>
-                <div class="sim-karta-hint">Kunlik hisobot uchun donada</div>
+                <div class="sim-karta-title" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <span>Sim-karta sotuvi</span>
+                  <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: #c7d2fe; font-size: 0.72rem; padding: 0.15rem 0.55rem; border-radius: 9999px;">
+                    Jami: <b id="rep-sim-total-badge" style="color: #38bdf8;">0</b> dona
+                  </span>
+                </div>
+                <div class="sim-karta-hint">Operatorlar bo'yicha sotilgan donasi</div>
               </div>
             </div>
-            <div class="sim-karta-input-wrap">
-              <input type="number" id="rep-sim-cards" class="form-input sim-karta-input" min="0" placeholder="0">
-              <span class="sim-karta-unit">dona</span>
+
+            <div class="sim-operators-grid">
+              <!-- Uzmobile -->
+              <div class="sim-op-item" title="Uzmobile">
+                <img src="/static/icons/operators/uzmobile.png" alt="Uzmobile" class="sim-op-logo">
+                <input type="number" id="rep-sim-uzmobile" class="form-input sim-op-input" min="0" placeholder="0" value="0" oninput="updateSimTotalBadge()">
+              </div>
+
+              <!-- Beeline -->
+              <div class="sim-op-item" title="Beeline">
+                <img src="/static/icons/operators/beeline.png" alt="Beeline" class="sim-op-logo">
+                <input type="number" id="rep-sim-beeline" class="form-input sim-op-input" min="0" placeholder="0" value="0" oninput="updateSimTotalBadge()">
+              </div>
+
+              <!-- Ucell -->
+              <div class="sim-op-item" title="Ucell">
+                <img src="/static/icons/operators/ucell.png" alt="Ucell" class="sim-op-logo">
+                <input type="number" id="rep-sim-ucell" class="form-input sim-op-input" min="0" placeholder="0" value="0" oninput="updateSimTotalBadge()">
+              </div>
+
+              <!-- Mobiuz -->
+              <div class="sim-op-item" title="Mobiuz">
+                <img src="/static/icons/operators/mobiuz.png" alt="Mobiuz" class="sim-op-logo">
+                <input type="number" id="rep-sim-mobiuz" class="form-input sim-op-input" min="0" placeholder="0" value="0" oninput="updateSimTotalBadge()">
+              </div>
+
+              <!-- Perfectum -->
+              <div class="sim-op-item" title="Perfectum">
+                <img src="/static/icons/operators/perfectum.png" alt="Perfectum" class="sim-op-logo">
+                <input type="number" id="rep-sim-perfectum" class="form-input sim-op-input" min="0" placeholder="0" value="0" oninput="updateSimTotalBadge()">
+              </div>
+
+              <!-- Yashirin jami saqlovchi input (orqaga moslik uchun) -->
+              <input type="hidden" id="rep-sim-cards" value="0">
             </div>
           </div>
 
@@ -2405,6 +2443,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=871"></script>
+  <script src="/static/js/app.js?v=872"></script>
 </body>
 </html>

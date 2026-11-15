@@ -236,5 +236,75 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
             await conn.execute("DELETE FROM users WHERE id = 888")
             await conn.commit()
 
+    async def test_10_five_operator_sim_cards_and_monitoring(self):
+        """10. 5 ta operator bo'yicha sim-karta sotuvi va Savdo monitoringida to'g'ri aks etishi tekshiruvi"""
+        from app.models import DailyReportCreate
+        from app.routes.reports import submit_daily_report
+        from app.routes.admin import get_sales_monitoring
+        from app.security import get_tashkent_today_str
+
+        today_str = get_tashkent_today_str()
+        test_user = {"id": 777, "company_id": 1, "role": "EMPLOYEE", "full_name": "Operator Test Xodim", "telegram_id": 777777}
+        admin_user = {"id": 1, "company_id": 1, "role": "ADMIN", "full_name": "Admin Test"}
+
+        async with aiosqlite.connect(DB_PATH) as conn:
+            await conn.execute("INSERT OR REPLACE INTO users (id, company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active) VALUES (777, 1, 777777, 'Operator Test Xodim', 'EMPLOYEE', 'hash', 0, 1)")
+            await conn.commit()
+
+        # 1. 5 ta operator bo'yicha hisobot topshirish
+        req = DailyReportCreate(
+            report_date=today_str,
+            paynet=100000,
+            leviy=0,
+            debt_paid=0,
+            sim_cards_count=0,
+            sim_uzmobile=4,
+            sim_beeline=3,
+            sim_ucell=2,
+            sim_mobiuz=1,
+            sim_perfectum=1,
+            kunlik=20000,
+            terminal=0,
+            skidka=0,
+            xarajat=0,
+            comment="5 operator testi"
+        )
+        res = await submit_daily_report(req=req, user=test_user)
+        self.assertTrue(res["success"])
+        rep_id = res["data"]["id"]
+
+        # 2. Bazada hisobotni APPROVED qilish (monitoring tasdiqlangan hisobotlarni ko'rsatadi)
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            cursor = await conn.execute("SELECT sim_cards_count, sim_uzmobile, sim_beeline, sim_ucell, sim_mobiuz, sim_perfectum FROM daily_reports WHERE id = ?", (rep_id,))
+            row = await cursor.fetchone()
+            self.assertEqual(row["sim_cards_count"], 11)
+            self.assertEqual(row["sim_uzmobile"], 4)
+            self.assertEqual(row["sim_beeline"], 3)
+            self.assertEqual(row["sim_ucell"], 2)
+            self.assertEqual(row["sim_mobiuz"], 1)
+            self.assertEqual(row["sim_perfectum"], 1)
+
+            await conn.execute("UPDATE daily_reports SET status = 'APPROVED' WHERE id = ?", (rep_id,))
+            await conn.commit()
+
+        # 3. Savdo monitoringi so'rovi tekshiruvi
+        mon_res = await get_sales_monitoring(period="today", admin=admin_user)
+        self.assertTrue(mon_res["success"])
+        op_list = mon_res["data"]["operators"]
+        op_dict = {o["operator_type"]: o["count"] for o in op_list}
+
+        self.assertGreaterEqual(op_dict.get("Uzmobile", 0), 4)
+        self.assertGreaterEqual(op_dict.get("Beeline", 0), 3)
+        self.assertGreaterEqual(op_dict.get("Ucell", 0), 2)
+        self.assertGreaterEqual(op_dict.get("Mobiuz", 0), 1)
+        self.assertGreaterEqual(op_dict.get("Perfectum", 0), 1)
+
+        # Tozalash
+        async with aiosqlite.connect(DB_PATH) as conn:
+            await conn.execute("DELETE FROM daily_reports WHERE id = ?", (rep_id,))
+            await conn.execute("DELETE FROM users WHERE id = 777")
+            await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()

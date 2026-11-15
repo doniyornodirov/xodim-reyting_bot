@@ -1859,6 +1859,20 @@ let prefillData = {
   debt_snapshot: 0
 };
 
+function updateSimTotalBadge() {
+  const uzm = parseInt(document.getElementById("rep-sim-uzmobile")?.value) || 0;
+  const bee = parseInt(document.getElementById("rep-sim-beeline")?.value) || 0;
+  const uce = parseInt(document.getElementById("rep-sim-ucell")?.value) || 0;
+  const mob = parseInt(document.getElementById("rep-sim-mobiuz")?.value) || 0;
+  const perf = parseInt(document.getElementById("rep-sim-perfectum")?.value) || 0;
+  const total = uzm + bee + uce + mob + perf;
+  const badge = document.getElementById("rep-sim-total-badge");
+  if (badge) badge.innerText = total;
+  const hiddenInput = document.getElementById("rep-sim-cards");
+  if (hiddenInput) hiddenInput.value = total;
+}
+window.updateSimTotalBadge = updateSimTotalBadge;
+
 async function loadDailyReportPrefill() {
   try {
     const res = await api("/api/reports/today-prefill");
@@ -1938,6 +1952,12 @@ async function loadDailyReportPrefill() {
         document.getElementById("rep-debt-paid").value = "0";
       }
       document.getElementById("rep-sim-cards").value = res.existing_report.sim_cards_count;
+      if (document.getElementById("rep-sim-uzmobile")) document.getElementById("rep-sim-uzmobile").value = res.existing_report.sim_uzmobile || 0;
+      if (document.getElementById("rep-sim-beeline")) document.getElementById("rep-sim-beeline").value = res.existing_report.sim_beeline || 0;
+      if (document.getElementById("rep-sim-ucell")) document.getElementById("rep-sim-ucell").value = res.existing_report.sim_ucell || 0;
+      if (document.getElementById("rep-sim-mobiuz")) document.getElementById("rep-sim-mobiuz").value = res.existing_report.sim_mobiuz || 0;
+      if (document.getElementById("rep-sim-perfectum")) document.getElementById("rep-sim-perfectum").value = res.existing_report.sim_perfectum || 0;
+      updateSimTotalBadge();
       document.getElementById("rep-kunlik").value = formatNumberSpaces(res.existing_report.kunlik);
       document.getElementById("rep-terminal").value = formatNumberSpaces(res.existing_report.terminal);
       document.getElementById("rep-skidka").value = formatNumberSpaces(res.existing_report.skidka);
@@ -1946,6 +1966,11 @@ async function loadDailyReportPrefill() {
     } else {
       banner.style.display = "none";
       document.getElementById("btn-submit-report").disabled = false;
+      ["rep-sim-uzmobile", "rep-sim-beeline", "rep-sim-ucell", "rep-sim-mobiuz", "rep-sim-perfectum", "rep-sim-cards"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "0";
+      });
+      updateSimTotalBadge();
     }
 
     calculateLiveReportFormula();
@@ -2036,7 +2061,14 @@ async function handleReportSubmit(e) {
     }
   }
 
-  const simCards = parseInt(document.getElementById("rep-sim-cards").value) || 0;
+  const simUzmobile = parseInt(document.getElementById("rep-sim-uzmobile")?.value) || 0;
+  const simBeeline = parseInt(document.getElementById("rep-sim-beeline")?.value) || 0;
+  const simUcell = parseInt(document.getElementById("rep-sim-ucell")?.value) || 0;
+  const simMobiuz = parseInt(document.getElementById("rep-sim-mobiuz")?.value) || 0;
+  const simPerfectum = parseInt(document.getElementById("rep-sim-perfectum")?.value) || 0;
+  const simOpTotal = simUzmobile + simBeeline + simUcell + simMobiuz + simPerfectum;
+  const simCards = simOpTotal > 0 ? simOpTotal : (parseInt(document.getElementById("rep-sim-cards")?.value) || 0);
+
   const kunlik = parseFormattedNumber(document.getElementById("rep-kunlik").value);
   const terminal = parseFormattedNumber(document.getElementById("rep-terminal").value);
   const skidka = parseFormattedNumber(document.getElementById("rep-skidka").value);
@@ -2050,6 +2082,11 @@ async function handleReportSubmit(e) {
       leviy,
       debt_paid: debtPaid,
       sim_cards_count: simCards,
+      sim_uzmobile: simUzmobile,
+      sim_beeline: simBeeline,
+      sim_ucell: simUcell,
+      sim_mobiuz: simMobiuz,
+      sim_perfectum: simPerfectum,
       kunlik,
       terminal,
       skidka,
@@ -3013,6 +3050,36 @@ function renderOperatorChart(operators) {
       }
     });
   }
+
+  // 5 ta operatorning jonli hisob-kitoblari va logotiplari
+  const chipsContainer = document.getElementById("monitoring-operator-chips");
+  if (chipsContainer) {
+    chipsContainer.innerHTML = "";
+    const totalOpCount = data.reduce((a, b) => a + b, 0);
+    const opLogos = {
+      "Uzmobile": "/static/icons/operators/uzmobile.png",
+      "Beeline": "/static/icons/operators/beeline.png",
+      "Ucell": "/static/icons/operators/ucell.png",
+      "Mobiuz": "/static/icons/operators/mobiuz.png",
+      "Perfectum": "/static/icons/operators/perfectum.png"
+    };
+
+    if (!operators || operators.length === 0 || totalOpCount === 0) {
+      chipsContainer.innerHTML = `<span style="font-size: 0.8rem; color: var(--text-sub);">Tanlangan davrda sotilgan sim-kartalar qayd etilmagan</span>`;
+    } else {
+      operators.forEach(op => {
+        const count = op.count || 0;
+        const pct = totalOpCount > 0 ? Math.round((count / totalOpCount) * 100) : 0;
+        const logo = op.logo || opLogos[op.operator_type] || "";
+        chipsContainer.innerHTML += `
+          <div class="op-badge" style="gap: 0.45rem; padding: 0.25rem 0.65rem;">
+            ${logo ? `<img src="${logo}" alt="${op.operator_type}" class="op-badge-logo">` : ''}
+            <span><b>${op.operator_type}:</b> ${count} ta <span style="color: var(--text-muted); font-size: 0.75rem;">(${pct}%)</span></span>
+          </div>
+        `;
+      });
+    }
+  }
 }
 
 function renderAnalyticsTable(timeline) {
@@ -3292,6 +3359,13 @@ function openReportDetailsModal(reportId) {
           <div style="font-size: 0.85rem; color: var(--text-sub);">Sotilgan sim-kartalar:</div>
           <div class="rep-modal-sim-total">
             📱 ${r.sim_cards_count} dona
+          </div>
+          <div style="display: flex; gap: 0.35rem; justify-content: flex-end; margin-top: 0.35rem; flex-wrap: wrap;">
+            ${(r.sim_uzmobile > 0) ? `<span title="Uzmobile" class="op-badge"><img src="/static/icons/operators/uzmobile.png" class="op-badge-logo"> ${r.sim_uzmobile}</span>` : ''}
+            ${(r.sim_beeline > 0) ? `<span title="Beeline" class="op-badge"><img src="/static/icons/operators/beeline.png" class="op-badge-logo"> ${r.sim_beeline}</span>` : ''}
+            ${(r.sim_ucell > 0) ? `<span title="Ucell" class="op-badge"><img src="/static/icons/operators/ucell.png" class="op-badge-logo"> ${r.sim_ucell}</span>` : ''}
+            ${(r.sim_mobiuz > 0) ? `<span title="Mobiuz" class="op-badge"><img src="/static/icons/operators/mobiuz.png" class="op-badge-logo"> ${r.sim_mobiuz}</span>` : ''}
+            ${(r.sim_perfectum > 0) ? `<span title="Perfectum" class="op-badge"><img src="/static/icons/operators/perfectum.png" class="op-badge-logo"> ${r.sim_perfectum}</span>` : ''}
           </div>
         </div>
       </div>

@@ -495,7 +495,12 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
             SELECT report_date,
                    COALESCE(SUM(total_inflow), 0) as submitted_amount,
                    COALESCE(SUM(net_amount), 0) as net_amount,
-                   COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold
+                   COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold,
+                   COALESCE(SUM(sim_uzmobile), 0) as sim_uzmobile,
+                   COALESCE(SUM(sim_beeline), 0) as sim_beeline,
+                   COALESCE(SUM(sim_ucell), 0) as sim_ucell,
+                   COALESCE(SUM(sim_mobiuz), 0) as sim_mobiuz,
+                   COALESCE(SUM(sim_perfectum), 0) as sim_perfectum
             FROM daily_reports
             WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
             GROUP BY report_date
@@ -537,26 +542,58 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
         prev_top = await cur.fetchone()
         prev_cards = prev_top["prev_cards"] if prev_top else 0
 
-        # 4. Operatorlar bo'yicha taqsimot
+        # 4. Operatorlar bo'yicha taqsimot (Joriy davrdagi hisobotlar bo'yicha)
         cur = await conn.execute("""
-            SELECT operator_type, COUNT(*) as count
-            FROM sim_cards
-            WHERE status = 'SOLD' AND company_id = ?
-            GROUP BY operator_type
-            ORDER BY count DESC
-        """, (comp_id,))
-        op_rows = await cur.fetchall()
-        operators = [dict(r) for r in op_rows]
-        if not operators:
+            SELECT 
+                COALESCE(SUM(sim_uzmobile), 0) as uzmobile,
+                COALESCE(SUM(sim_beeline), 0) as beeline,
+                COALESCE(SUM(sim_ucell), 0) as ucell,
+                COALESCE(SUM(sim_mobiuz), 0) as mobiuz,
+                COALESCE(SUM(sim_perfectum), 0) as perfectum
+            FROM daily_reports
+            WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ?
+        """, (start_str, end_str, comp_id))
+        op_sum = await cur.fetchone()
+
+        op_counts = {
+            "Uzmobile": int(op_sum["uzmobile"] or 0) if op_sum else 0,
+            "Beeline": int(op_sum["beeline"] or 0) if op_sum else 0,
+            "Ucell": int(op_sum["ucell"] or 0) if op_sum else 0,
+            "Mobiuz": int(op_sum["mobiuz"] or 0) if op_sum else 0,
+            "Perfectum": int(op_sum["perfectum"] or 0) if op_sum else 0
+        }
+
+        # Agar daily_reports da barcha operatorlar 0 bo'lsa (eski hisobotlar), sim_cards jadvalidan olish:
+        if sum(op_counts.values()) == 0:
             cur = await conn.execute("""
                 SELECT operator_type, COUNT(*) as count
                 FROM sim_cards
-                WHERE company_id = ?
+                WHERE status = 'SOLD' AND company_id = ?
                 GROUP BY operator_type
                 ORDER BY count DESC
             """, (comp_id,))
             op_rows = await cur.fetchall()
-            operators = [dict(r) for r in op_rows]
+            for r in op_rows:
+                op_name = r["operator_type"]
+                if op_name in op_counts:
+                    op_counts[op_name] = r["count"]
+
+        operator_icons = {
+            "Uzmobile": "/static/icons/operators/uzmobile.png",
+            "Beeline": "/static/icons/operators/beeline.png",
+            "Ucell": "/static/icons/operators/ucell.png",
+            "Mobiuz": "/static/icons/operators/mobiuz.png",
+            "Perfectum": "/static/icons/operators/perfectum.png"
+        }
+
+        operators = [
+            {
+                "operator_type": name,
+                "count": op_counts[name],
+                "logo": operator_icons.get(name, "")
+            }
+            for name in ["Uzmobile", "Beeline", "Ucell", "Mobiuz", "Perfectum"]
+        ]
 
     # Timeline qurish (kunlik uzluksiz ketma-ketlik)
     timeline = []
@@ -604,6 +641,11 @@ async def get_sales_monitoring(period: str = "7d", admin: dict = Depends(require
             "submitted_amount": sub_amt,
             "net_amount": net_amt,
             "sim_cards_sold": sims_cnt,
+            "sim_uzmobile": int(rep_info.get("sim_uzmobile", 0)),
+            "sim_beeline": int(rep_info.get("sim_beeline", 0)),
+            "sim_ucell": int(rep_info.get("sim_ucell", 0)),
+            "sim_mobiuz": int(rep_info.get("sim_mobiuz", 0)),
+            "sim_perfectum": int(rep_info.get("sim_perfectum", 0)),
             "card_topup_amount": c_amt,
             "card_topup_count": c_cnt,
             "day_change_pct": day_change

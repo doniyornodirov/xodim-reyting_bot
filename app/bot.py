@@ -1381,6 +1381,18 @@ async def send_report_summary_to_telegram(employee_tg_id: int, report_data: dict
         debt_paid_val = float(report_data.get("debt_paid", 0) or 0)
         debt_paid_str = fmt(debt_paid_val)
         sim_count = int(report_data.get("sim_cards_count", 0) or 0)
+        sim_parts = []
+        if report_data.get("sim_uzmobile"):
+            sim_parts.append(f"🔵 Uzm: {report_data['sim_uzmobile']}")
+        if report_data.get("sim_beeline"):
+            sim_parts.append(f"🟡 Bee: {report_data['sim_beeline']}")
+        if report_data.get("sim_ucell"):
+            sim_parts.append(f"🟣 Uce: {report_data['sim_ucell']}")
+        if report_data.get("sim_mobiuz"):
+            sim_parts.append(f"🔴 Mob: {report_data['sim_mobiuz']}")
+        if report_data.get("sim_perfectum"):
+            sim_parts.append(f"⚡ Perf: {report_data['sim_perfectum']}")
+        sim_detail_str = f" ({', '.join(sim_parts)})" if sim_parts else ""
 
         kunlik_str = fmt(report_data.get("kunlik", 0))
         terminal_str = fmt(report_data.get("terminal", 0))
@@ -1416,7 +1428,7 @@ async def send_report_summary_to_telegram(employee_tg_id: int, report_data: dict
             f"{given_block}"
             f"🔸 Skidka: {skidka_str} so'm\n"
             f"🔸 Xarajat: {xarajat_str} so'm\n"
-            f"📱 Sim-kartalar: <b>{sim_count} dona</b>\n"
+            f"📱 Sim-kartalar: <b>{sim_count} dona</b>{sim_detail_str}\n"
             f"💸 <b>Jami chiqim:</b> <b>{outflow_str} so'm</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             f"💵 <b>TOPSHIRILADIGAN SOF SUMMA:</b>\n"
