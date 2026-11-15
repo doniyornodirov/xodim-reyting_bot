@@ -1,6 +1,6 @@
 import io
 import math
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, date, timezone, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from fastapi.responses import StreamingResponse
@@ -384,8 +384,10 @@ async def get_my_workplace(user: dict = Depends(get_current_user)):
         loc_lag_minutes = 0
         now_dt = datetime.now(timezone.utc)
         if norm_updated_at:
-            if not norm_updated_at.endswith("Z") and "+" not in norm_updated_at:
-                norm_updated_at = norm_updated_at.replace(" ", "T") + "Z"
+            if isinstance(norm_updated_at, (datetime, date)):
+                norm_updated_at = norm_updated_at.isoformat()
+            elif not str(norm_updated_at).endswith("Z") and "+" not in str(norm_updated_at):
+                norm_updated_at = str(norm_updated_at).replace(" ", "T") + "Z"
             try:
                 loc_clean = str(norm_updated_at).replace("Z", "+00:00")
                 loc_dt = datetime.fromisoformat(loc_clean)
@@ -739,8 +741,11 @@ async def get_all_employees_location(admin: dict = Depends(require_role(["ADMIN"
 
             raw_updated_at = r["last_location_updated_at"]
             norm_updated_at = raw_updated_at
-            if norm_updated_at and not norm_updated_at.endswith("Z") and "+" not in norm_updated_at:
-                norm_updated_at = norm_updated_at.replace(" ", "T") + "Z"
+            if norm_updated_at:
+                if isinstance(norm_updated_at, (datetime, date)):
+                    norm_updated_at = norm_updated_at.isoformat()
+                elif not str(norm_updated_at).endswith("Z") and "+" not in str(norm_updated_at):
+                    norm_updated_at = str(norm_updated_at).replace(" ", "T") + "Z"
 
             # SMART ANTI-FRAUD: Harakatsizlik va Absolyut 0 harakat tahlili
             stillness_code = r["stillness_state"] if ("stillness_state" in r.keys() and r["stillness_state"]) else "ACTIVE"

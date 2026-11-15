@@ -127,7 +127,13 @@ class PostgresRecordWrapper:
 
     def __init__(self, record: asyncpg.Record):
         self._record = record
-        self._dict = dict(record)
+        d = {}
+        for k, v in record.items():
+            if isinstance(v, (datetime, date)):
+                d[k] = v.isoformat()
+            else:
+                d[k] = v
+        self._dict = d
         self._keys = list(self._dict.keys())
         self._values = list(self._dict.values())
 
