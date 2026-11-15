@@ -5283,3 +5283,130 @@ body.theme-light .segmented-control .btn-logout:hover {
     width: 40%;
   }
 }
+
+/* ==========================================================================
+   YAGONA VA IXCHAM AMALLAR TUGMALARI (TABLE ACTION BUTTONS - ADVISE.MD STANDARTI)
+   ========================================================================== */
+.action-btn-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+}
+
+.action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.3rem !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 0 0.55rem !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  border: 1px solid transparent !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+  user-select: none !important;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+}
+
+.action-btn:active {
+  transform: translateY(0) scale(0.97) !important;
+}
+
+/* Primary (Sozlash / Asosiy) */
+.action-btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
+  color: #ffffff !important;
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3) !important;
+}
+.action-btn-primary:hover {
+  background: linear-gradient(135deg, #4338ca, #4f46e5) !important;
+  box-shadow: 0 3px 8px rgba(79, 70, 229, 0.45) !important;
+}
+
+/* Success (Tarix / Hisobot) */
+.action-btn-success {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+.action-btn-success:hover {
+  background: rgba(16, 185, 129, 0.28) !important;
+  color: #6ee7b7 !important;
+  border-color: rgba(16, 185, 129, 0.6) !important;
+}
+
+/* Info (Xodim xaritasi) */
+.action-btn-info {
+  background: rgba(2, 132, 199, 0.15) !important;
+  color: #38bdf8 !important;
+  border-color: rgba(2, 132, 199, 0.35) !important;
+}
+.action-btn-info:hover {
+  background: rgba(2, 132, 199, 0.28) !important;
+  color: #7dd3fc !important;
+  border-color: rgba(2, 132, 199, 0.6) !important;
+}
+
+/* Purple (Ish joyi) */
+.action-btn-purple {
+  background: rgba(147, 51, 234, 0.15) !important;
+  color: #c084fc !important;
+  border-color: rgba(147, 51, 234, 0.35) !important;
+}
+.action-btn-purple:hover {
+  background: rgba(147, 51, 234, 0.28) !important;
+  color: #d8b4fe !important;
+  border-color: rgba(147, 51, 234, 0.6) !important;
+}
+
+/* Danger (O'chirish / Tozalash) */
+.action-btn-danger {
+  background: rgba(244, 63, 94, 0.12) !important;
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.35) !important;
+  width: 28px !important;
+  min-width: 28px !important;
+  padding: 0 !important;
+}
+.action-btn-danger:hover {
+  background: rgba(244, 63, 94, 0.25) !important;
+  color: #fda4af !important;
+  border-color: rgba(244, 63, 94, 0.6) !important;
+}
+
+/* Light Theme Moslashuvi */
+body.theme-light .action-btn-success {
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+  border-color: #a7f3d0 !important;
+}
+body.theme-light .action-btn-info {
+  background: #f0f9ff !important;
+  color: #0284c7 !important;
+  border-color: #bae6fd !important;
+}
+body.theme-light .action-btn-purple {
+  background: #faf5ff !important;
+  color: #7e22ce !important;
+  border-color: #e9d5ff !important;
+}
+body.theme-light .action-btn-danger {
+  background: #fff1f2 !important;
+  color: #e11d48 !important;
+  border-color: #fecdd3 !important;
+}

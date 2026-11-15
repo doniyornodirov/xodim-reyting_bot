@@ -4384,19 +4384,32 @@ async function loadAdminLocationTab(showToastNotice = false) {
         ? `<span style="font-size: 0.75rem; color: ${emp.is_signal_lost ? '#fb7185; font-weight: 700' : 'var(--text-muted)'}; cursor: help;" title="Aniq Toshkent vaqti: ${exactTime}${emp.is_signal_lost ? ' (Signal uzilgan)' : ''}">🕒 ${timeAgo}</span>` 
         : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
 
+      // Yagona va zamonaviy amallar tugmalari guruhi (advise.md qoidasi)
+      const configBtn = `
+        <button type="button" class="action-btn action-btn-primary" onclick="openSetEmployeeLocationModal(${emp.id})" title="${isConfigured ? 'Ish joyi va vaqtini tahrirlash' : 'Ish joyi va vaqtini biriktirish'}">
+          ${isConfigured ? '✏️ Sozlash' : '📍 Kordinata & Vaqt'}
+        </button>
+      `;
+
+      const historyBtn = `
+        <button type="button" class="action-btn action-btn-success" onclick="openLocationHistoryModal(${emp.id})" title="Ushbu xodimning geolokatsiya tarixi (DOCX)">
+          📄 Tarix
+        </button>
+      `;
+
       // Xaritada ko'rish tugmasi (xodimning oxirgi jonli lokatsiyasi)
       const mapBtn = (emp.last_latitude && emp.last_longitude)
-        ? `<a href="https://www.google.com/maps?q=${emp.last_latitude},${emp.last_longitude}" target="_blank" rel="noopener noreferrer" class="btn-logout" style="padding: 3px 7px; font-size: 0.72rem; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;" title="Xodimning joylashuvi xaritada">🗺️ Xodim</a>`
+        ? `<a href="https://www.google.com/maps?q=${emp.last_latitude},${emp.last_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-info" title="Xodimning hozirgi/oxirgi joylashuvi xaritada">🗺️ Xodim</a>`
         : "";
 
       // Ish joyini xaritada ko'rish tugmasi (agar belgilangan bo'lsa)
       const wpMapBtn = isConfigured
-        ? `<a href="https://www.google.com/maps?q=${emp.workplace_latitude},${emp.workplace_longitude}" target="_blank" rel="noopener noreferrer" class="btn-logout" style="padding: 3px 7px; font-size: 0.72rem; text-decoration: none; display: inline-flex; align-items: center; gap: 3px;" title="Ish joyi manzili">🏢 Ish joyi</a>`
+        ? `<a href="https://www.google.com/maps?q=${emp.workplace_latitude},${emp.workplace_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-purple" title="Belgilangan ish joyi manzili xaritada">🏢 Ish joyi</a>`
         : "";
 
       // Ish joyini tozalash tugmasi
       const clearBtn = isConfigured
-        ? `<button type="button" class="btn-logout" style="padding: 3px 7px; font-size: 0.72rem; color: #f87171; border-color: rgba(239, 68, 68, 0.35);" onclick="handleClearEmployeeWorkplace(${emp.id}, '${emp.full_name}')" title="Kordinatani tozalash">🗑️</button>`
+        ? `<button type="button" class="action-btn action-btn-danger" onclick="handleClearEmployeeWorkplace(${emp.id}, '${emp.full_name}')" title="Kordinatani tozalash">🗑️</button>`
         : "";
 
       tbody.innerHTML += `
@@ -4411,14 +4424,10 @@ async function loadAdminLocationTab(showToastNotice = false) {
           <td>${distCell}</td>
           <td>${statusBadge}</td>
           <td>${timeCell}</td>
-          <td>
-            <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
-              <button type="button" class="btn-primary" style="padding: 3px 8px; font-size: 0.75rem;" onclick="openSetEmployeeLocationModal(${emp.id})">
-                ${isConfigured ? '✏️ Sozlash' : '📍 Kordinata & Vaqt'}
-              </button>
-              <button type="button" class="btn" style="padding: 3px 7px; font-size: 0.72rem; background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; font-weight: 600;" onclick="openLocationHistoryModal(${emp.id})" title="Ushbu xodimning geolokatsiya tarixi (DOCX)">
-                📄 Tarix
-              </button>
+          <td style="white-space: nowrap; text-align: center;">
+            <div class="action-btn-group">
+              ${configBtn}
+              ${historyBtn}
               ${mapBtn}
               ${wpMapBtn}
               ${clearBtn}
