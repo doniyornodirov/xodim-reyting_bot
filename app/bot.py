@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import html
 from datetime import datetime, timezone, timedelta
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
@@ -940,7 +941,7 @@ if dp:
         async with aiosqlite.connect(DB_PATH) as conn:
             conn.row_factory = aiosqlite.Row
             cursor = await conn.execute("""
-                SELECT c.*, u.full_name as employee_name
+                SELECT c.*, u.full_name as employee_name, u.telegram_id as employee_tg_id
                 FROM card_topups c
                 JOIN users u ON c.employee_id = u.id
                 WHERE c.id = ?
@@ -1002,9 +1003,13 @@ if dp:
             card_display = f"<code>{topup['card_number']}</code>"
             status_line = f"✅ <b>Tasdiqlandi</b> <i>(Admin: {actor_name})</i>"
 
+        emp_tg_id = topup['employee_tg_id'] if 'employee_tg_id' in topup.keys() else None
+        emp_name = html.escape(str(topup['employee_name'] or "Xodim"))
+        emp_mention = f'<a href="tg://user?id={emp_tg_id}">{emp_name}</a>' if emp_tg_id else emp_name
+
         new_text = (
             f"💳 <b>Karta to'ldirish so'rovi #{topup['transaction_number']}</b>\n\n"
-            f"👤 {topup['employee_name']}\n"
+            f"👤 {emp_mention}\n"
             f"🔢 {card_display}\n"
             f"🏷️ {topup['card_holder']}\n"
             f"💰 {amount_formatted} so'm\n"
@@ -1079,9 +1084,13 @@ async def notify_card_topup_in_group(topup_data: dict, group_id: str | None = No
     if topup_data.get("is_repeat_today"):
         repeat_warning = "\n\n⚠️ <b>DIQQAT: Bu kartaga bugun to'lov qilindi!</b> 🔄"
 
+    emp_tg_id = topup_data.get("employee_tg_id")
+    emp_name = html.escape(str(topup_data.get("employee_name") or "Xodim"))
+    emp_mention = f'<a href="tg://user?id={emp_tg_id}">{emp_name}</a>' if emp_tg_id else emp_name
+
     text = (
         f"💳 <b>Karta to'ldirish so'rovi #{topup_data['transaction_number']}</b>\n\n"
-        f"👤 {topup_data['employee_name']}\n"
+        f"👤 {emp_mention}\n"
         f"🔢 <code>{topup_data['card_number']}</code>\n"
         f"🏷️ {topup_data['card_holder']}\n"
         f"💰 {topup_data['amount_formatted']} so'm\n"
@@ -1136,7 +1145,7 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
         async with aiosqlite.connect(DB_PATH) as conn:
             conn.row_factory = aiosqlite.Row
             cur = await conn.execute("""
-                SELECT c.*, u.full_name as employee_name, comp.telegram_group_id as company_group_id
+                SELECT c.*, u.full_name as employee_name, u.telegram_id as employee_tg_id, comp.telegram_group_id as company_group_id
                 FROM card_topups c
                 JOIN users u ON c.employee_id = u.id
                 LEFT JOIN companies comp ON c.company_id = comp.id
@@ -1177,9 +1186,13 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
         card_display = f"<code>{topup['card_number']}</code>"
         markup = get_topup_keyboard(topup_id, "APPROVED")
 
+    emp_tg_id = topup['employee_tg_id'] if 'employee_tg_id' in topup.keys() else None
+    emp_name = html.escape(str(topup['employee_name'] or "Xodim"))
+    emp_mention = f'<a href="tg://user?id={emp_tg_id}">{emp_name}</a>' if emp_tg_id else emp_name
+
     text = (
         f"💳 <b>Karta to'ldirish so'rovi #{topup['transaction_number']}</b>\n\n"
-        f"👤 {topup['employee_name']}\n"
+        f"👤 {emp_mention}\n"
         f"🔢 {card_display}\n"
         f"🏷️ {topup['card_holder']}\n"
         f"💰 {amount_formatted} so'm\n"

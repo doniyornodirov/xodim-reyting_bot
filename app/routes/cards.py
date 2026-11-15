@@ -99,6 +99,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         "id": topup_id,
         "transaction_number": new_tx_number,
         "employee_name": user["full_name"],
+        "employee_tg_id": user.get("telegram_id"),
         "card_number": formatted_card,
         "card_holder": validated_holder,
         "amount_formatted": f"{int(amount):,}".replace(",", " "),
