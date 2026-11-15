@@ -2118,15 +2118,16 @@ async function loadCashierEmployees() {
     const res = await api("/api/cashier/employees");
     const select = document.getElementById("cashier-employee-select");
     if (!select) return;
-    select.innerHTML = `<option value="">-- Xodimni tanlang --</option>`;
+    select.innerHTML = `<option value="">👤 -- Xodimni tanlang --</option>`;
     const employees = (res.data || []).filter(emp => emp.role !== "ADMIN");
     if (employees.length === 0) {
       select.innerHTML += `<option value="" disabled>Barcha xodimlar bugungi kassani topshirib bo'lgan</option>`;
       return;
     }
     employees.forEach(emp => {
+      const roleIcon = emp.role === "CASHIER" ? "💵" : "💼";
       const roleText = emp.role === "CASHIER" ? "Kassir" : "Xodim";
-      select.innerHTML += `<option value="${emp.id}">${emp.full_name} (${roleText})</option>`;
+      select.innerHTML += `<option value="${emp.id}">👤 ${emp.full_name} &nbsp;•&nbsp; (${roleIcon} ${roleText})</option>`;
     });
   } catch (e) {}
 }
@@ -3388,11 +3389,12 @@ async function loadAdminUsers() {
     const debtSelect = document.getElementById("assign-debt-user-select");
     if (debtSelect) {
       const currentSelected = debtSelect.value;
-      debtSelect.innerHTML = `<option value="">-- Xodimni tanlang --</option>`;
+      debtSelect.innerHTML = `<option value="">👤 -- Xodimni tanlang --</option>`;
       res.data
         .filter(u => u.role !== "ADMIN" && u.is_active)
         .forEach(u => {
-          debtSelect.innerHTML += `<option value="${u.id}">${u.full_name} (Mavjud qarz: ${formatNumberSpaces(u.debt_amount ?? 0)} so'm)</option>`;
+          const debtInfo = (u.debt_amount ?? 0) > 0 ? `⚠️ Qarzi: ${formatNumberSpaces(u.debt_amount)} so'm` : `✅ Qarzi yo'q`;
+          debtSelect.innerHTML += `<option value="${u.id}">👤 ${u.full_name} &nbsp;•&nbsp; (${debtInfo})</option>`;
         });
       if (currentSelected) debtSelect.value = currentSelected;
     }
@@ -3673,12 +3675,12 @@ async function loadAdminCashierTab() {
     const usersRes = await api("/api/admin/users");
     const select = document.getElementById("appoint-cashier-select");
     if (select) {
-      select.innerHTML = `<option value="">-- Xodimni tanlang --</option>`;
+      select.innerHTML = `<option value="">👤 -- Xodimni tanlang --</option>`;
       usersRes.data
         .filter(u => u.is_active && u.role !== "ADMIN")
         .forEach(u => {
-          const isCurrentCashier = u.role === "CASHIER" ? " (Hozirgi Kassir ⭐)" : "";
-          select.innerHTML += `<option value="${u.id}">${u.full_name}${isCurrentCashier}</option>`;
+          const statusBadge = u.role === "CASHIER" ? "⭐ Hozirgi Kassir" : "💼 Xodim";
+          select.innerHTML += `<option value="${u.id}">👤 ${u.full_name} &nbsp;•&nbsp; (${statusBadge})</option>`;
         });
     }
 
@@ -3868,56 +3870,13 @@ async function loadCashierSimsTab() {
   await loadSimSummary('cashier');
 }
 
-function selectSimOperator(role, opName) {
-  const select = document.getElementById(`${role}-sim-operator`);
-  if (select) {
-    select.value = opName;
-  }
-  syncSimOperatorChips(role, opName);
-}
-
-function syncSimOperatorChips(role, opName) {
-  const container = document.getElementById(`${role}-sim-operator-chips`);
-  if (container) {
-    const chips = container.querySelectorAll('.sim-op-chip');
-    chips.forEach(chip => {
-      if (chip.getAttribute('data-op') === opName) {
-        chip.classList.add('active');
-      } else {
-        chip.classList.remove('active');
-      }
-    });
-  }
-  const badge = document.getElementById(`${role}-sim-op-badge`);
-  if (badge) {
-    const opIcons = {
-      'Uzmobile': '🔵',
-      'Beeline': '🟡',
-      'Ucell': '🟣',
-      'Mobiuz': '🔴',
-      'Perfectum': '⚡'
-    };
-    const icon = opIcons[opName] || '📶';
-    badge.textContent = `${icon} ${opName}`;
-    badge.className = `sim-op-badge badge-${opName.toLowerCase()}`;
-  }
-}
-
-window.selectSimOperator = selectSimOperator;
-window.syncSimOperatorChips = syncSimOperatorChips;
-
 async function loadSimEmployeesSelect(prefix) {
   try {
     const res = await api("/api/sim-cards/employees");
     const select = document.getElementById(`${prefix}-sim-employee-select`);
-    const badge = document.getElementById(`${prefix}-sim-emp-badge`);
     if (!select) return;
     select.innerHTML = '<option value="">👤 -- Xodimni tanlang --</option>';
     const employees = (res.data || []).filter(emp => emp.role !== 'ADMIN' && emp.role !== 'DEVELOPER');
-
-    if (badge) {
-      badge.textContent = `👥 ${employees.length} ta xodim`;
-    }
 
     if (employees.length > 0) {
       employees.forEach(emp => {
@@ -3927,7 +3886,6 @@ async function loadSimEmployeesSelect(prefix) {
       });
     } else {
       select.innerHTML += '<option value="" disabled>Faol xodimlar topilmadi</option>';
-      if (badge) badge.textContent = '0 ta xodim';
     }
   } catch (e) {
     console.error("loadSimEmployeesSelect xatosi:", e);
