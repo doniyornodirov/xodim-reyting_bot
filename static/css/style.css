@@ -2485,8 +2485,10 @@ button[style*="background: rgb(217, 119, 6)"]:hover {
 }
 
 /* ========================================================= */
-/* TARIX BO'LIMI: HAR 5 TAdan KEYIN TO'LIB QOLSA SCROLL QILISH */
+/* TARIX BO'LIMLARI: HAR 10 QATORDA TO'LIB QOLSA SCROLL QILISH */
 /* ========================================================= */
+.table-scroll-10,
+.table-container.table-scroll-10,
 .table-scroll-5,
 .table-container.table-scroll-5,
 .history-table-container,
@@ -2494,15 +2496,22 @@ button[style*="background: rgb(217, 119, 6)"]:hover {
 .card-box:has(#given-history-tbody) .table-container,
 .card-box:has(#report-history-tbody) .table-container,
 .card-box:has(#cashier-my-handovers-tbody) .table-container,
+.card-box:has(#cashier-sim-balance-tbody) .table-container,
+.card-box:has(#emp-rating-tbody) .table-container,
 .card-box:has(#admin-cashier-history-tbody) .table-container,
 .card-box:has(#admin-all-handovers-tbody) .table-container,
 .card-box:has(#admin-sim-recent-tbody) .table-container,
+.card-box:has(#admin-sim-balance-tbody) .table-container,
 .card-box:has(#admin-audit-tbody) .table-container,
 .card-box:has(#admin-topups-tbody) .table-container,
 .card-box:has(#admin-givens-tbody) .table-container,
 .card-box:has(#admin-reports-tbody) .table-container,
+.card-box:has(#admin-comparison-tbody) .table-container,
+.card-box:has(#admin-users-tbody) .table-container,
+.card-box:has(#admin-location-tbody) .table-container,
+.card-box:has(#admin-rating-tbody) .table-container,
 .card-box:has(#saas-companies-tbody) .table-container {
-  max-height: 290px !important;
+  max-height: 520px !important;
   overflow-y: auto !important;
   overflow-x: auto !important;
   position: relative;
@@ -2512,6 +2521,8 @@ button[style*="background: rgb(217, 119, 6)"]:hover {
 }
 
 /* Yopishqoq sarlavha (Sticky Header): jadval pastga aylanganda ustun nomlari ko'rinib turishi uchun */
+.table-scroll-10 thead th,
+.table-container.table-scroll-10 thead th,
 .table-scroll-5 thead th,
 .table-container.table-scroll-5 thead th,
 .history-table-container thead th,
@@ -2519,13 +2530,20 @@ button[style*="background: rgb(217, 119, 6)"]:hover {
 .card-box:has(#given-history-tbody) .table-container thead th,
 .card-box:has(#report-history-tbody) .table-container thead th,
 .card-box:has(#cashier-my-handovers-tbody) .table-container thead th,
+.card-box:has(#cashier-sim-balance-tbody) .table-container thead th,
+.card-box:has(#emp-rating-tbody) .table-container thead th,
 .card-box:has(#admin-cashier-history-tbody) .table-container thead th,
 .card-box:has(#admin-all-handovers-tbody) .table-container thead th,
 .card-box:has(#admin-sim-recent-tbody) .table-container thead th,
+.card-box:has(#admin-sim-balance-tbody) .table-container thead th,
 .card-box:has(#admin-audit-tbody) .table-container thead th,
 .card-box:has(#admin-topups-tbody) .table-container thead th,
 .card-box:has(#admin-givens-tbody) .table-container thead th,
 .card-box:has(#admin-reports-tbody) .table-container thead th,
+.card-box:has(#admin-comparison-tbody) .table-container thead th,
+.card-box:has(#admin-users-tbody) .table-container thead th,
+.card-box:has(#admin-location-tbody) .table-container thead th,
+.card-box:has(#admin-rating-tbody) .table-container thead th,
 .card-box:has(#saas-companies-tbody) .table-container thead th {
   position: sticky !important;
   top: 0 !important;
@@ -2535,6 +2553,8 @@ button[style*="background: rgb(217, 119, 6)"]:hover {
 }
 
 /* Kunduzgi (Day mode) rejimda yopishqoq sarlavha foni */
+body.theme-light .table-scroll-10 thead th,
+body.theme-light .table-container.table-scroll-10 thead th,
 body.theme-light .table-scroll-5 thead th,
 body.theme-light .table-container.table-scroll-5 thead th,
 body.theme-light .history-table-container thead th,
@@ -2542,47 +2562,21 @@ body.theme-light .card-box:has(#card-history-tbody) .table-container thead th,
 body.theme-light .card-box:has(#given-history-tbody) .table-container thead th,
 body.theme-light .card-box:has(#report-history-tbody) .table-container thead th,
 body.theme-light .card-box:has(#cashier-my-handovers-tbody) .table-container thead th,
+body.theme-light .card-box:has(#cashier-sim-balance-tbody) .table-container thead th,
+body.theme-light .card-box:has(#emp-rating-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-cashier-history-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-all-handovers-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-sim-recent-tbody) .table-container thead th,
+body.theme-light .card-box:has(#admin-sim-balance-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-audit-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-topups-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-givens-tbody) .table-container thead th,
 body.theme-light .card-box:has(#admin-reports-tbody) .table-container thead th,
+body.theme-light .card-box:has(#admin-comparison-tbody) .table-container thead th,
+body.theme-light .card-box:has(#admin-users-tbody) .table-container thead th,
+body.theme-light .card-box:has(#admin-location-tbody) .table-container thead th,
+body.theme-light .card-box:has(#admin-rating-tbody) .table-container thead th,
 body.theme-light .card-box:has(#saas-companies-tbody) .table-container thead th {
-  background: #f1f5f9 !important;
-  box-shadow: 0 1px 0 #e2e8f0 !important;
-  color: #0f172a !important;
-}
-
-/* ========================================================= */
-/* LOKATSIYA JADVALI: HAR 10 TAdan KEYIN TO'LIB QOLSA SCROLL QILISH */
-/* ========================================================= */
-.table-scroll-10,
-.table-container.table-scroll-10,
-.card-box:has(#admin-location-tbody) .table-container {
-  max-height: 520px;
-  overflow-y: auto !important;
-  overflow-x: auto !important;
-  position: relative;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
-}
-
-.table-scroll-10 thead th,
-.table-container.table-scroll-10 thead th,
-.card-box:has(#admin-location-tbody) .table-container thead th {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 10 !important;
-  background: var(--bg-surface-elevated, #1e293b) !important;
-  box-shadow: 0 1px 0 var(--border-color, rgba(255, 255, 255, 0.1)) !important;
-}
-
-body.theme-light .table-scroll-10 thead th,
-body.theme-light .table-container.table-scroll-10 thead th,
-body.theme-light .card-box:has(#admin-location-tbody) .table-container thead th {
   background: #f1f5f9 !important;
   box-shadow: 0 1px 0 #e2e8f0 !important;
   color: #0f172a !important;
@@ -2591,9 +2585,6 @@ body.theme-light .card-box:has(#admin-location-tbody) .table-container thead th 
 @media (max-width: 640px) {
   .table-scroll-10,
   .table-container.table-scroll-10,
-  .card-box:has(#admin-location-tbody) .table-container {
-    max-height: 440px !important;
-  }
   .table-scroll-5,
   .table-container.table-scroll-5,
   .history-table-container,
@@ -2601,14 +2592,22 @@ body.theme-light .card-box:has(#admin-location-tbody) .table-container thead th 
   .card-box:has(#given-history-tbody) .table-container,
   .card-box:has(#report-history-tbody) .table-container,
   .card-box:has(#cashier-my-handovers-tbody) .table-container,
+  .card-box:has(#cashier-sim-balance-tbody) .table-container,
+  .card-box:has(#emp-rating-tbody) .table-container,
   .card-box:has(#admin-cashier-history-tbody) .table-container,
   .card-box:has(#admin-all-handovers-tbody) .table-container,
   .card-box:has(#admin-sim-recent-tbody) .table-container,
+  .card-box:has(#admin-sim-balance-tbody) .table-container,
   .card-box:has(#admin-audit-tbody) .table-container,
   .card-box:has(#admin-topups-tbody) .table-container,
   .card-box:has(#admin-givens-tbody) .table-container,
-  .card-box:has(#admin-reports-tbody) .table-container {
-    max-height: 290px !important;
+  .card-box:has(#admin-reports-tbody) .table-container,
+  .card-box:has(#admin-comparison-tbody) .table-container,
+  .card-box:has(#admin-users-tbody) .table-container,
+  .card-box:has(#admin-location-tbody) .table-container,
+  .card-box:has(#admin-rating-tbody) .table-container,
+  .card-box:has(#saas-companies-tbody) .table-container {
+    max-height: 480px !important;
   }
 }
 
