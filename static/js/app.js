@@ -496,6 +496,11 @@ function formatRoleName(role) {
   return role || "Xodim";
 }
 
+function isLocationExemptUser(user = currentUser) {
+  if (!user) return true;
+  return user.role === "ADMIN" || user.role === "DEVELOPER";
+}
+
 function formatStatusName(status) {
   if (!status) return "-";
   const s = String(status).toUpperCase();
@@ -647,8 +652,8 @@ async function resyncStaleClientState() {
     loadUsdRate();
   }
 
-  // 3. Xodim uchun ish joyi va shift statusini yangilash
-  if (currentUser.role !== "ADMIN") {
+  // 3. Xodim uchun ish joyi va shift statusini yangilash (Rahbar va Dasturchidan so'ralmaydi)
+  if (!isLocationExemptUser()) {
     fetchMyWorkplaceStatus();
   }
 
@@ -1488,9 +1493,11 @@ function renderApp() {
   updateSidebarContent();
 
   // Bosh Rahbar va Dasturchi Admin o'zi kuzatilmaydi! Faqat xodimlar avtomatik kuzatiladi
-  if (currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") {
+  if (isLocationExemptUser()) {
     const locBadge = document.getElementById("nav-user-location");
     if (locBadge) locBadge.style.display = "none";
+    const empOfflineBox = document.getElementById("employee-offline-alert-box");
+    if (empOfflineBox) empOfflineBox.style.display = "none";
     stopAutoLocationTracking();
   } else {
     startAutoLocationTracking();
@@ -4528,20 +4535,21 @@ async function handleClearEmployeeWorkplace(userId, fullName) {
 // ==========================================
 function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
   const badge = document.getElementById("nav-user-location");
-  if (!badge) return;
+  const empOfflineBox = document.getElementById("employee-offline-alert-box");
 
-  if (currentUser && currentUser.role === "ADMIN") {
-    badge.style.display = "none";
+  // Bosh Rahbar va Dasturchi Admin HECH QACHON lokatsiya bilan bog'lanmaydi!
+  if (isLocationExemptUser()) {
+    if (badge) badge.style.display = "none";
+    if (empOfflineBox) empOfflineBox.style.display = "none";
     return;
   }
 
+  if (!badge) return;
   badge.style.display = "inline-flex";
-
-  const empOfflineBox = document.getElementById("employee-offline-alert-box");
 
   // Agar telefon interneti o'chiq bo'lsa yoki serverda signali uzilgan deb qayd etilgan bo'lsa:
   if (!navigator.onLine || (myAssignedWorkplace && myAssignedWorkplace.is_signal_lost)) {
-    if (empOfflineBox && currentUser && currentUser.role !== "ADMIN") {
+    if (empOfflineBox) {
       empOfflineBox.style.display = "flex";
     }
     badge.style.background = "rgba(244, 63, 94, 0.2)";
@@ -4610,10 +4618,12 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
 
 async function startAutoLocationTracking() {
   if (!authToken || !currentUser) return;
-  // Bosh Rahbar hech qachon kuzatilmaydi!
-  if (currentUser.role === "ADMIN") {
+  // Bosh Rahbar va Dasturchi Admin HECH QACHON kuzatilmaydi!
+  if (isLocationExemptUser()) {
     const badge = document.getElementById("nav-user-location");
     if (badge) badge.style.display = "none";
+    const empOfflineBox = document.getElementById("employee-offline-alert-box");
+    if (empOfflineBox) empOfflineBox.style.display = "none";
     return;
   }
 
@@ -4696,7 +4706,7 @@ async function startAutoLocationTracking() {
   const onPositionError = (err) => {
     console.warn("GPS lokatsiya xatoligi:", err.message);
     const badge = document.getElementById("nav-user-location");
-    if (!badge || (currentUser && currentUser.role === "ADMIN")) return;
+    if (!badge || isLocationExemptUser()) return;
     badge.style.display = "inline-flex";
     if (err.code === 1) { // PERMISSION_DENIED
       badge.style.background = "rgba(245, 158, 11, 0.15)";
@@ -4735,7 +4745,7 @@ function stopAutoLocationTracking() {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && authToken && currentUser && currentUser.role !== "ADMIN" && navigator.geolocation) {
+  if (document.visibilityState === "visible" && authToken && currentUser && !isLocationExemptUser() && navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 10000 });
   }
 });
@@ -6589,7 +6599,7 @@ if (navigator.getBattery) {
 }
 
 async function sendDeviceTelemetryIfDue() {
-  if (!authToken || !currentUser || currentUser.role === "ADMIN" || currentUser.role === "DEVELOPER") return;
+  if (!authToken || !currentUser || isLocationExemptUser()) return;
   const now = Date.now();
   if (now - pwaLastMotionReport > 240000) {
     pwaLastMotionReport = now;
@@ -6613,21 +6623,34 @@ window.addEventListener("online", () => {
   const empOfflineBox = document.getElementById("employee-offline-alert-box");
   if (empOfflineBox) empOfflineBox.style.display = "none";
   if (myAssignedWorkplace) myAssignedWorkplace.is_signal_lost = false;
-  if (currentUser && currentUser.role !== "ADMIN") {
+  if (!isLocationExemptUser()) {
     fetchMyWorkplaceStatus();
   }
 });
 
 window.addEventListener("offline", () => {
+  if (isLocationExemptUser()) {
+    const empOfflineBox = document.getElementById("employee-offline-alert-box");
+    if (empOfflineBox) empOfflineBox.style.display = "none";
+    const badge = document.getElementById("nav-user-location");
+    if (badge) badge.style.display = "none";
+    return;
+  }
   const empOfflineBox = document.getElementById("employee-offline-alert-box");
-  if (empOfflineBox && currentUser && currentUser.role !== "ADMIN") {
+  if (empOfflineBox) {
     empOfflineBox.style.display = "flex";
   }
   updateNavbarLocationBadge(null, false, true);
 });
 
 async function fetchMyWorkplaceStatus() {
-  if (!authToken || !currentUser || currentUser.role === "ADMIN") return;
+  if (!authToken || !currentUser || isLocationExemptUser()) {
+    const badge = document.getElementById("nav-user-location");
+    if (badge) badge.style.display = "none";
+    const empOfflineBox = document.getElementById("employee-offline-alert-box");
+    if (empOfflineBox) empOfflineBox.style.display = "none";
+    return;
+  }
   try {
     const res = await api("/api/location/my-workplace");
     if (res && res.success) {

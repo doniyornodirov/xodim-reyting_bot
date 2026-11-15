@@ -52,6 +52,15 @@ def is_time_within_interval(current_hm: str, start_hm: str, end_hm: str) -> bool
 @router.get("/my-workplace")
 async def get_my_workplace(user: dict = Depends(get_current_user)):
     """Xodimning o'ziga biriktirilgan ish joyi, belgilangan ish soatlari va jonli signal holatini olish"""
+    if user.get("role") in ("ADMIN", "DEVELOPER"):
+        return {
+            "success": True,
+            "is_configured": False,
+            "is_signal_lost": False,
+            "is_within_hours": False,
+            "shift_status": "WORKING",
+            "message": "Rahbar va Dasturchi lokatsiyaga bog'lanmagan"
+        }
     async with get_db_connection() as conn:
         cur = await conn.execute("""
             SELECT id, full_name, workplace_name, workplace_latitude, workplace_longitude, workplace_radius_meters,
@@ -122,8 +131,8 @@ async def ping_employee_location(
     Faqat belgilangan ish vaqti oralig'ida kuzatiladi.
     Ish vaqtidan tashqarida xodimning shaxsiy daxlsizligi saqlanadi va kordinata yozilmaydi.
     """
-    if user["role"] == "ADMIN":
-        return {"success": True, "message": "Rahbar kuzatilmaydi"}
+    if user.get("role") in ("ADMIN", "DEVELOPER"):
+        return {"success": True, "message": "Rahbar va Dasturchi kuzatilmaydi"}
 
     user_id = user["id"]
     async with get_db_connection() as conn:
