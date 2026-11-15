@@ -71,6 +71,24 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
             )
             await conn.commit()
 
+    async def test_05_bot_start_handlers(self):
+        """5. Telegram bot /start komandasi barcha rollar uchun javob berishi tekshiruvi"""
+        from unittest.mock import AsyncMock, MagicMock
+        from app.bot import handle_start
+
+        for uid, name in [
+            (8686341550, "Bosh Rahbar"),
+            (8694797293, "Dasturchi Admin"),
+            (8662254493, "Doniyor operator"),
+            (9999999999, "Yangi Mehmon")
+        ]:
+            msg = MagicMock()
+            msg.from_user.id = uid
+            msg.from_user.full_name = name
+            msg.answer = AsyncMock()
+            await handle_start(msg)
+            self.assertTrue(msg.answer.called, f"{name} uchun javob berilishi shart!")
+
             # 1-marta muvaffaqiyatli qo'shish
             await conn.execute("""
                 INSERT INTO cashier_handovers (company_id, cashier_id, employee_id, handover_date, amount, amount_uzs, amount_usd, usd_rate)
@@ -92,6 +110,24 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
                 (comp_id, emp_id, test_date)
             )
             await conn.commit()
+
+    async def test_05_bot_start_handlers(self):
+        """5. Telegram bot /start komandasi barcha rollar uchun javob berishi tekshiruvi"""
+        from unittest.mock import AsyncMock, MagicMock
+        from app.bot import handle_start
+
+        for uid, name in [
+            (8686341550, "Bosh Rahbar"),
+            (8694797293, "Dasturchi Admin"),
+            (8662254493, "Doniyor operator"),
+            (9999999999, "Yangi Mehmon")
+        ]:
+            msg = MagicMock()
+            msg.from_user.id = uid
+            msg.from_user.full_name = name
+            msg.answer = AsyncMock()
+            await handle_start(msg)
+            self.assertTrue(msg.answer.called, f"{name} uchun javob berilishi shart!")
 
 if __name__ == "__main__":
     unittest.main()

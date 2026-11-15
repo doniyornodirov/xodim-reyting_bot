@@ -171,6 +171,16 @@ if dp:
                 else:
                     loc_lag = 999
 
+                if not raw_upd or loc_lag >= 10:
+                    signal_line = (
+                        "⚠️ <b>Signal holati:</b> 📵 <b>Signal kelmayapti (Oflayn)</b>\n"
+                        "<i>Jonli monitoring uchun pastdagi qo'llanma orqali jonli lokatsiyangizni yuboring.</i>\n\n"
+                    )
+                else:
+                    signal_line = f"📶 <b>Signal holati:</b> 🟢 <b>Jonli signal kelmoqda</b> ({loc_lag} daqiqa oldin yangilangan)\n\n"
+
+                wp_line = f"🏢 <b>Ish joyi:</b> ✅ {w_name} (koordinatasi belgilangan)\n\n"
+
                 if not is_configured:
                     kb_loc = ReplyKeyboardMarkup(
                         keyboard=[
