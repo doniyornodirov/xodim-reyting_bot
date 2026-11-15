@@ -1,7 +1,10 @@
+import logging
 from contextlib import asynccontextmanager
 import aiosqlite
 from app.config import DB_PATH
 from app.security import hash_password
+
+logger = logging.getLogger("database")
 
 @asynccontextmanager
 async def get_db_connection():
