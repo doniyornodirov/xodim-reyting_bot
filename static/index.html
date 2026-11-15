@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=873">
+  <link rel="stylesheet" href="/static/css/style.css?v=875">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -117,9 +117,9 @@
   </div>
 
   <!-- Asosiy Navbar (Modern Executive SaaS Header) -->
-  <header class="navbar sticky top-0 z-50 px-4 sm:px-6 h-16 flex items-center transition-colors">
-    <div class="nav-container max-w-7xl mx-auto flex items-center justify-between w-full">
-      <div class="flex items-center gap-3">
+  <header class="navbar sticky top-0 z-50 px-3 sm:px-6 h-16 flex items-center transition-colors">
+    <div class="nav-container max-w-[1440px] mx-auto flex items-center justify-between w-full gap-2">
+      <div class="flex items-center gap-2.5 shrink-0">
         <button type="button" id="btn-sidebar-toggle" class="btn-sidebar-toggle inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition" onclick="toggleSidebarMenu()" aria-label="Menyu">
           <span class="hamburger-icon">
             <span></span>
@@ -137,32 +137,38 @@
             <span class="brand-title text-[13.5px] sm:text-[15px] font-extrabold tracking-tight leading-none whitespace-nowrap">
               XODIM<span class="brand-accent text-indigo-400 font-extrabold">KPI</span>
             </span>
-            <span class="brand-subtitle text-[10.5px] text-slate-400 font-medium whitespace-nowrap hidden sm:block mt-0.5 tracking-wider uppercase">Paynet & Sim-karta CRM</span>
+            <span class="brand-subtitle text-[10px] text-slate-400 font-medium whitespace-nowrap hidden sm:block mt-0.5 tracking-wider uppercase">Paynet & Sim-karta CRM</span>
           </div>
         </a>
       </div>
 
-      <div class="user-nav-badge flex items-center gap-2" id="nav-user-area">
-        <div id="nav-usd-rate-container" class="flex items-center">
-          <div id="usd-rate-badge" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" onclick="handleUsdRateClick()">
+      <div class="user-nav-badge flex items-center gap-1.5 shrink-0" id="nav-user-area">
+        <div id="nav-usd-rate-container" class="flex items-center shrink-0">
+          <div id="usd-rate-badge" class="badge inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-semibold cursor-pointer transition" onclick="handleUsdRateClick()" title="Dollar kursi (sozlash uchun bosing)">
             <span>💵</span> <span id="usd-rate-text">1$ = 12 000 so'm</span>
           </div>
         </div>
-        <button id="btn-rahbar-cashier-toggle" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" onclick="toggleRahbarCashierMode()">
-          <span>💼</span> Kassir rejimi
+        <button id="btn-rahbar-cashier-toggle" class="badge inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-semibold cursor-pointer transition" style="display: none;" onclick="toggleRahbarCashierMode()" title="Kassir rejimi">
+          <span>💼</span> <span class="hidden xl:inline">Kassir</span>
         </button>
-        <span id="nav-company-badge" class="badge badge-company inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold cursor-pointer transition max-w-[170px]" style="display: none;" title="Firma sozlamalari" onclick="openCompanySettingsModal()">
+        <span id="nav-company-badge" class="badge badge-company inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-semibold cursor-pointer transition max-w-[130px]" style="display: none;" title="Firma sozlamalari" onclick="openCompanySettingsModal()">
           🏢 <span id="nav-company-name" class="truncate">Bosh Tashkilot</span>
         </span>
-        <span id="nav-user-name" class="text-xs font-semibold hidden md:inline-block">Mehmon</span>
-        <span id="nav-user-role" class="badge badge-employee inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold">Xodim</span>
-        <span id="nav-user-shift" class="badge inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold" style="display: none;">🟢 Ishda</span>
-        <span id="nav-user-debt" class="badge badge-debt inline-flex items-center gap-1 px-3 h-8 rounded-lg text-xs font-semibold" style="display: none;">Qarz: 0 so'm</span>
-        <span id="nav-user-location" class="badge inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-semibold transition" style="display: none;" title="Ish joyigacha bo'lgan masofa">📍 Joylashuv</span>
-        <button id="btn-theme-toggle" class="btn-theme-toggle inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium transition" onclick="toggleAppTheme()" aria-label="Mavzuni almashtirish" title="Tungi / Kunduzgi rejimni almashtirish">
-          <span id="theme-icon">🌙</span> <span id="theme-text">Tungi</span>
+        <span id="nav-user-name" class="text-xs font-semibold hidden lg:inline-block max-w-[110px] truncate" title="Foydalanuvchi">Mehmon</span>
+        <span id="nav-user-role" class="badge badge-employee inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-semibold">Xodim</span>
+        <span id="nav-user-shift" class="badge inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-semibold" style="display: none;">🟢 Ishda</span>
+        <span id="nav-user-debt" class="badge badge-debt inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-semibold" style="display: none;">Qarz: 0 so'm</span>
+        <span id="nav-user-location" class="badge inline-flex items-center gap-1 px-2.5 h-7 rounded-lg text-xs font-semibold transition max-w-[150px]" style="display: none;" title="Ish joyigacha bo'lgan masofa">📍 Joylashuv</span>
+        <button id="btn-theme-toggle" class="nav-icon-btn nav-theme-btn" onclick="toggleAppTheme()" aria-label="Mavzuni almashtirish" title="Mavzuni almashtirish (Tungi / Kunduzgi)">
+          <span id="theme-icon">🌙</span>
         </button>
-        <button class="btn-logout inline-flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium transition" onclick="logout()">Chiqish 🚪</button>
+        <button id="btn-navbar-logout" class="nav-icon-btn nav-logout-btn" onclick="logout()" aria-label="Tizimdan chiqish" title="Tizimdan chiqish">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+        </button>
       </div>
     </div>
   </header>
@@ -2443,6 +2449,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=874"></script>
+  <script src="/static/js/app.js?v=875"></script>
 </body>
 </html>

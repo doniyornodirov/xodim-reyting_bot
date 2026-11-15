@@ -64,8 +64,10 @@ function applyTheme(theme) {
   // Desktop navbar tugmasi
   const themeIconEl = document.getElementById("theme-icon");
   const themeTextEl = document.getElementById("theme-text");
+  const btnThemeEl = document.getElementById("btn-theme-toggle");
   if (themeIconEl) themeIconEl.innerText = icon;
   if (themeTextEl) themeTextEl.innerText = text;
+  if (btnThemeEl) btnThemeEl.title = isLight ? "Tungi rejimga o'tish (🌙)" : "Kunduzgi rejimga o'tish (☀️)";
 
   // Mobil yon menyu (drawer) elementi
   const sideIconEl = document.getElementById("sidebar-theme-icon");
@@ -4909,7 +4911,7 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.background = "rgba(245, 158, 11, 0.15)";
     badge.style.color = "#fbbf24";
     badge.style.border = "1px solid rgba(245, 158, 11, 0.4)";
-    badge.innerHTML = "<span>🌙</span> Dam olish (damda)";
+    badge.innerHTML = "<span>🌙</span> Damda";
     badge.title = "Rahbar sizni dam olish rejimiga o'tkazgan.";
     return;
   }
@@ -4918,7 +4920,7 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.background = "rgba(100, 116, 139, 0.2)";
     badge.style.color = "#94a3b8";
     badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
-    badge.innerHTML = "<span>📍</span> Ish joyi belgilanmagan";
+    badge.innerHTML = "<span>📍</span> Joylashuv yo'q";
     badge.title = "Rahbar hali sizga ish joyi koordinatasini biriktirmagan";
     return;
   }
@@ -4929,7 +4931,7 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.color = "#cbd5e1";
     badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
     const hours = (myAssignedWorkplace.work_start_time || '09:00') + ' - ' + (myAssignedWorkplace.work_end_time || '19:00');
-    badge.innerHTML = `<span>🌙</span> Dam olish (${hours})`;
+    badge.innerHTML = `<span>🌙</span> Dam (${hours})`;
     badge.title = `Ish vaqti emas (${hours}). Geolokatsiya kuzatuvi to'xtatilgan.`;
     return;
   }
@@ -4939,13 +4941,13 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
       badge.style.background = "rgba(99, 102, 241, 0.15)";
       badge.style.color = "#818cf8";
       badge.style.border = "1px solid rgba(99, 102, 241, 0.35)";
-      badge.innerHTML = "<span>📱</span> Botda lokatsiyani yoqing";
+      badge.innerHTML = "<span>📱</span> Botda lokatsiya";
       badge.title = "Kompyuter (Windows/Mac)dan lokatsiya olinmaydi. Geolokatsiya Telegram bot orqali mobil telefoningizdan hisoblanadi.";
     } else {
       badge.style.background = "rgba(100, 116, 139, 0.2)";
       badge.style.color = "#94a3b8";
       badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
-      badge.innerHTML = "<span>📍</span> Masofa aniqlanmoqda...";
+      badge.innerHTML = "<span>📍</span> Aniqlanmoqda...";
     }
     return;
   }
@@ -4956,13 +4958,13 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.background = "rgba(16, 185, 129, 0.2)";
     badge.style.color = "#34d399";
     badge.style.border = "1px solid rgba(16, 185, 129, 0.4)";
-    badge.innerHTML = `<span>📍</span> ${distText} (Ish joyida ✅)`;
+    badge.innerHTML = `<span>📍</span> ${distText} (Ishda)`;
     badge.title = `Siz ish joyingizdasiz (${distText}). Ma'lumot mobil Telegram bot orqali olingan.`;
   } else {
     badge.style.background = "rgba(239, 68, 68, 0.15)";
     badge.style.color = "#f87171";
     badge.style.border = "1px solid rgba(239, 68, 68, 0.35)";
-    badge.innerHTML = `<span>📍</span> ${distText} (Tashqarida ⚠️)`;
+    badge.innerHTML = `<span>📍</span> ${distText} (Tashqarida)`;
     badge.title = `Siz ish joyingizdan ${distText} uzoqlikdasiz. Ma'lumot mobil Telegram bot orqali olingan.`;
   }
 }
