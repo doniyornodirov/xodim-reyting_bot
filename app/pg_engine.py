@@ -23,20 +23,24 @@ def clean_postgres_dsn(url: str) -> str:
 def sanitize_param_for_pg(p: Any) -> Any:
     """Safely converts ISO timestamp and date strings to datetime/date objects for asyncpg"""
     if isinstance(p, str):
-        # YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SSZ
-        if len(p) in (19, 20, 23, 24, 25, 26) and (" " in p or "T" in p):
-            clean_p = p.replace("T", " ").rstrip("Z")
-            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+        if len(p) >= 10 and len(p) <= 35 and p[4] == '-' and p[7] == '-' and p[:4].isdigit():
+            # YYYY-MM-DD
+            if len(p) == 10 and p[5:7].isdigit() and p[8:10].isdigit():
                 try:
-                    return datetime.strptime(clean_p, fmt)
+                    return datetime.strptime(p, "%Y-%m-%d").date()
                 except ValueError:
                     pass
-        # YYYY-MM-DD
-        elif len(p) == 10 and p[4] == '-' and p[7] == '-' and p[:4].isdigit() and p[5:7].isdigit() and p[8:10].isdigit():
-            try:
-                return datetime.strptime(p, "%Y-%m-%d").date()
-            except ValueError:
-                pass
+            # YYYY-MM-DDTHH:MM:SS... or YYYY-MM-DD HH:MM:SS...
+            elif len(p) >= 19 and (p[10] in ('T', ' ')):
+                clean_p = p.replace("Z", "+00:00")
+                try:
+                    return datetime.fromisoformat(clean_p)
+                except ValueError:
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                        try:
+                            return datetime.strptime(p.replace("T", " ").rstrip("Z"), fmt)
+                        except ValueError:
+                            pass
     return p
 
 def translate_query_for_postgres(sql: str, params: Any = None) -> tuple[str, list, bool]:
