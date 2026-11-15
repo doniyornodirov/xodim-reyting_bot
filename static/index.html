@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json?v=860">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=860">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=860">
+  <link rel="manifest" href="/manifest.json?v=861">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=861">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=861">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=860', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=861', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=860">
+  <link rel="stylesheet" href="/static/css/style.css?v=861">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -1092,18 +1092,22 @@
               <label class="form-label">Xodimlar limiti *</label>
               <input type="number" id="saas-new-max-employees" class="form-input" style="height: 42px;" value="20" min="1" max="10000" required>
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
+          </div>
+
+          <!-- Tarif rejasi va Amal qilish muddati (Alohida simmetrik 2 ustunli blok, advise.md Standarti) -->
+          <div class="form-grid-2" style="max-width: 620px; margin-bottom: 1.25rem;">
+            <div class="form-group" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label">Tarif rejasi *</label>
-              <select id="saas-new-plan" class="form-input" style="height: 42px; width: 100%; box-sizing: border-box;" onchange="handleSaasPlanChange(this.value)">
+              <select id="saas-new-plan" class="form-input" style="height: 42px; width: 100% !important; box-sizing: border-box !important;" onchange="handleSaasPlanChange(this.value)">
                 <option value="STANDARD" selected>📅 STANDARD (Sana bo'yicha)</option>
                 <option value="5_YEARS">⭐ 5 YIL (5 yillik obuna)</option>
                 <option value="UNLIMITED">♾️ UNLIMITED (Cheksiz)</option>
               </select>
             </div>
-            <div class="form-group" id="saas-new-date-container" style="margin-bottom: 0;">
+            <div class="form-group" id="saas-new-date-container" style="margin-bottom: 0; width: 100%; box-sizing: border-box;">
               <label class="form-label">Amal qilish muddati *</label>
               <div style="position: relative; width: 100%; box-sizing: border-box;">
-                <input type="text" id="saas-new-expires-date" class="form-input custom-date-input" style="height: 42px; width: 100%; box-sizing: border-box; cursor: pointer; padding-right: 2.2rem; font-weight: 700;" readonly onclick="openCompactSaasDatePicker(this, 'Yangi Firma Amal Qilish Sanasi')" placeholder="YYYY-MM-DD" required>
+                <input type="text" id="saas-new-expires-date" class="form-input custom-date-input" style="height: 42px; width: 100% !important; box-sizing: border-box !important; cursor: pointer; padding-right: 2.2rem; font-weight: 700;" readonly onclick="openCompactSaasDatePicker(this, 'Yangi Firma Amal Qilish Sanasi')" placeholder="YYYY-MM-DD" required>
                 <span class="date-input-icon" onclick="openCompactSaasDatePicker(document.getElementById('saas-new-expires-date'), 'Yangi Firma Amal Qilish Sanasi')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; opacity: 0.8; font-size: 1rem;">📅</span>
               </div>
             </div>
@@ -2400,6 +2404,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=860"></script>
+  <script src="/static/js/app.js?v=861"></script>
 </body>
 </html>
