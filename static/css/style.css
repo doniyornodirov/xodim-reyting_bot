@@ -1739,6 +1739,172 @@ select.form-input option {
   min-height: 50px !important;
 }
 
+/* ========================================================= */
+/* SIM-KARTA OPERATOR VA XODIMNI TANLASH MODERN DIZAYNI     */
+/* ========================================================= */
+
+.sim-operator-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+
+.sim-op-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.sim-op-chip:hover {
+  transform: translateY(-1px);
+  border-color: #94a3b8;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sim-op-chip:active {
+  transform: scale(0.97);
+}
+
+.sim-op-chip .sim-op-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* Active Operator Chip Styles */
+.sim-op-chip[data-op="Uzmobile"].active {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35) !important;
+}
+
+.sim-op-chip[data-op="Beeline"].active {
+  background: linear-gradient(135deg, #facc15 0%, #eab308 100%) !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  border-color: #eab308 !important;
+  box-shadow: 0 4px 14px rgba(234, 179, 8, 0.35) !important;
+}
+
+.sim-op-chip[data-op="Ucell"].active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
+  color: #ffffff !important;
+  border-color: #7c3aed !important;
+  box-shadow: 0 4px 14px rgba(109, 40, 217, 0.35) !important;
+}
+
+.sim-op-chip[data-op="Mobiuz"].active {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35) !important;
+}
+
+.sim-op-chip[data-op="Perfectum"].active {
+  background: linear-gradient(135deg, #334155 0%, #0f172a 100%) !important;
+  color: #ffffff !important;
+  border-color: #1e293b !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.35) !important;
+}
+
+/* Operator Badge */
+.sim-op-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.775rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.badge-uzmobile { background: rgba(2, 132, 199, 0.15); color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3); }
+.badge-beeline { background: rgba(234, 179, 8, 0.18); color: #b45309; border: 1px solid rgba(234, 179, 8, 0.35); }
+.badge-ucell { background: rgba(124, 58, 237, 0.15); color: #7c3aed; border: 1px solid rgba(124, 58, 237, 0.3); }
+.badge-mobiuz { background: rgba(220, 38, 38, 0.15); color: #dc2626; border: 1px solid rgba(220, 38, 38, 0.3); }
+.badge-perfectum { background: rgba(71, 85, 105, 0.18); color: #475569; border: 1px solid rgba(71, 85, 105, 0.3); }
+
+/* Custom Styled Selects */
+.sim-styled-select {
+  min-height: 48px !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  padding: 0.6rem 2.5rem 0.6rem 0.95rem !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234f46e5' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.85rem center !important;
+  background-size: 1.15rem 1.15rem !important;
+  cursor: pointer;
+}
+
+.sim-styled-select:focus {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22) !important;
+}
+
+.sim-styled-select option {
+  padding: 0.6rem 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.sim-serial-input {
+  min-height: 48px !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  border-radius: 10px !important;
+}
+
+/* Light Mode / Dark Mode Theme Support */
+body.theme-light .sim-op-chip {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.theme-light .sim-styled-select {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23818cf8' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+}
+
+body.theme-light .sim-styled-select option {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+
+body.theme-light .sim-serial-input {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-color: #334155 !important;
+}
+
 #otp-code-input {
   font-size: clamp(1.35rem, 6vw, 1.75rem) !important;
   letter-spacing: clamp(0.18em, 3vw, 0.35em) !important;

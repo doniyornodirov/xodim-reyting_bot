@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json?v=849">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=849">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=849">
+  <link rel="manifest" href="/manifest.json?v=850">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=850">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=850">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=849', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=850', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=849">
+  <link rel="stylesheet" href="/static/css/style.css?v=850">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -815,48 +815,91 @@
       <div class="card-box" style="margin-bottom: 1.5rem;">
         <h2 class="card-title">📲 Yangi sim-karta tarqatish</h2>
         <form id="admin-distribute-sim-form" onsubmit="handleDistributeSim(event, 'admin')">
-          <div class="grid-4" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-            <div class="form-group">
-              <label class="form-label">Sim-karta operatori *</label>
-              <select id="admin-sim-operator" class="form-input" required>
-                <option value="Uzmobile">Uzmobile</option>
-                <option value="Beeline">Beeline</option>
-                <option value="Ucell">Ucell</option>
-                <option value="Mobiuz">Mobiuz</option>
-                <option value="Perfectum">Perfectum</option>
+          <!-- 1-qator: Operator tanlash va Xodimni tanlash -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+            <!-- Sim-karta operatori -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <div class="flex justify-between items-center mb-1">
+                <label class="form-label mb-0" style="font-weight: 600;">📶 Sim-karta operatori *</label>
+                <span id="admin-sim-op-badge" class="sim-op-badge badge-uzmobile">🔵 Uzmobile</span>
+              </div>
+              <!-- Tezkor tanlash chiplari -->
+              <div class="sim-operator-chips" id="admin-sim-operator-chips">
+                <button type="button" class="sim-op-chip active" data-op="Uzmobile" onclick="selectSimOperator('admin', 'Uzmobile')">
+                  <span class="sim-op-icon">🔵</span>
+                  <span class="sim-op-name">Uzmobile</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Beeline" onclick="selectSimOperator('admin', 'Beeline')">
+                  <span class="sim-op-icon">🟡</span>
+                  <span class="sim-op-name">Beeline</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Ucell" onclick="selectSimOperator('admin', 'Ucell')">
+                  <span class="sim-op-icon">🟣</span>
+                  <span class="sim-op-name">Ucell</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Mobiuz" onclick="selectSimOperator('admin', 'Mobiuz')">
+                  <span class="sim-op-icon">🔴</span>
+                  <span class="sim-op-name">Mobiuz</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Perfectum" onclick="selectSimOperator('admin', 'Perfectum')">
+                  <span class="sim-op-icon">⚡</span>
+                  <span class="sim-op-name">Perfectum</span>
+                </button>
+              </div>
+              <select id="admin-sim-operator" class="form-input sim-styled-select mt-1" onchange="syncSimOperatorChips('admin', this.value)" required>
+                <option value="Uzmobile">🔵 Uzmobile (GSM / CDMA)</option>
+                <option value="Beeline">🟡 Beeline (Unitel)</option>
+                <option value="Ucell">🟣 Ucell (COSCOM)</option>
+                <option value="Mobiuz">🔴 Mobiuz (UMS)</option>
+                <option value="Perfectum">⚡ Perfectum (5G / CDMA)</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">Boshlang'ich seriya *</label>
+
+            <!-- Xodimni tanlash -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <div class="flex justify-between items-center mb-1">
+                <label class="form-label mb-0" style="font-weight: 600;">👤 Xodimni tanlang *</label>
+                <span id="admin-sim-emp-badge" class="badge badge-info" style="font-size: 0.75rem;">👥 Yuklanmoqda...</span>
+              </div>
+              <div class="sim-select-wrapper">
+                <select id="admin-sim-employee-select" class="form-input sim-styled-select" required>
+                  <option value="">👤 -- Xodimni tanlang --</option>
+                </select>
+              </div>
+              <p class="form-hint" style="margin-top: 0.45rem; font-size: 0.8rem; color: var(--text-sub);">
+                💡 Sim-kartalar biriktirilishi lozim bo'lgan xodim yoki kassirni tanlang
+              </p>
+            </div>
+          </div>
+
+          <!-- 2-qator: Boshlang'ich va Tugash seriyasi -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-weight: 600;">🔢 Boshlang'ich seriya (18 ta raqam) *</label>
               <input 
                 type="text" 
                 id="admin-sim-start" 
-                class="form-input" 
+                class="form-input sim-serial-input" 
                 maxlength="18" 
                 required 
                 placeholder="18 xonali seriya raqami"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
             </div>
-            <div class="form-group">
-              <label class="form-label">Tugash seriyasi</label>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-weight: 600;">🔢 Tugash seriyasi (Ixtiyoriy - paket uchun)</label>
               <input 
                 type="text" 
                 id="admin-sim-end" 
-                class="form-input" 
+                class="form-input sim-serial-input" 
                 maxlength="18" 
                 placeholder="899981234567890010"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
             </div>
-            <div class="form-group">
-              <label class="form-label">Xodimni tanlang *</label>
-              <select id="admin-sim-employee-select" class="form-input" required>
-                <option value="">-- Xodimni tanlang --</option>
-              </select>
-            </div>
           </div>
-          <button type="submit" class="btn-success" style="margin-top: 0.5rem;">
+
+          <button type="submit" class="btn-success" style="margin-top: 0.5rem; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
             📲 Sim-kartalarni xodimga biriktirish
           </button>
         </form>
@@ -1483,53 +1526,94 @@
 
     <!-- Kassir: Sim-karta tarqatish oynasi (Faqat Kassir uchun) -->
     <section class="tab-pane employee-pane" id="pane-cashier-sims" style="display: none;">
-      <div class="card-box" style="max-width: 750px; margin: 0 auto 1.75rem;">
+      <div class="card-box" style="max-width: 820px; margin: 0 auto 1.75rem;">
         <h2 class="card-title">📲 Sim-karta tarqatish (Kassir)</h2>
         <form id="cashier-distribute-sim-form" onsubmit="handleDistributeSim(event, 'cashier')">
-          <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-            <div class="form-group">
-              <label class="form-label">Sim-karta operatori *</label>
-              <select id="cashier-sim-operator" class="form-input" required>
-                <option value="Uzmobile">Uzmobile</option>
-                <option value="Beeline">Beeline</option>
-                <option value="Ucell">Ucell</option>
-                <option value="Mobiuz">Mobiuz</option>
-                <option value="Perfectum">Perfectum</option>
+          <!-- 1-qator: Operator tanlash va Xodimni tanlash -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 1.25rem; margin-bottom: 1.25rem;">
+            <!-- Sim-karta operatori -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <div class="flex justify-between items-center mb-1">
+                <label class="form-label mb-0" style="font-weight: 600;">📶 Sim-karta operatori *</label>
+                <span id="cashier-sim-op-badge" class="sim-op-badge badge-uzmobile">🔵 Uzmobile</span>
+              </div>
+              <!-- Tezkor tanlash chiplari -->
+              <div class="sim-operator-chips" id="cashier-sim-operator-chips">
+                <button type="button" class="sim-op-chip active" data-op="Uzmobile" onclick="selectSimOperator('cashier', 'Uzmobile')">
+                  <span class="sim-op-icon">🔵</span>
+                  <span class="sim-op-name">Uzmobile</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Beeline" onclick="selectSimOperator('cashier', 'Beeline')">
+                  <span class="sim-op-icon">🟡</span>
+                  <span class="sim-op-name">Beeline</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Ucell" onclick="selectSimOperator('cashier', 'Ucell')">
+                  <span class="sim-op-icon">🟣</span>
+                  <span class="sim-op-name">Ucell</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Mobiuz" onclick="selectSimOperator('cashier', 'Mobiuz')">
+                  <span class="sim-op-icon">🔴</span>
+                  <span class="sim-op-name">Mobiuz</span>
+                </button>
+                <button type="button" class="sim-op-chip" data-op="Perfectum" onclick="selectSimOperator('cashier', 'Perfectum')">
+                  <span class="sim-op-icon">⚡</span>
+                  <span class="sim-op-name">Perfectum</span>
+                </button>
+              </div>
+              <select id="cashier-sim-operator" class="form-input sim-styled-select mt-1" onchange="syncSimOperatorChips('cashier', this.value)" required>
+                <option value="Uzmobile">🔵 Uzmobile (GSM / CDMA)</option>
+                <option value="Beeline">🟡 Beeline (Unitel)</option>
+                <option value="Ucell">🟣 Ucell (COSCOM)</option>
+                <option value="Mobiuz">🔴 Mobiuz (UMS)</option>
+                <option value="Perfectum">⚡ Perfectum (5G / CDMA)</option>
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label">Xodimni tanlang *</label>
-              <select id="cashier-sim-employee-select" class="form-input" required>
-                <option value="">-- Xodimni tanlang --</option>
-              </select>
+
+            <!-- Xodimni tanlash -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <div class="flex justify-between items-center mb-1">
+                <label class="form-label mb-0" style="font-weight: 600;">👤 Xodimni tanlang *</label>
+                <span id="cashier-sim-emp-badge" class="badge badge-info" style="font-size: 0.75rem;">👥 Yuklanmoqda...</span>
+              </div>
+              <div class="sim-select-wrapper">
+                <select id="cashier-sim-employee-select" class="form-input sim-styled-select" required>
+                  <option value="">👤 -- Xodimni tanlang --</option>
+                </select>
+              </div>
+              <p class="form-hint" style="margin-top: 0.45rem; font-size: 0.8rem; color: var(--text-sub);">
+                💡 Sim-kartalar biriktirilishi lozim bo'lgan xodim yoki kassirni tanlang
+              </p>
             </div>
           </div>
-          <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-            <div class="form-group">
-              <label class="form-label">Boshlang'ich seriya *</label>
+
+          <!-- 2-qator: Boshlang'ich va Tugash seriyasi -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-weight: 600;">🔢 Boshlang'ich seriya (18 ta raqam) *</label>
               <input 
                 type="text" 
                 id="cashier-sim-start" 
-                class="form-input" 
+                class="form-input sim-serial-input" 
                 maxlength="18" 
                 required 
                 placeholder="18 xonali seriya raqami"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
             </div>
-            <div class="form-group">
-              <label class="form-label">Tugash seriyasi</label>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" style="font-weight: 600;">🔢 Tugash seriyasi (Ixtiyoriy - paket uchun)</label>
               <input 
                 type="text" 
                 id="cashier-sim-end" 
-                class="form-input" 
+                class="form-input sim-serial-input" 
                 maxlength="18" 
                 placeholder="899981234567890010"
                 oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               >
             </div>
           </div>
-          <button type="submit" class="btn-success" style="width: 100%;">
+
+          <button type="submit" class="btn-success" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600;">
             📲 Sim-kartalarni xodimga biriktirish
           </button>
         </form>
@@ -2328,6 +2412,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=849"></script>
+  <script src="/static/js/app.js?v=850"></script>
 </body>
 </html>

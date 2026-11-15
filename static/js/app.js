@@ -3868,21 +3868,66 @@ async function loadCashierSimsTab() {
   await loadSimSummary('cashier');
 }
 
+function selectSimOperator(role, opName) {
+  const select = document.getElementById(`${role}-sim-operator`);
+  if (select) {
+    select.value = opName;
+  }
+  syncSimOperatorChips(role, opName);
+}
+
+function syncSimOperatorChips(role, opName) {
+  const container = document.getElementById(`${role}-sim-operator-chips`);
+  if (container) {
+    const chips = container.querySelectorAll('.sim-op-chip');
+    chips.forEach(chip => {
+      if (chip.getAttribute('data-op') === opName) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+    });
+  }
+  const badge = document.getElementById(`${role}-sim-op-badge`);
+  if (badge) {
+    const opIcons = {
+      'Uzmobile': '🔵',
+      'Beeline': '🟡',
+      'Ucell': '🟣',
+      'Mobiuz': '🔴',
+      'Perfectum': '⚡'
+    };
+    const icon = opIcons[opName] || '📶';
+    badge.textContent = `${icon} ${opName}`;
+    badge.className = `sim-op-badge badge-${opName.toLowerCase()}`;
+  }
+}
+
+window.selectSimOperator = selectSimOperator;
+window.syncSimOperatorChips = syncSimOperatorChips;
+
 async function loadSimEmployeesSelect(prefix) {
   try {
     const res = await api("/api/sim-cards/employees");
     const select = document.getElementById(`${prefix}-sim-employee-select`);
+    const badge = document.getElementById(`${prefix}-sim-emp-badge`);
     if (!select) return;
-    select.innerHTML = '<option value="">-- Xodimni tanlang --</option>';
-    if (res.data && res.data.length > 0) {
-      res.data
-        .filter(emp => emp.role !== 'ADMIN')
-        .forEach(emp => {
-          const roleText = emp.role === 'CASHIER' ? 'Kassir' : 'Xodim';
-          select.innerHTML += `<option value="${emp.id}">${emp.full_name} (${roleText})</option>`;
-        });
+    select.innerHTML = '<option value="">👤 -- Xodimni tanlang --</option>';
+    const employees = (res.data || []).filter(emp => emp.role !== 'ADMIN' && emp.role !== 'DEVELOPER');
+
+    if (badge) {
+      badge.textContent = `👥 ${employees.length} ta xodim`;
+    }
+
+    if (employees.length > 0) {
+      employees.forEach(emp => {
+        const roleIcon = emp.role === 'CASHIER' ? '💵' : '💼';
+        const roleText = emp.role === 'CASHIER' ? 'Kassir' : 'Xodim';
+        select.innerHTML += `<option value="${emp.id}">👤 ${emp.full_name} &nbsp;•&nbsp; (${roleIcon} ${roleText})</option>`;
+      });
     } else {
       select.innerHTML += '<option value="" disabled>Faol xodimlar topilmadi</option>';
+      if (badge) badge.textContent = '0 ta xodim';
     }
   } catch (e) {
     console.error("loadSimEmployeesSelect xatosi:", e);
