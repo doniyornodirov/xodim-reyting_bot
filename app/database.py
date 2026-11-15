@@ -50,12 +50,7 @@ async def init_db():
         from app.security import hash_password
         dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293
         async with aiosqlite.connect(DB_PATH) as conn:
-            # 1. Platforma Admin (id=0) va Bosh Tashkilot (id=1)
-            await conn.execute("""
-                INSERT INTO companies (id, name, slug, plan, max_employees, is_active)
-                VALUES (0, 'Platforma Admin', 'platform-admin', 'UNLIMITED', 99999, 1)
-                ON CONFLICT (id) DO NOTHING;
-            """)
+            # 1. Bosh Tashkilot (id=1)
             await conn.execute("""
                 INSERT INTO companies (id, name, slug, telegram_group_id, owner_telegram_id, plan, max_employees, is_active)
                 VALUES (1, 'Bosh Tashkilot', 'bosh-tashkilot', ?, ?, 'UNLIMITED', 9999, 1)
@@ -75,12 +70,12 @@ async def init_db():
                 ON CONFLICT (telegram_id) DO UPDATE SET role = 'ADMIN', company_id = 1, is_active = 1;
             """, (owner_id_val, rahbar_pwd))
 
-            # 3. Dasturchi Admin (8694797293)
+            # 3. Dasturchi Admin (8694797293) - Hech qaysi firmaga tegishli emas (company_id = NULL)
             dev_pwd = hash_password(str(dev_id_val))
             await conn.execute("""
                 INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
-                VALUES (0, ?, 'Dasturchi Admin', 'DEVELOPER', ?, 0, 1)
-                ON CONFLICT (telegram_id) DO UPDATE SET role = 'DEVELOPER', company_id = 0, is_active = 1;
+                VALUES (NULL, ?, 'Dasturchi Admin', 'DEVELOPER', ?, 0, 1)
+                ON CONFLICT (telegram_id) DO UPDATE SET role = 'DEVELOPER', company_id = NULL, is_active = 1;
             """, (dev_id_val, dev_pwd))
 
             # 4. PostgreSQL Sequences (Serial ID hisoblagichlari)ni haqiqiy MAX(id) bilan sinxronlash
