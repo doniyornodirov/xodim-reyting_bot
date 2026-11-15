@@ -81,7 +81,13 @@ def translate_query_for_postgres(sql: str, params: Any = None) -> tuple[str, lis
     clean_sql = re.sub(r"(?i)DATE\(\s*['\"]now['\"]\s*\)", r"(CURRENT_DATE)", clean_sql)
     clean_sql = re.sub(r"(?i)DATE\(\s*([a-zA-Z0-9_\.]+)\s*\)", r"((\1)::date)", clean_sql)
 
-    # 4. Convert ? to $1, $2, ... (skipping inside string literals)
+    # 4. GROUP_CONCAT(...) -> STRING_AGG(...) for PostgreSQL
+    clean_sql = re.sub(r"(?i)\bGROUP_CONCAT\s*\(\s*DISTINCT\s+([^,\)]+)\s*,\s*([^)]+)\s*\)", r"STRING_AGG(DISTINCT (\1)::text, \2)", clean_sql)
+    clean_sql = re.sub(r"(?i)\bGROUP_CONCAT\s*\(\s*DISTINCT\s+([^,\)]+)\s*\)", r"STRING_AGG(DISTINCT (\1)::text, ', ')", clean_sql)
+    clean_sql = re.sub(r"(?i)\bGROUP_CONCAT\s*\(\s*([^,\)]+)\s*,\s*([^)]+)\s*\)", r"STRING_AGG((\1)::text, \2)", clean_sql)
+    clean_sql = re.sub(r"(?i)\bGROUP_CONCAT\s*\(\s*([^,\)]+)\s*\)", r"STRING_AGG((\1)::text, ', ')", clean_sql)
+
+    # 5. Convert ? to $1, $2, ... (skipping inside string literals)
     parts = []
     i = 0
     param_idx = 1
