@@ -292,12 +292,12 @@ ON CONFLICT (key) DO NOTHING;
 
 -- Boshlang'ich Bosh Rahbar (8686341550)
 INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
-VALUES (1, 8686341550, 'Bosh Rahbar', 'ADMIN', '$2b$12$60/q787aI6a5f78sW7Q7z.0yZ62u8h4c8w6964kU0172h/365516S', 0, 1)
+VALUES (1, 8686341550, 'Bosh Rahbar', 'ADMIN', '$2b$12$3iXmfAnXHpmvi8tVlH8Vh.bb6lZ5XzDO7FQQsucpNRN7kekLqU7Ke', 0, 1)
 ON CONFLICT (telegram_id) DO UPDATE SET role = 'ADMIN', is_active = 1;
 
 -- Boshlang'ich Dasturchi Admin (8694797293) - Platforma egasi, birorta firmaga tegishli emas (company_id = NULL)
 INSERT INTO users (company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active)
-VALUES (NULL, 8694797293, 'Dasturchi Admin', 'DEVELOPER', '$2b$12$hhJlIOTDNOdovhwUncqw..Q6MOEnBcsXdLQCIODnU.3xq/1pNmL9W', 0, 1)
+VALUES (NULL, 8694797293, 'Dasturchi Admin', 'DEVELOPER', '$2b$12$9A7iQ..ARjY8RfM9a4Eyle3G4oaiuOqnjqEV9HOOhOiGC0i2NHSlK', 0, 1)
 ON CONFLICT (telegram_id) DO UPDATE SET role = 'DEVELOPER', company_id = NULL, is_active = 1;
 
 -- =========================================================================
