@@ -1,6 +1,7 @@
 import re
 import logging
 from typing import Any
+from datetime import datetime, date
 import asyncpg
 import aiosqlite
 
@@ -19,28 +20,47 @@ def clean_postgres_dsn(url: str) -> str:
         dsn = "postgresql://" + dsn[len("postgres://"):]
     return dsn
 
+def sanitize_param_for_pg(p: Any) -> Any:
+    """Safely converts ISO timestamp and date strings to datetime/date objects for asyncpg"""
+    if isinstance(p, str):
+        # YYYY-MM-DD HH:MM:SS or YYYY-MM-DDTHH:MM:SSZ
+        if len(p) in (19, 20, 23, 24, 25, 26) and (" " in p or "T" in p):
+            clean_p = p.replace("T", " ").rstrip("Z")
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                try:
+                    return datetime.strptime(clean_p, fmt)
+                except ValueError:
+                    pass
+        # YYYY-MM-DD
+        elif len(p) == 10 and p[4] == '-' and p[7] == '-' and p[:4].isdigit() and p[5:7].isdigit() and p[8:10].isdigit():
+            try:
+                return datetime.strptime(p, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+    return p
+
 def translate_query_for_postgres(sql: str, params: Any = None) -> tuple[str, list, bool]:
     """
     Translates SQLite query syntax to PostgreSQL:
     1. PRAGMA -> SELECT 1
     2. INSERT OR IGNORE -> ON CONFLICT DO NOTHING
-    3. DATE(..., '+5 hours') -> ((... + INTERVAL '5 hours')::date)
+    3. DATETIME(...) and DATE(...) conversions
     4. ? -> $1, $2, ...
-    5. Appends RETURNING id for INSERT statements if not present
+    5. Appends RETURNING id for INSERT statements if safe
     """
     if params is None:
         params_list = []
     elif isinstance(params, (tuple, list)):
-        params_list = list(params)
+        params_list = [sanitize_param_for_pg(p) for p in params]
     else:
-        params_list = [params]
+        params_list = [sanitize_param_for_pg(params)]
 
     clean_sql = sql.strip()
     upper_sql = clean_sql.upper()
 
     # 1. PRAGMA -> no-op
     if upper_sql.startswith("PRAGMA"):
-        return "SELECT 1;", [], False
+        return "SELECT 1", [], False
 
     is_insert = upper_sql.startswith("INSERT")
 
@@ -50,7 +70,12 @@ def translate_query_for_postgres(sql: str, params: Any = None) -> tuple[str, lis
         if "ON CONFLICT" not in clean_sql.upper():
             clean_sql = clean_sql.rstrip(" \t\n;") + " ON CONFLICT DO NOTHING"
 
-    # 3. DATE(...) conversions
+    # 3. DATETIME(...) and DATE(...) conversions
+    clean_sql = re.sub(r"(?i)DATETIME\(\s*([a-zA-Z0-9_\.]+)\s*,\s*['\"]\+5\s+hours['\"]\s*\)", r"((\1 + INTERVAL '5 hours'))", clean_sql)
+    clean_sql = re.sub(r"(?i)DATETIME\(\s*['\"]now['\"]\s*,\s*['\"]\+5\s+hours['\"]\s*\)", r"((CURRENT_TIMESTAMP + INTERVAL '5 hours'))", clean_sql)
+    clean_sql = re.sub(r"(?i)DATETIME\(\s*['\"]now['\"]\s*\)", r"(CURRENT_TIMESTAMP)", clean_sql)
+    clean_sql = re.sub(r"(?i)DATETIME\(\s*([a-zA-Z0-9_\.]+)\s*\)", r"((\1))", clean_sql)
+
     clean_sql = re.sub(r"(?i)DATE\(\s*([a-zA-Z0-9_\.]+)\s*,\s*['\"]\+5\s+hours['\"]\s*\)", r"((\1 + INTERVAL '5 hours')::date)", clean_sql)
     clean_sql = re.sub(r"(?i)DATE\(\s*['\"]now['\"]\s*,\s*['\"]\+5\s+hours['\"]\s*\)", r"((CURRENT_TIMESTAMP + INTERVAL '5 hours')::date)", clean_sql)
     clean_sql = re.sub(r"(?i)DATE\(\s*['\"]now['\"]\s*\)", r"(CURRENT_DATE)", clean_sql)
@@ -87,11 +112,13 @@ def translate_query_for_postgres(sql: str, params: Any = None) -> tuple[str, lis
     out_sql = "".join(parts).strip().rstrip(";")
 
     appended_returning = False
-    if is_insert and "RETURNING" not in out_sql.upper() and "ON CONFLICT DO NOTHING" not in out_sql.upper():
-        out_sql += " RETURNING id"
-        appended_returning = True
+    upper_out = out_sql.upper()
+    if is_insert and "RETURNING" not in upper_out and "ON CONFLICT" not in upper_out:
+        if "COMPANY_COUNTERS" not in upper_out and "SYSTEM_SETTINGS" not in upper_out:
+            out_sql += " RETURNING id"
+            appended_returning = True
 
-    return out_sql + ";", params_list, appended_returning
+    return out_sql, params_list, appended_returning
 
 
 class PostgresRecordWrapper:
@@ -220,7 +247,7 @@ class PostgresConnectionWrapper:
         if not self._conn:
             self._conn = await self._pool.acquire()
         # Execute script statements
-        statements = [s.strip() for s in script.split(";") if s.strip()]
+        statements = [s.strip().rstrip(";") for s in script.split(";") if s.strip()]
         for stmt in statements:
             await self.execute(stmt)
 
