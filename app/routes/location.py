@@ -1,8 +1,9 @@
 import io
 import math
+import logging
 from datetime import datetime, date, timezone, timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
 from fastapi.responses import StreamingResponse
 import aiosqlite
 
@@ -24,9 +25,21 @@ from app.models import (
     LocationHistoryExportRequest
 )
 
+logger = logging.getLogger("location")
+
 router = APIRouter(prefix="/api/location", tags=["Location & Geofencing"])
 
 UZB_TZ = timezone(timedelta(hours=5))
+
+def is_desktop_user_agent(ua_str: str) -> bool:
+    """Windows, Mac, Linux kompyuterlarini aniqlash (faqat mobil qurilmalar ruxsat etiladi)"""
+    if not ua_str:
+        return False
+    ua = ua_str.lower()
+    is_mobile = any(m in ua for m in ["android", "iphone", "ipad", "ipod", "mobile", "blackberry", "iemobile", "opera mini"])
+    if is_mobile:
+        return False
+    return any(d in ua for d in ["windows", "macintosh", "mac os x", "x11", "linux", "cros"])
 
 def calculate_haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
@@ -423,13 +436,24 @@ async def get_my_workplace(user: dict = Depends(get_current_user)):
 @router.post("/ping")
 async def ping_employee_location(
     payload: LocationPingRequest,
+    request: Request,
     user: dict = Depends(get_current_user)
 ):
     """
     Xodim qurilmasidan avtomatik davriy lokatsiya yuborish.
-    Faqat belgilangan ish vaqti oralig'ida kuzatiladi.
-    Ish vaqtidan tashqarida xodimning shaxsiy daxlsizligi saqlanadi va kordinata yozilmaydi.
+    Faqat MOBIL qurilmalardan yoki Telegram bot orqali hisoblanadi.
+    Windows, MacBook va boshqa kompyuter qurilmalaridan koordinata qabul qilinmaydi va hisoblanmaydi.
     """
+    user_agent = request.headers.get("user-agent", "")
+    if is_desktop_user_agent(user_agent):
+        logger.info(f"Kompyuter ({user_agent[:45]}) qurilmasidan /ping rad etildi. Lokatsiya faqat mobil Telegram bot orqali hisoblanadi.")
+        return {
+            "success": True,
+            "ignored": True,
+            "device": "DESKTOP",
+            "message": "Kompyuter (Windows/Mac) qurilmasidan geolokatsiya hisoblanmaydi. Faqat mobil qurilma (Telegram bot) orqali hisoblanadi."
+        }
+
     if user.get("role") in ("ADMIN", "DEVELOPER"):
         return {"success": True, "message": "Rahbar va Dasturchi kuzatilmaydi"}
 
@@ -664,12 +688,17 @@ async def clear_employee_workplace(
 @router.post("/telemetry")
 async def report_device_telemetry(
     req: DeviceTelemetryRequest,
+    request: Request,
     current_user: dict = Depends(get_current_user)
 ):
     """
     Xodim telefoni (Web/PWA) tomonidan fonda yuboriladigan passiv harakat va zaryadka telemetriyasi.
-    Xodimni hech qanday bezovta qilmaydi.
+    Faqat mobil qurilmalardan qabul qilinadi. Kompyuter qurilmalari e'tiborga olinmaydi.
     """
+    user_agent = request.headers.get("user-agent", "")
+    if is_desktop_user_agent(user_agent):
+        return {"success": True, "ignored": True}
+
     now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     async with get_db_connection() as conn:
         if req.has_motion:

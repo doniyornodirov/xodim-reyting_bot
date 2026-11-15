@@ -303,6 +303,8 @@ if dp:
         guide_text = (
             "🛰 <b>JOYLASHUV BO'YICHA QO'LLANMA:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
+            "📱 <b>Muhim:</b> Tizimda geolokatsiya <b>faqat mobil telefoningiz</b> (ushbu Telegram bot) orqali hisoblanadi!\n"
+            "💻 Kompyuterlarda (Windows / Mac) aniq GPS bo'lmagani sababli, kompyuterlardan lokatsiya olinmaydi va hisoblanmaydi.\n\n"
             "Xabar yozish maydonidagi <b>📎 (Skrepka)</b> -> <b>📍 Geopozitsiya (Location)</b> bo'limi orqali:\n\n"
             "1️⃣ <b>1-usul: Ish joyini belgilash:</b>\n"
             "• Filialingizda turib pastdagi <i>'📍 Ish joyimni belgilash'</i> tugmasini bosing;\n"

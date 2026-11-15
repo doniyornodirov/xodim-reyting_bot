@@ -4700,8 +4700,17 @@ async function handleClearEmployeeWorkplace(userId, fullName) {
 
 // ==========================================
 // XODIM UCHUN: AVTOMATIK GEOLOKATSIYA KUZATUVI
-// Xodim HECH NARSA kiritmaydi!
+// Kompyuter (Windows/Mac/Linux) qurilmalaridan lokatsiya OLINMAYDI!
+// Lokatsiya faqat mobil qurilma (Telegram bot) orqali hisoblanadi.
 // ==========================================
+function isDesktopOrComputerDevice() {
+  const ua = (navigator.userAgent || "").toLowerCase();
+  const isMobile = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua);
+  if (isMobile) return false;
+  const isDesktop = /windows|macintosh|mac os x|linux|cros|x11/i.test(ua);
+  return isDesktop || navigator.maxTouchPoints === 0;
+}
+
 function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
   const badge = document.getElementById("nav-user-location");
   const empOfflineBox = document.getElementById("employee-offline-alert-box");
@@ -4761,10 +4770,18 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
   }
 
   if (distM === null || distM === undefined) {
-    badge.style.background = "rgba(100, 116, 139, 0.2)";
-    badge.style.color = "#94a3b8";
-    badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
-    badge.innerHTML = "<span>📍</span> Masofa aniqlanmoqda...";
+    if (isDesktopOrComputerDevice()) {
+      badge.style.background = "rgba(99, 102, 241, 0.15)";
+      badge.style.color = "#818cf8";
+      badge.style.border = "1px solid rgba(99, 102, 241, 0.35)";
+      badge.innerHTML = "<span>📱</span> Botda lokatsiyani yoqing";
+      badge.title = "Kompyuter (Windows/Mac)dan lokatsiya olinmaydi. Geolokatsiya Telegram bot orqali mobil telefoningizdan hisoblanadi.";
+    } else {
+      badge.style.background = "rgba(100, 116, 139, 0.2)";
+      badge.style.color = "#94a3b8";
+      badge.style.border = "1px solid rgba(100, 116, 139, 0.4)";
+      badge.innerHTML = "<span>📍</span> Masofa aniqlanmoqda...";
+    }
     return;
   }
 
@@ -4775,13 +4792,13 @@ function updateNavbarLocationBadge(distM, isInside, isConfigured = true) {
     badge.style.color = "#34d399";
     badge.style.border = "1px solid rgba(16, 185, 129, 0.4)";
     badge.innerHTML = `<span>📍</span> ${distText} (Ish joyida ✅)`;
-    badge.title = `Siz ish joyingizdasiz (${distText})`;
+    badge.title = `Siz ish joyingizdasiz (${distText}). Ma'lumot mobil Telegram bot orqali olingan.`;
   } else {
     badge.style.background = "rgba(239, 68, 68, 0.15)";
     badge.style.color = "#f87171";
     badge.style.border = "1px solid rgba(239, 68, 68, 0.35)";
     badge.innerHTML = `<span>📍</span> ${distText} (Tashqarida ⚠️)`;
-    badge.title = `Siz ish joyingizdan ${distText} uzoqlikdasiz`;
+    badge.title = `Siz ish joyingizdan ${distText} uzoqlikdasiz. Ma'lumot mobil Telegram bot orqali olingan.`;
   }
 }
 
@@ -4793,6 +4810,13 @@ async function startAutoLocationTracking() {
     if (badge) badge.style.display = "none";
     const empOfflineBox = document.getElementById("employee-offline-alert-box");
     if (empOfflineBox) empOfflineBox.style.display = "none";
+    return;
+  }
+
+  // Windows, Mac, Linux kompyuterlardan ma'lumot OLINMAYDI (faqat mobil qurilma va Telegram bot orqali hisoblanadi)
+  if (isDesktopOrComputerDevice()) {
+    console.log("Kompyuter (Windows/Mac) qurilmasi aniqlandi: Brauzerdan GPS olinmaydi. Lokatsiya faqat mobil Telegram bot orqali hisoblanadi.");
+    fetchMyWorkplaceStatus();
     return;
   }
 
@@ -4914,8 +4938,12 @@ function stopAutoLocationTracking() {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && authToken && currentUser && !isLocationExemptUser() && navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 10000 });
+  if (document.visibilityState === "visible" && authToken && currentUser && !isLocationExemptUser()) {
+    if (!isDesktopOrComputerDevice() && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true, timeout: 10000 });
+    } else {
+      fetchMyWorkplaceStatus();
+    }
   }
 });
 
@@ -6777,7 +6805,7 @@ if (navigator.getBattery) {
 }
 
 async function sendDeviceTelemetryIfDue() {
-  if (!authToken || !currentUser || isLocationExemptUser()) return;
+  if (!authToken || !currentUser || isLocationExemptUser() || isDesktopOrComputerDevice()) return;
   const now = Date.now();
   if (now - pwaLastMotionReport > 240000) {
     pwaLastMotionReport = now;
@@ -6847,6 +6875,13 @@ async function fetchMyWorkplaceStatus() {
       }
       if (res.is_signal_lost) {
         updateNavbarLocationBadge(null, false, true);
+      } else if (isDesktopOrComputerDevice()) {
+        if (res.last_distance_meters !== null && res.last_distance_meters !== undefined) {
+          const isInside = res.last_distance_meters <= (res.radius_meters || 50);
+          updateNavbarLocationBadge(res.last_distance_meters, isInside, res.is_configured);
+        } else {
+          updateNavbarLocationBadge(null, null, res.is_configured);
+        }
       }
     }
   } catch (e) {
