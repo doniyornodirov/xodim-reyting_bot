@@ -198,5 +198,43 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
         except Exception as e:
             self.fail(f"notify_card_topup_in_group kassa yopilgan xodim uchun xato berdi: {e}")
 
+    async def test_09_cashier_reopens_on_report_cancel_and_resubmit(self):
+        """9. Hisobot bekor qilinganda yoki qayta topshirilganda kassir uchun xodim qayta ochilishi tekshiruvi"""
+        from app.routes.reports import cancel_daily_report
+        from app.routes.cashier import get_active_employees
+        from app.security import get_tashkent_today_str
+
+        today_str = get_tashkent_today_str()
+        async with aiosqlite.connect(DB_PATH) as conn:
+            conn.row_factory = aiosqlite.Row
+            # Sinov xodimi va hisobot yaratish
+            await conn.execute("INSERT OR REPLACE INTO users (id, company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active) VALUES (888, 1, 888888, 'Kassir Sinov Xodim', 'EMPLOYEE', 'hash', 0, 1)")
+            await conn.execute("INSERT OR REPLACE INTO daily_reports (id, company_id, employee_id, report_date, net_amount, status) VALUES (888, 1, 888, ?, 500000, 'APPROVED')", (today_str,))
+            await conn.execute("INSERT OR REPLACE INTO cashier_handovers (id, company_id, cashier_id, employee_id, handover_date, amount, amount_uzs, amount_usd, usd_rate) VALUES (888, 1, 1, 888, ?, 500000, 500000, 0, 12000)", (today_str,))
+            await conn.commit()
+
+        # 1. Hozirda kassa topshirilgan bo'lgani uchun xodim ro'yxatda bo'lmasligi kerak
+        cashier_user = {"id": 1, "company_id": 1, "role": "CASHIER", "full_name": "Kassir Test"}
+        emp_res = await get_active_employees(user=cashier_user)
+        active_ids = [e["id"] for e in emp_res["data"]]
+        self.assertNotIn(888, active_ids)
+
+        # 2. Rahbar hisobotni bekor qiladi
+        admin_user = {"id": 1, "company_id": 1, "role": "ADMIN", "full_name": "Rahbar Test"}
+        cancel_res = await cancel_daily_report(report_id=888, user=admin_user)
+        self.assertTrue(cancel_res["success"])
+
+        # 3. Endi kassir uchun xodim ro'yxatda paydo bo'lishi shart!
+        emp_res_after = await get_active_employees(user=cashier_user)
+        active_ids_after = [e["id"] for e in emp_res_after["data"]]
+        self.assertIn(888, active_ids_after)
+
+        # Tozalash
+        async with aiosqlite.connect(DB_PATH) as conn:
+            await conn.execute("DELETE FROM cashier_handovers WHERE id = 888")
+            await conn.execute("DELETE FROM daily_reports WHERE id = 888")
+            await conn.execute("DELETE FROM users WHERE id = 888")
+            await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()

@@ -167,6 +167,28 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             ))
             report_id = existing["id"]
             action_desc = "Qayta topshirildi (Eskisi yangilandi va qiymatlar qayta hisoblandi)"
+
+            # Agar oldingi topshirilgan hisobotga doir cashier_handovers yozuvi bo'lsa, uni tozalash
+            # Shunda kassir yangi topshirilgan hisobot bo'yicha kassani qayta qabul qila oladi
+            cursor = await conn.execute(
+                "SELECT id, amount FROM cashier_handovers WHERE employee_id = ? AND handover_date = ? AND company_id = ?",
+                (user["id"], today_str, comp_id)
+            )
+            old_handover = await cursor.fetchone()
+            if old_handover:
+                await conn.execute(
+                    "DELETE FROM cashier_handovers WHERE id = ? AND company_id = ?",
+                    (old_handover["id"], comp_id)
+                )
+                await conn.execute("""
+                    INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                    VALUES (?, 'CASHIER_HANDOVER', ?, 'RESET', ?, ?)
+                """, (
+                    comp_id, 
+                    old_handover["id"], 
+                    user["full_name"], 
+                    f"Xodim hisobotini qayta topshirgani sababli oldingi kassa yozuvi ({old_handover['amount']:,.0f} so'm) yangilanish uchun tozalandi"
+                ))
         else:
             try:
                 cursor = await conn.execute("""
@@ -447,6 +469,29 @@ async def cancel_daily_report(
             SET status = 'CANCELLED', reviewed_by = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND company_id = ?
         """, (user["id"], report_id, comp_id))
+
+        # Agar ushbu xodim uchun ushbu sanada kassa qabul qilingan bo'lsa (cashier_handovers),
+        # hisobot bekor qilingani sababli uni ham tozalash (kassirga yangi hisobot bo'yicha qayta qabul qilish imkonini ochish)
+        rep_date = str(report["report_date"])
+        cursor = await conn.execute(
+            "SELECT id, amount FROM cashier_handovers WHERE employee_id = ? AND handover_date = ? AND company_id = ?",
+            (emp_id, rep_date, comp_id)
+        )
+        old_handover = await cursor.fetchone()
+        if old_handover:
+            await conn.execute(
+                "DELETE FROM cashier_handovers WHERE id = ? AND company_id = ?",
+                (old_handover["id"], comp_id)
+            )
+            await conn.execute("""
+                INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                VALUES (?, 'CASHIER_HANDOVER', ?, 'CANCEL', ?, ?)
+            """, (
+                comp_id, 
+                old_handover["id"], 
+                user["full_name"], 
+                f"Hisobot bekor qilingani sababli oldingi kassa yozuvi ({old_handover['amount']:,.0f} so'm) bekor qilindi va kassirga qayta qabul qilish imkoni ochildi"
+            ))
 
         # Audit log
         await conn.execute("""

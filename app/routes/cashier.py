@@ -13,6 +13,35 @@ async def get_active_employees(user: dict = Depends(require_role(["CASHIER", "AD
     today_str = get_tashkent_today_str()
     comp_id = user.get("company_id") or 1
     async with get_db_connection() as conn:
+        # Avto-tozalash: Agar xodimning bugungi hisoboti bekor qilingan (CANCELLED) bo'lsa,
+        # unga tegishli cashier_handovers eski yozuvini tozalash (kassirga yangi hisobot bo'yicha yana ochish)
+        await conn.execute("""
+            DELETE FROM cashier_handovers 
+            WHERE handover_date = ? AND company_id = ?
+              AND employee_id IN (
+                  SELECT employee_id FROM daily_reports 
+                  WHERE report_date = ? AND company_id = ? AND status = 'CANCELLED'
+              )
+        """, (today_str, comp_id, today_str, comp_id))
+
+        # Avto-tozalash: Agar xodim hisobotini qayta topshirgan bo'lsa (status = 'PENDING' va dr.updated_at > ch.created_at),
+        # demak kassa eski hisobot bo'yicha qabul qilingan, uni ham tozalash:
+        await conn.execute("""
+            DELETE FROM cashier_handovers 
+            WHERE handover_date = ? AND company_id = ?
+              AND id IN (
+                  SELECT ch.id FROM cashier_handovers ch
+                  JOIN daily_reports dr 
+                    ON dr.employee_id = ch.employee_id 
+                   AND dr.report_date = ch.handover_date 
+                   AND dr.company_id = ch.company_id
+                  WHERE ch.handover_date = ? AND ch.company_id = ?
+                    AND dr.status = 'PENDING'
+                    AND dr.updated_at > ch.created_at
+              )
+        """, (today_str, comp_id, today_str, comp_id))
+        await conn.commit()
+
         cursor = await conn.execute("""
             SELECT id, telegram_id, full_name, role 
             FROM users 
@@ -71,8 +100,19 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
             "SELECT id FROM cashier_handovers WHERE employee_id = ? AND handover_date = ? AND company_id = ?",
             (req.employee_id, today_str, comp_id)
         )
-        if await cursor.fetchone():
-            raise HTTPException(status_code=400, detail=f"{emp['full_name']} bugungi kassa summasini allaqachon topshirgan!")
+        existing_handover = await cursor.fetchone()
+        if existing_handover:
+            # Tekshirish: agar xodimning bugungi hisoboti CANCELLED yoki PENDING bo'lsa (qayta topshirilgan/ochilgan bo'lsa):
+            cursor = await conn.execute(
+                "SELECT status FROM daily_reports WHERE employee_id = ? AND report_date = ? AND company_id = ?",
+                (req.employee_id, today_str, comp_id)
+            )
+            rep_row = await cursor.fetchone()
+            if rep_row and rep_row["status"] in ("CANCELLED", "PENDING"):
+                # Eskisini tozalab, yangi topshirilgan hisobot bo'yicha qabul qilishga ruxsat berish
+                await conn.execute("DELETE FROM cashier_handovers WHERE id = ? AND company_id = ?", (existing_handover["id"], comp_id))
+            else:
+                raise HTTPException(status_code=400, detail=f"{emp['full_name']} bugungi kassa summasini allaqachon topshirgan!")
 
         try:
             cursor = await conn.execute("""
