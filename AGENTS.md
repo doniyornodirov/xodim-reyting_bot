@@ -4,7 +4,8 @@ Ushbu loyiha barcha zamonaviy AI agentlar (Google Gemini CLI, Google Antigravity
 
 ## 📌 Asosiy Ko'rsatmalar
 Barcha agentlar loyihadagi quyidagi asosiy fayllarga qat'iy tayanishi lozim:
-1. **[GEMINI.md](file:///c:/Users/Doniyor/Xodim-reyting/GEMINI.md)** — Loyihaning yagona xotirasi (Persistent Memory).
+1. **[advise.md](file:///c:/Users/Doniyor/Xodim-reyting/advise.md)** — Bosh Texnik Maslahatchi va Arxitektura Qo'llanmasi (Senior Advisor Protocol).
+2. **[GEMINI.md](file:///c:/Users/Doniyor/Xodim-reyting/GEMINI.md)** — Loyihaning yagona xotirasi (Persistent Memory).
 2. **[.gemini/settings.json](file:///c:/Users/Doniyor/Xodim-reyting/.gemini/settings.json)** — Ruxsatlar va xavfsizlik cheklovlari.
 3. **[.gemini/rules/](file:///c:/Users/Doniyor/Xodim-reyting/.gemini/rules/)** — Qat'iy qoidalar:
    - [01-anti-hallucination.md](file:///c:/Users/Doniyor/Xodim-reyting/.gemini/rules/01-anti-hallucination.md) (Galutsinatsiyasiz ishlash)

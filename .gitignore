@@ -5,6 +5,7 @@
 
 # Ma'lumotlar bazasi va zaxira fayllar
 *.db
+*.sqlite3
 *.db-journal
 *.db-wal
 *.db-shm
