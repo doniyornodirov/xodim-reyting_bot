@@ -19,6 +19,8 @@
   /* Dark Mode Default (Calm Slate 950 / Slate 900) */
   --bg-primary: #090d16;
   /* Refined Midnight Slate */
+  --bg-main: #0b1120;
+  --bg-card: #0f172a;
   --bg-surface: #0f172a;
   /* Slate 900 Card Surface */
   --bg-surface-elevated: #1e293b;
@@ -75,6 +77,8 @@ body {
 body.theme-light {
   --bg-primary: #f8fafc;
   /* Slate 50 Page Background */
+  --bg-main: #ffffff;
+  --bg-card: #ffffff;
   --bg-surface: #ffffff;
   /* Pure White Card Surface */
   --bg-surface-elevated: #f1f5f9;
@@ -156,63 +160,133 @@ body.theme-light .card-desc {
 /* KUNDUZGI (DAY) REJIMDA KIRITISH MAYDONLARI (LINEAR/STRIPE)*/
 /* Toza oppoq (#ffffff) fon, nafis hoshiya, aniq qora matn  */
 /* ========================================================= */
+body.theme-light .form-input,
 body.theme-light .form-input:not(select),
-body.theme-light textarea.form-input {
-  background-color: #0f172a !important;
-  border: 1px solid #334155 !important;
-  color: #ffffff !important;
+body.theme-light textarea.form-input,
+body.theme-light input[type="text"],
+body.theme-light input[type="number"],
+body.theme-light input[type="tel"],
+body.theme-light input[type="password"],
+body.theme-light input[type="email"],
+body.theme-light input[type="search"],
+body.theme-light input[type="date"],
+body.theme-light textarea {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
-body.theme-light .form-input::placeholder {
+body.theme-light .form-label {
+  color: #334155 !important;
+  font-weight: 600;
+}
+
+body.theme-light .form-input::placeholder,
+body.theme-light input::placeholder,
+body.theme-light textarea::placeholder {
   color: #94a3b8 !important;
-  opacity: 0.85;
+  opacity: 1 !important;
 }
 
-body.theme-light .form-input:hover {
-  border-color: #64748b !important;
+body.theme-light .form-input:hover,
+body.theme-light input:hover,
+body.theme-light textarea:hover {
+  border-color: #94a3b8 !important;
 }
 
-body.theme-light .form-input:focus {
-  background: #0f172a !important;
-  border-color: #6366f1 !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35) !important;
+body.theme-light .form-input:focus,
+body.theme-light input:focus,
+body.theme-light textarea:focus {
+  background-color: #ffffff !important;
+  border-color: #4f46e5 !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  outline: none !important;
 }
 
 body.theme-light .form-input[readonly],
-body.theme-light .form-input:disabled {
-  background: #1e293b !important;
-  border-color: #334155 !important;
-  color: #94a3b8 !important;
+body.theme-light .form-input:disabled,
+body.theme-light input[readonly],
+body.theme-light input:disabled,
+body.theme-light textarea:disabled {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
   cursor: not-allowed;
 }
 
-body.theme-light select.form-input option {
-  background: #0f172a !important;
-  color: #ffffff !important;
+/* Kunduzgi rejim: Ochiladigan ro'yxatlar (Select & Dropdowns) */
+body.theme-light select,
+body.theme-light select.form-input,
+body.theme-light .sim-styled-select,
+body.theme-light .styled-select,
+body.theme-light .header-filter-select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.85rem center !important;
+  background-size: 1.15rem 1.15rem !important;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.theme-light select:focus,
+body.theme-light select.form-input:focus,
+body.theme-light .sim-styled-select:focus,
+body.theme-light .styled-select:focus,
+body.theme-light .header-filter-select:focus {
+  background-color: #ffffff !important;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+}
+
+body.theme-light select option,
+body.theme-light select.form-input option,
+body.theme-light .sim-styled-select option,
+body.theme-light .styled-select option,
+body.theme-light .header-filter-select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  padding: 0.65rem 0.85rem !important;
 }
 
 body.theme-light .card-number-input {
-  background: #0f172a !important;
-  color: #60a5fa !important;
+  background-color: #ffffff !important;
+  color: #1d4ed8 !important;
   font-weight: 700 !important;
-  border-color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 body.theme-light .card-holder-input,
 body.theme-light #topup-card-holder {
-  background: #0f172a !important;
-  color: #f8fafc !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
   font-weight: 700 !important;
-  border-color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 body.theme-light #otp-code-input {
-  background: #0f172a !important;
-  color: #ffffff !important;
-  border-color: #475569 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.theme-light .sim-serial-input {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 /* ========================================================= */
@@ -637,14 +711,16 @@ body.theme-light .copyable-card:hover {
   color: #0f172a;
 }
 
-/* Date Picker Indicator (Dark Mode: White Box -> Black Icon | Day Mode: Black Box -> White Icon) */
+/* Date Picker Indicator (Dark Mode: Invert to White Icon | Day Mode: Natural Dark Icon) */
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: none !important;
+  filter: invert(1) !important;
+  opacity: 0.85;
   cursor: pointer;
 }
 
 body.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) !important;
+  filter: none !important;
+  opacity: 0.65;
   cursor: pointer;
 }
 
@@ -1821,15 +1897,15 @@ body.theme-light .btn-secondary-sm:hover {
 .form-input:not(select),
 textarea.form-input {
   width: 100%;
-  background-color: #ffffff !important;
-  border: 1px solid #cbd5e1 !important;
+  background-color: #0b1120 !important;
+  border: 1px solid #1e293b !important;
   border-radius: 8px;
   padding: 0.45rem 0.8rem;
   font-size: 0.875rem;
-  color: #0f172a !important;
+  color: #f8fafc !important;
   outline: none;
   min-height: 38px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
   transition: all 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 
@@ -1839,27 +1915,27 @@ textarea.form-input {
 }
 
 .form-input:hover {
-  border-color: #94a3b8 !important;
+  border-color: #334155 !important;
 }
 
 .form-input:focus {
-  border-color: #4f46e5 !important;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22) !important;
-  background: #ffffff !important;
-  color: #0f172a !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+  background: #0b1120 !important;
+  color: #f8fafc !important;
 }
 
 .form-input[readonly],
 .form-input:disabled {
-  background: #f1f5f9 !important;
-  border-color: #e2e8f0 !important;
+  background: #0f172a !important;
+  border-color: #1e293b !important;
   color: #64748b !important;
   cursor: not-allowed;
 }
 
 select.form-input option {
-  background: #ffffff !important;
-  color: #0f172a !important;
+  background: #0b1120 !important;
+  color: #f8fafc !important;
 }
 
 /* Card Number Special Format */
@@ -1868,9 +1944,9 @@ select.form-input option {
   font-size: clamp(1.05rem, 4.2vw, 1.35rem);
   letter-spacing: clamp(0.06em, 1.5vw, 0.15em);
   font-weight: 700;
-  color: #1d4ed8 !important;
-  background: #ffffff !important;
-  border-color: #cbd5e1 !important;
+  color: #60a5fa !important;
+  background: #0b1120 !important;
+  border-color: #1e293b !important;
 }
 
 /* Card Holder Special Format (Karta raqami va Summa bilan bir xil ko'rinish va balandlik) */
@@ -1878,9 +1954,9 @@ select.form-input option {
 #topup-card-holder {
   font-size: clamp(1.05rem, 4.2vw, 1.35rem);
   font-weight: 700;
-  color: #0f172a !important;
-  background: #ffffff !important;
-  border-color: #cbd5e1 !important;
+  color: #f8fafc !important;
+  background: #0b1120 !important;
+  border-color: #1e293b !important;
   text-transform: uppercase;
 }
 
@@ -1928,18 +2004,18 @@ select.form-input,
   font-weight: 600;
   border-radius: 8px !important;
   padding: 0.45rem 2.5rem 0.45rem 0.85rem !important;
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #cbd5e1 !important;
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+  border: 1px solid #1e293b !important;
   appearance: none !important;
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234f46e5' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23818cf8' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: right 0.85rem center !important;
   background-size: 1.15rem 1.15rem !important;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -1947,8 +2023,8 @@ select:focus,
 select.form-input:focus,
 .sim-styled-select:focus,
 .styled-select:focus {
-  border-color: #4f46e5 !important;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22) !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
 }
 
 select option,
@@ -1958,8 +2034,8 @@ select.form-input option,
   padding: 0.65rem 0.85rem;
   font-size: 0.95rem;
   font-weight: 500;
-  background-color: #ffffff !important;
-  color: #0f172a !important;
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
 }
 
 .sim-serial-input {
@@ -1975,6 +2051,9 @@ select.form-input option,
   letter-spacing: 0.05em !important;
   border-radius: 8px !important;
   padding: 0.45rem 0.85rem !important;
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+  border: 1px solid #1e293b !important;
 }
 
 /* Light Mode / Dark Mode Theme Support */
@@ -1988,10 +2067,10 @@ body.theme-light .styled-select {
   height: 42px !important;
   min-height: 42px !important;
   border-radius: 8px !important;
-  background-color: #0f172a !important;
-  color: #ffffff !important;
-  border-color: #334155 !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23818cf8' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: right 0.85rem center !important;
   background-size: 1.15rem 1.15rem !important;
@@ -2001,14 +2080,14 @@ body.theme-light select option,
 body.theme-light select.form-input option,
 body.theme-light .sim-styled-select option,
 body.theme-light .styled-select option {
-  background-color: #0f172a !important;
-  color: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }
 
 body.theme-light .sim-serial-input {
-  background-color: #0f172a !important;
-  color: #ffffff !important;
-  border-color: #334155 !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
 }
 
 #otp-code-input {
@@ -4495,7 +4574,7 @@ body.theme-light .modal-info-box {
 /* 5. Sana tanlash (date picker) - High Contrast Alignment */
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
-  filter: none !important;
+  filter: invert(1) !important;
   opacity: 0.85;
   transition: opacity 0.15s ease;
 }
@@ -4505,9 +4584,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 body.theme-light input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) !important;
+  filter: none !important;
   cursor: pointer;
-  opacity: 0.9;
+  opacity: 0.7;
 }
 
 body.theme-light input[type="date"]::-webkit-calendar-picker-indicator:hover {
@@ -5941,5 +6020,60 @@ body.theme-light .btn-save-field:hover {
   background: #4f46e5;
   color: #ffffff;
   border-color: #4f46e5;
+}
+
+/* ========================================================= */
+/* HEADER & PANE FILTR SELECT VA WRAPPERLAR                  */
+/* ========================================================= */
+.header-filter-wrap {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.2s ease;
+}
+
+body.theme-light .header-filter-wrap {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.header-filter-select {
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  padding: 0.3rem 2.2rem 0.3rem 0.65rem !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+  height: 34px !important;
+  min-height: 34px !important;
+  border: 1px solid rgba(99, 102, 241, 0.35) !important;
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23818cf8' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.6rem center !important;
+  background-size: 0.95rem 0.95rem !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+body.theme-light .header-filter-select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E") !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+body.theme-light .header-filter-select:hover {
+  border-color: #94a3b8 !important;
+}
+
+body.theme-light .header-filter-select:focus {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15) !important;
+}
+
+body.theme-light .header-filter-select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }
 

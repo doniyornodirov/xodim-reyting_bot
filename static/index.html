@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=881">
+  <link rel="stylesheet" href="/static/css/style.css?v=882">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -348,11 +348,11 @@
           <!-- Kalendar va Holat bo'yicha saralash filtri -->
           <div class="filter-actions-bar flex items-center gap-2 flex-wrap">
             <!-- 🔍 Holat filtri (Kutilmoqda / Rad etildi / Tasdiqlandi) -->
-            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap">
               <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
                 <span>🔍</span> Holat:
               </span>
-              <select id="admin-reports-status-filter" class="form-input" onchange="applyAdminReportsFilter()" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 165px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+              <select id="admin-reports-status-filter" class="form-input header-filter-select" onchange="applyAdminReportsFilter()" style="min-width: 165px;">
                 <option value="all">🌐 Barcha hisobotlar</option>
                 <option value="PENDING">⏳ Kutilmoqda</option>
                 <option value="APPROVED">✅ Tasdiqlandi</option>
@@ -411,11 +411,11 @@
 
           <div class="flex gap-2 items-center flex-wrap">
             <!-- 👤 Xodimlar bo'yicha filter (User Request: Savdo monitoringi) -->
-            <div class="analytics-emp-filter-container inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+            <div class="analytics-emp-filter-container inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap">
               <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
                 <span>👤</span> <span class="hidden sm:inline">Xodim:</span>
               </span>
-              <select id="analytics-employee-select" class="form-input" onchange="changeAnalyticsEmployee(this.value)" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 170px; max-width: 230px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+              <select id="analytics-employee-select" class="form-input header-filter-select" onchange="changeAnalyticsEmployee(this.value)" style="min-width: 170px; max-width: 230px;">
                 <option value="">🌐 Barcha xodimlar</option>
               </select>
             </div>
@@ -559,11 +559,11 @@
             <span class="card-desc text-xs block mb-0">Xodimlar olgan pul mablag'lari va tasdiqlash</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap">
               <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
                 <span>🔍</span> Holat:
               </span>
-              <select id="admin-givens-status-filter" class="form-input" onchange="applyAdminGivensFilter()" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 160px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+              <select id="admin-givens-status-filter" class="form-input header-filter-select" onchange="applyAdminGivensFilter()" style="min-width: 160px;">
                 <option value="all">🌐 Barchasi</option>
                 <option value="PENDING">⏳ Kutilmoqda</option>
                 <option value="APPROVED">✅ Tasdiqlandi</option>
@@ -627,11 +627,11 @@
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <!-- ⚖️ Tafovut filtri (Tafovut bor / Tafovut yo'q) -->
-            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg" style="background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12));">
+            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap">
               <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
                 <span>⚖️</span> Filtr:
               </span>
-              <select id="admin-comparison-filter" class="form-input" onchange="applyAdminComparisonFilter()" style="font-size: 0.8rem; font-weight: 600; padding: 0.3rem 0.65rem; border-radius: 6px; cursor: pointer; min-width: 175px; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+              <select id="admin-comparison-filter" class="form-input header-filter-select" onchange="applyAdminComparisonFilter()" style="min-width: 175px;">
                 <option value="all">🌐 Barchasi</option>
                 <option value="with_diff">⚠️ Tafovut bor</option>
                 <option value="no_diff">✅ Tafovut yo'q (Mos)</option>
@@ -753,11 +753,11 @@
               <span>📄</span> Geolokatsiya tarixini olish (DOCX)
             </button>
             <!-- 🔍 Lokatsiya holati bo'yicha filter (Kordinatasi kiritilgan/kiritilmagan/ish joyida/tashqarida) -->
-            <div class="geo-filter-container" style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--bg-card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--border-color, rgba(255, 255, 255, 0.12)); padding: 0.2rem 0.4rem 0.2rem 0.65rem; border-radius: 8px;">
+            <div class="geo-filter-container header-filter-wrap" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.4rem 0.2rem 0.65rem; border-radius: 8px;">
               <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
                 <span>🔍</span> Filtr:
               </span>
-              <select id="geo-status-filter" class="form-input" onchange="applyAdminLocationFilter()" style="font-size: 0.82rem; padding: 0.35rem 0.65rem; border-radius: 6px; font-weight: 600; min-width: 220px; cursor: pointer; border-color: rgba(99, 102, 241, 0.35); background: var(--bg-main, #0b0f19); color: var(--text-main, #f8fafc);">
+              <select id="geo-status-filter" class="form-input header-filter-select" onchange="applyAdminLocationFilter()" style="min-width: 220px;">
                 <option value="all">🌐 Barcha xodimlar</option>
                 <option value="configured">🏢 Kordinatasi kiritilgan</option>
                 <option value="not_configured">⚠️ Kordinatasi kiritilmagan</option>
@@ -2651,6 +2651,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=881"></script>
+  <script src="/static/js/app.js?v=882"></script>
 </body>
 </html>
