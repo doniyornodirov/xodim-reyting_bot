@@ -11,12 +11,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="XodimKPI">
-  <link rel="manifest" href="/manifest.json?v=866">
-  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=866">
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=866">
+  <link rel="manifest" href="/manifest.json?v=867">
+  <link rel="icon" type="image/svg+xml" href="/static/icons/icon.svg?v=867">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=867">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=866', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=867', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -25,7 +25,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=866">
+  <link rel="stylesheet" href="/static/css/style.css?v=867">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -1786,15 +1786,15 @@
 
         <!-- Yordamchi xarita havolasi va filial kordinatasi eslatmasi -->
         <div style="font-size: 0.78rem; color: #94a3b8; background: rgba(56, 189, 248, 0.08); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 0.6rem; margin-bottom: 0.85rem; line-height: 1.45;">
-          🏢 <b>Ish joyi (Filial) manzili:</b> Bu xodim biriktirilgan doimiy filial nuqtasi. Xodim har kuni Telegramdan 8 soatlik jonli lokatsiya yuborganida, tizim uni aynan shu manzilga nisbatan masofasini (0 m, 50 m va h.k.) kuzatib boradi.
+          🏢 <b>Ish joyi (Filial) manzili:</b> Xodim o'z filialida turib Telegram botdagi <b>«📍 Ish joyimni belgilash»</b> tugmasini bossa, tizim bu manzilni avtomatik saqlaydi. Shuningdek, xodim yuborgan mobil koordinatani pastdagi tugma orqali ham to'ldirish mumkin.
         </div>
 
         <div style="margin-bottom: 1.25rem; display: flex; gap: 0.6rem;">
           <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" class="btn-logout" style="flex: 1; font-size: 0.8rem; padding: 0.6rem; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 0.65rem;">
             <span>🗺️</span> Google Xaritadan ochish
           </a>
-          <button type="button" class="btn-secondary" onclick="handleFillCurrentAdminGpsToModal()" style="flex: 1; font-size: 0.8rem; padding: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 0.65rem;">
-            <span>📍</span> Joriy joylashuvimni olish
+          <button type="button" class="btn-secondary" onclick="handleFillEmployeeReportedGpsToModal()" style="flex: 1; font-size: 0.8rem; padding: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border-radius: 0.65rem;" title="Xodim Telegram botga yuborgan mobil koordinatasidan olish">
+            <span>📱</span> Xodim lokatsiyasidan olish
           </button>
         </div>
 
@@ -2404,6 +2404,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=866"></script>
+  <script src="/static/js/app.js?v=867"></script>
 </body>
 </html>

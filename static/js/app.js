@@ -4459,8 +4459,16 @@ function openSetEmployeeLocationModal(userId) {
   document.getElementById("modal-emp-id").value = emp.id;
   document.getElementById("modal-emp-name-display").innerText = `${emp.full_name} (TG: ${emp.telegram_id})`;
   document.getElementById("modal-emp-wp-name").value = emp.workplace_name || `${emp.full_name} ish joyi`;
-  document.getElementById("modal-emp-wp-lat").value = emp.workplace_latitude ?? "";
-  document.getElementById("modal-emp-wp-lon").value = emp.workplace_longitude ?? "";
+
+  // Agar ish joyi hali kiritilmagan bo'lsa, lekin xodim botga lokatsiya yuborgan bo'lsa - xodim koordinatasini avtomatik taklif etamiz
+  if ((!emp.workplace_latitude || !emp.workplace_longitude) && emp.last_latitude && emp.last_longitude) {
+    document.getElementById("modal-emp-wp-lat").value = Number(emp.last_latitude).toFixed(6);
+    document.getElementById("modal-emp-wp-lon").value = Number(emp.last_longitude).toFixed(6);
+  } else {
+    document.getElementById("modal-emp-wp-lat").value = emp.workplace_latitude ?? "";
+    document.getElementById("modal-emp-wp-lon").value = emp.workplace_longitude ?? "";
+  }
+
   document.getElementById("modal-emp-wp-radius").value = emp.workplace_radius_meters || 50;
   document.getElementById("modal-emp-work-start").value = emp.work_start_time || "09:00";
   document.getElementById("modal-emp-work-end").value = emp.work_end_time || "19:00";
@@ -4673,23 +4681,25 @@ async function handleSetEmployeeLocationSubmit(e) {
   }
 }
 
-function handleFillCurrentAdminGpsToModal() {
-  if (!navigator.geolocation) {
-    showToast("Brauzeringizda GPS qo'llab-quvvatlanmaydi", "danger");
+function handleFillEmployeeReportedGpsToModal() {
+  const userId = parseInt(document.getElementById("modal-emp-id")?.value);
+  const emp = (adminEmployeesLocationCache || []).find(u => u.id === userId);
+  if (!emp) {
+    showToast("Xodim ma'lumoti topilmadi", "warning");
     return;
   }
-  showToast("📍 Joriy koordinatangiz aniqlanmoqda...", "info");
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      document.getElementById("modal-emp-wp-lat").value = pos.coords.latitude.toFixed(6);
-      document.getElementById("modal-emp-wp-lon").value = pos.coords.longitude.toFixed(6);
-      showToast("✅ Koordinata joriy joylashuvingiz bo'yicha to'ldirildi!", "success");
-    },
-    (err) => {
-      showToast("Geolokatsiyani olishda xatolik: " + err.message, "danger");
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
+  if (emp.last_latitude && emp.last_longitude) {
+    document.getElementById("modal-emp-wp-lat").value = Number(emp.last_latitude).toFixed(6);
+    document.getElementById("modal-emp-wp-lon").value = Number(emp.last_longitude).toFixed(6);
+    showToast(`✅ Xodimning Telegram botga yuborgan koordinatasi (${Number(emp.last_latitude).toFixed(6)}, ${Number(emp.last_longitude).toFixed(6)}) kiritildi!`, "success");
+  } else {
+    showToast("ℹ️ Bu xodim hali Telegram botga lokatsiya yubormagan. Xodim o'z telefoni orqali botdagi «📍 Ish joyimni belgilash» tugmasini bosishi yoki lokatsiya yuborishi kerak.", "info");
+  }
+}
+
+// Brauzer keshida eski funksiya nomi qolib ketgan holatlar uchun orqaga moslik (deprecated alias)
+function handleFillCurrentAdminGpsToModal() {
+  handleFillEmployeeReportedGpsToModal();
 }
 
 async function handleClearEmployeeWorkplace(userId, fullName) {
