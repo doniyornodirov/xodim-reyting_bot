@@ -55,29 +55,50 @@ async def list_companies(super_admin: dict = Depends(require_super_admin)):
         result = []
         for c in companies_raw:
             c_id = c["id"]
+            owner_tg = c["owner_telegram_id"]
 
             # Statistika: Faol xodimlar soni (Firma rahbarlari, Adminlar va Dasturchilar bundan qat'iy mustasno)
-            cur_users = await conn.execute(
-                """
-                SELECT COUNT(*) FROM users 
-                WHERE company_id = ? 
-                  AND is_active = 1 
-                  AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
-                  AND (telegram_id != ? OR ? IS NULL)
-                """, (c_id, c["owner_telegram_id"], c["owner_telegram_id"])
-            )
+            if owner_tg:
+                cur_users = await conn.execute(
+                    """
+                    SELECT COUNT(*) FROM users 
+                    WHERE company_id = ? 
+                      AND is_active = 1 
+                      AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
+                      AND telegram_id != ?
+                    """, (c_id, owner_tg)
+                )
+            else:
+                cur_users = await conn.execute(
+                    """
+                    SELECT COUNT(*) FROM users 
+                    WHERE company_id = ? 
+                      AND is_active = 1 
+                      AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
+                    """, (c_id,)
+                )
             users_count = (await cur_users.fetchone())[0]
 
             # Kassirlar soni (Firma rahbarlari bundan ham mustasno)
-            cur_cashiers = await conn.execute(
-                """
-                SELECT COUNT(*) FROM users 
-                WHERE company_id = ? 
-                  AND UPPER(COALESCE(role, '')) = 'CASHIER' 
-                  AND is_active = 1
-                  AND (telegram_id != ? OR ? IS NULL)
-                """, (c_id, c["owner_telegram_id"], c["owner_telegram_id"])
-            )
+            if owner_tg:
+                cur_cashiers = await conn.execute(
+                    """
+                    SELECT COUNT(*) FROM users 
+                    WHERE company_id = ? 
+                      AND UPPER(COALESCE(role, '')) = 'CASHIER' 
+                      AND is_active = 1
+                      AND telegram_id != ?
+                    """, (c_id, owner_tg)
+                )
+            else:
+                cur_cashiers = await conn.execute(
+                    """
+                    SELECT COUNT(*) FROM users 
+                    WHERE company_id = ? 
+                      AND UPPER(COALESCE(role, '')) = 'CASHIER' 
+                      AND is_active = 1
+                    """, (c_id,)
+                )
             cashiers_count = (await cur_cashiers.fetchone())[0]
 
             # Topshirilgan hisobotlar soni

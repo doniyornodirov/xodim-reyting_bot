@@ -64,16 +64,27 @@ async def create_user(req: CreateUserRequest, admin: dict = Depends(require_role
         max_emp = comp_info["max_employees"] if (comp_info and "max_employees" in comp_info.keys() and comp_info["max_employees"]) else 20
         comp_owner_tg = comp_info["owner_telegram_id"] if comp_info else None
 
-        cur_cnt = await conn.execute(
-            """
-            SELECT COUNT(*) FROM users 
-            WHERE company_id = ? 
-              AND is_active = 1 
-              AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
-              AND (telegram_id != ? OR ? IS NULL)
-            """,
-            (comp_id, comp_owner_tg, comp_owner_tg)
-        )
+        if comp_owner_tg:
+            cur_cnt = await conn.execute(
+                """
+                SELECT COUNT(*) FROM users 
+                WHERE company_id = ? 
+                  AND is_active = 1 
+                  AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
+                  AND telegram_id != ?
+                """,
+                (comp_id, comp_owner_tg)
+            )
+        else:
+            cur_cnt = await conn.execute(
+                """
+                SELECT COUNT(*) FROM users 
+                WHERE company_id = ? 
+                  AND is_active = 1 
+                  AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
+                """,
+                (comp_id,)
+            )
         curr_emp_count = (await cur_cnt.fetchone())[0]
 
         if role not in ('ADMIN', 'DEVELOPER') and curr_emp_count >= max_emp:
@@ -121,16 +132,27 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
             max_emp = comp_info["max_employees"] if (comp_info and "max_employees" in comp_info.keys() and comp_info["max_employees"]) else 20
             comp_owner_tg = comp_info["owner_telegram_id"] if comp_info else None
 
-            cur_cnt = await conn.execute(
-                """
-                SELECT COUNT(*) FROM users 
-                WHERE company_id = ? 
-                  AND is_active = 1 
-                  AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
-                  AND (telegram_id != ? OR ? IS NULL)
-                """,
-                (comp_id, comp_owner_tg, comp_owner_tg)
-            )
+            if comp_owner_tg:
+                cur_cnt = await conn.execute(
+                    """
+                    SELECT COUNT(*) FROM users 
+                    WHERE company_id = ? 
+                      AND is_active = 1 
+                      AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
+                      AND telegram_id != ?
+                    """,
+                    (comp_id, comp_owner_tg)
+                )
+            else:
+                cur_cnt = await conn.execute(
+                    """
+                    SELECT COUNT(*) FROM users 
+                    WHERE company_id = ? 
+                      AND is_active = 1 
+                      AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
+                    """,
+                    (comp_id,)
+                )
             curr_emp_count = (await cur_cnt.fetchone())[0]
 
             if user["role"] not in ('ADMIN', 'DEVELOPER') and curr_emp_count >= max_emp:

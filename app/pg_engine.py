@@ -121,6 +121,10 @@ def translate_query_for_postgres(sql: str, params: Any = None) -> tuple[str, lis
 
     out_sql = "".join(parts).strip().rstrip(";")
 
+    # 6. Prevent asyncpg IndeterminateDatatypeError on `$N IS NULL` / `$N IS NOT NULL`
+    out_sql = re.sub(r"(\$\d+)\s+IS\s+NULL", r"(\1::text IS NULL)", out_sql, flags=re.IGNORECASE)
+    out_sql = re.sub(r"(\$\d+)\s+IS\s+NOT\s+NULL", r"(\1::text IS NOT NULL)", out_sql, flags=re.IGNORECASE)
+
     appended_returning = False
     upper_out = out_sql.upper()
     if is_insert and "RETURNING" not in upper_out and "ON CONFLICT" not in upper_out:
