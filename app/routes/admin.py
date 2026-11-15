@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime, timedelta
@@ -8,6 +9,8 @@ from app.models import (
 )
 from app.dependencies import require_role, get_current_user, invalidate_user_cache
 from app.security import hash_password
+
+logger = logging.getLogger("admin_routes")
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"], dependencies=[Depends(require_role(["ADMIN"]))])
 

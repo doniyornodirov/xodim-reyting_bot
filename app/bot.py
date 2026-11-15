@@ -1776,6 +1776,7 @@ async def send_untrusted_device_alert_to_admin(
         except Exception:
             return False
 
+    from app.routes.location import get_current_tashkent_hm
     time_str = get_current_tashkent_hm()
     orig_dev = bound_device or "Noma'lum"
     att_dev = attempted_device or "Begona qurilma"
@@ -1814,6 +1815,7 @@ async def send_checkin_success_notification_to_employee(
     if not bot or not employee_tg_id:
         return False
 
+    from app.routes.location import get_current_tashkent_hm
     time_str = get_current_tashkent_hm()
     status_icon = "🟢" if is_inside else "🔴"
     status_label = f"Ish joyida ({distance_text})" if is_inside else f"Ish joyidan tashqarida ({distance_text})"
