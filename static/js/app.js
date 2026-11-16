@@ -1214,32 +1214,49 @@ function updateShiftStatusBadgesAndBanner() {
 }
 
 function applyShiftFormRestrictions(isResting) {
-  const formSubmitButtons = [
-    "#card-topup-form button[type='submit']",
-    "#given-amount-form button[type='submit']",
-    "#daily-report-form button[type='submit']",
-    "#cashier-handover-form button[type='submit']",
-    "#cashier-distribute-sim-form button[type='submit']"
+  const formSelectors = [
+    "#card-topup-form",
+    "#given-amount-form",
+    "#daily-report-form",
+    "#cashier-handover-form",
+    "#cashier-distribute-sim-form"
   ];
 
-  formSubmitButtons.forEach(selector => {
-    const btn = document.querySelector(selector);
-    if (btn) {
-      if (isResting) {
-        btn.disabled = true;
-        if (!btn.dataset.originalText) {
-          btn.dataset.originalText = btn.innerHTML;
+  formSelectors.forEach(selector => {
+    const form = document.querySelector(selector);
+    if (form) {
+      // Barcha kiritish maydonlarini (inputs, selects, textareas) bloklash yoki ochish
+      const inputs = form.querySelectorAll("input, select, textarea");
+      inputs.forEach(inp => {
+        inp.disabled = isResting;
+        if (isResting) {
+          inp.style.opacity = "0.55";
+          inp.style.cursor = "not-allowed";
+        } else {
+          inp.style.opacity = "";
+          inp.style.cursor = "";
         }
-        btn.innerHTML = "<span>🌙</span> Dam olish rejimidasiz (Amallar cheklangan)";
-        btn.style.opacity = "0.55";
-        btn.style.cursor = "not-allowed";
-      } else {
-        btn.disabled = false;
-        if (btn.dataset.originalText) {
-          btn.innerHTML = btn.dataset.originalText;
+      });
+
+      // Submit tugmasini boshqarish
+      const btn = form.querySelector("button[type='submit']");
+      if (btn) {
+        if (isResting) {
+          btn.disabled = true;
+          if (!btn.dataset.originalText) {
+            btn.dataset.originalText = btn.innerHTML;
+          }
+          btn.innerHTML = "<span>🌙</span> Dam olish rejimidasiz (Amallar cheklangan)";
+          btn.style.opacity = "0.55";
+          btn.style.cursor = "not-allowed";
+        } else {
+          btn.disabled = false;
+          if (btn.dataset.originalText) {
+            btn.innerHTML = btn.dataset.originalText;
+          }
+          btn.style.opacity = "1";
+          btn.style.cursor = "pointer";
         }
-        btn.style.opacity = "1";
-        btn.style.cursor = "pointer";
       }
     }
   });
@@ -2315,22 +2332,38 @@ async function loadLeaderboard(period = "monthly") {
 async function loadCashierPanel() {
   try {
     await loadUsdRate(); // Har safar kassa paneli ochilganda yangi dollar kursini olish
-    await loadCashierEmployees();
+    const dateInput = document.getElementById("cashier-handover-date");
+    if (dateInput) {
+      const todayIso = getTashkentTodayIso();
+      if (!dateInput.value) {
+        dateInput.value = todayIso;
+      }
+      dateInput.max = todayIso;
+      if (!dateInput.dataset.listenerAttached) {
+        dateInput.dataset.listenerAttached = "true";
+        dateInput.addEventListener("change", () => {
+          loadCashierEmployees(dateInput.value);
+        });
+      }
+    }
+    await loadCashierEmployees(dateInput ? dateInput.value : null);
     setupCashierInputs();
     calculateCashierLiveTotal();
     await loadCashierMyHandovers();
   } catch (e) {}
 }
 
-async function loadCashierEmployees() {
+async function loadCashierEmployees(targetDate) {
   try {
-    const res = await api("/api/cashier/employees");
+    const dateInput = document.getElementById("cashier-handover-date");
+    const dateVal = targetDate || (dateInput ? dateInput.value : "") || getTashkentTodayIso();
+    const res = await api(`/api/cashier/employees?date=${encodeURIComponent(dateVal)}`);
     const select = document.getElementById("cashier-employee-select");
     if (!select) return;
     select.innerHTML = `<option value="">👤 -- Xodimni tanlang --</option>`;
     const employees = (res.data || []).filter(emp => emp.role !== "ADMIN");
     if (employees.length === 0) {
-      select.innerHTML += `<option value="" disabled>Barcha xodimlar bugungi kassani topshirib bo'lgan</option>`;
+      select.innerHTML += `<option value="" disabled>Ushbu sana (${formatDateOnly(dateVal)}) uchun barcha xodimlar kassani topshirib bo'lgan yoki damda</option>`;
       return;
     }
     employees.forEach(emp => {
@@ -2384,6 +2417,8 @@ async function handleCashierHandoverSubmit(e) {
     showToast("Siz hozirda dam olish (damda) rejimidasiz! Kassa amallarini bajarish cheklangan.", "warning");
     return;
   }
+  const dateInput = document.getElementById("cashier-handover-date");
+  const handoverDate = (dateInput ? dateInput.value : "") || getTashkentTodayIso();
   const empId = document.getElementById("cashier-employee-select").value;
   const uzs = parseFormattedNumber(document.getElementById("cashier-amount-uzs").value) || 0;
   const usd = parseFormattedNumber(document.getElementById("cashier-amount-usd").value) || 0;
@@ -2391,6 +2426,14 @@ async function handleCashierHandoverSubmit(e) {
 
   if (!empId) {
     showToast("Iltimos, xodimni tanlang!", "danger");
+    return;
+  }
+  if (!handoverDate) {
+    showToast("Iltimos, kassa topshirilayotgan sanani tanlang!", "danger");
+    return;
+  }
+  if (uzs === 0 && usd === 0) {
+    showToast("Iltimos, so'mda yoki dollarda summa kiriting!", "danger");
     return;
   }
   if (uzs < 0 || uzs > MAX_AMOUNT_LIMIT) {
@@ -2410,6 +2453,7 @@ async function handleCashierHandoverSubmit(e) {
   try {
     const res = await api("/api/cashier/handover", "POST", {
       employee_id: parseInt(empId),
+      handover_date: handoverDate,
       amount_uzs: uzs,
       amount_usd: usd,
       usd_rate: rate
@@ -2419,7 +2463,7 @@ async function handleCashierHandoverSubmit(e) {
     document.getElementById("cashier-amount-uzs").value = "";
     document.getElementById("cashier-amount-usd").value = "";
     calculateCashierLiveTotal();
-    await loadCashierEmployees();
+    await loadCashierEmployees(handoverDate);
     await loadCashierMyHandovers();
   } catch (err) {}
 }
@@ -2428,10 +2472,26 @@ async function loadCashierMyHandovers() {
   try {
     const res = await api("/api/cashier/my-handovers");
     const tbody = document.getElementById("cashier-my-handovers-tbody");
+    if (!tbody) return;
     tbody.innerHTML = "";
 
+    // 1 kunlik yig'ilgan kassalar indikatori va umumiy statistikani yangilash
+    if (res.summary) {
+      const todayTotalEl = document.getElementById("cashier-indicator-today-total");
+      const todaySubEl = document.getElementById("cashier-indicator-today-sub");
+      const todayBreakdownEl = document.getElementById("cashier-indicator-today-breakdown");
+      const allTotalEl = document.getElementById("cashier-indicator-all-total");
+      const allSubEl = document.getElementById("cashier-indicator-all-sub");
+
+      if (todayTotalEl) todayTotalEl.innerText = `${formatNumberSpaces(res.summary.today_total)} so'm`;
+      if (todaySubEl) todaySubEl.innerText = `${res.summary.today_count} nafar xodimdan (${formatDateOnly(res.summary.today_date)})`;
+      if (todayBreakdownEl) todayBreakdownEl.innerText = `${formatNumberSpaces(res.summary.today_uzs)} so'm / ${formatNumberSpaces(res.summary.today_usd)} $`;
+      if (allTotalEl) allTotalEl.innerText = `${formatNumberSpaces(res.summary.all_total)} so'm`;
+      if (allSubEl) allSubEl.innerText = `${res.summary.all_count} ta operatsiya (Doimiy tarix)`;
+    }
+
     if (!res.data || res.data.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-sub); padding: 1rem;">Bugun hali qabul qilingan summalar yo'q</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">Hali qabul qilingan summalar mavjud emas</td></tr>`;
       return;
     }
 
@@ -2444,7 +2504,7 @@ async function loadCashierMyHandovers() {
           <td style="color: #60a5fa; font-weight: 600;">${formatNumberSpaces(item.amount_uzs)} so'm</td>
           <td style="color: #34d399; font-weight: 700;">${formatNumberSpaces(item.amount_usd)} $</td>
           <td><b style="color: var(--accent-success); font-size: 1.05rem;">${formatNumberSpaces(item.amount)} so'm</b></td>
-          <td>${formatDateOnly(item.handover_date)}</td>
+          <td><span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 600;">📅 ${formatDateOnly(item.handover_date)}</span></td>
           <td style="font-size: 0.8rem; color: var(--text-sub);">${formatTashkentDateTime(item.created_at)}</td>
         </tr>
       `;

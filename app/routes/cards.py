@@ -295,7 +295,7 @@ async def update_topup_status(
 @router.post("/{topup_id}/reject")
 async def reject_card_topup(
     topup_id: int, 
-    user: dict = Depends(get_current_user)
+    user: dict = Depends(require_active_shift)
 ):
     """Xodim o'zi yuborgan karta to'ldirish so'rovini rad etishi (bekor qilishi)"""
     comp_id = user.get("company_id") or 1

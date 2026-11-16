@@ -1327,12 +1327,14 @@ async def send_cashier_receipt_to_telegram(employee_tg_id: int, receipt_data: di
         
         breakdown_text = "\n".join(details_lines) if details_lines else f"💵 <b>Summa:</b> {total_str} so'm"
 
+        date_line = f"📅 <b>Kassa sanasi:</b> {receipt_data['handover_date']}\n" if receipt_data.get('handover_date') else ""
         text = (
             "🧾 <b>KASSA TOPSHIRILDI (RASMIY CHEK)</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 <b>Xodim:</b> {receipt_data['employee_name']}\n"
             f"💼 <b>Qabul qildi:</b> {receipt_data['cashier_name']}\n"
-            f"📅 <b>Sana va vaqt:</b> {receipt_data['date_time']}\n"
+            f"{date_line}"
+            f"⏰ <b>Qabul vaqti:</b> {receipt_data['date_time']}\n"
             "─────────────────────\n"
             f"{breakdown_text}\n"
             f"💰 <b>Jami ekvivalent summa:</b> <b>{total_str} so'm</b>\n"

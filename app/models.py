@@ -42,6 +42,7 @@ class DailyReportCreate(BaseModel):
 
 class CashierHandoverCreate(BaseModel):
     employee_id: int
+    handover_date: Optional[str] = Field(None, max_length=10, description="Kassa qaysi sana uchun topshirilmoqda (YYYY-MM-DD)")
     amount_uzs: float = Field(default=0, ge=0, le=1000000000, description="So'mda qabul qilingan summa (0 dan 1 milliardgacha)")
     amount_usd: float = Field(default=0, ge=0, le=1000000000, description="AQSH dollarida qabul qilingan summa")
     usd_rate: float = Field(default=0, ge=0, le=1000000000, description="Dollar kursi (0 bo'lsa tizim kursi olinadi)")
