@@ -6812,4 +6812,65 @@ body.theme-light .emp-btn-immune {
   color: #4338ca !important;
 }
 
+/* ========================================================
+   YANGILASH (REFRESH) TUGMASI — MATERIAL LONG SHADOW (V895)
+   ======================================================== */
+.refresh-btn {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+  user-select: none !important;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), filter 0.25s ease !important;
+}
+
+.refresh-btn:hover {
+  transform: scale(1.08) !important;
+  filter: drop-shadow(0 4px 10px rgba(6, 169, 244, 0.5)) !important;
+}
+
+.refresh-btn:active {
+  transform: scale(0.92) !important;
+}
+
+.refresh-btn svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  border-radius: 50% !important;
+}
+
+.refresh-arrows {
+  transform-origin: 100px 100px !important;
+  transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.refresh-btn:hover .refresh-arrows {
+  transform: rotate(180deg) !important;
+}
+
+.refresh-btn.spinning .refresh-arrows,
+.refresh-btn.loading .refresh-arrows {
+  animation: spinRefresh 0.75s linear infinite !important;
+}
+
+@keyframes spinRefresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 

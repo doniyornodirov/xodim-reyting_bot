@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=894', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=895', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=894">
+  <link rel="stylesheet" href="/static/css/style.css?v=895">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -94,6 +94,13 @@
   <!-- BARCHA IKONKALAR OMBORI (SVG SPRITE)       -->
   <!-- ========================================== -->
   <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Asosiy ko'k aylana chegarasi (Refresh tugmasi) -->
+      <clipPath id="circle-clip">
+        <circle cx="100" cy="100" r="96" />
+      </clipPath>
+    </defs>
+
     <!-- 1. Parol / Kalit (icon-password) -->
     <symbol id="icon-password" viewBox="0 0 24 24" fill="none">
       <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -476,6 +483,19 @@
             <button type="button" class="btn-warning-sm" onclick="sendTodayDigestToTelegram()" title="Bugungi (yoki tanlangan sana bo'yicha) kunlik hisobot svodkasini shaxsiy Telegram lichkangizga yuborish">
               <span>📢</span> Telegram Svodka
             </button>
+            <button type="button" class="refresh-btn" onclick="loadAdminReports()" title="Hisobotlarni yangilash">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                <g clip-path="url(#circle-clip)">
+                  <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                  <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                </g>
+                <g class="refresh-arrows" fill="#FFFFFF">
+                  <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                  <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                </g>
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -532,8 +552,18 @@
               <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="this_month" onclick="changeAnalyticsPeriod('this_month')">Joriy oy</button>
               <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-period="all" onclick="changeAnalyticsPeriod('all')">Barcha davr</button>
             </div>
-            <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminAnalytics()" title="Yangilash">
-              <span>🔄</span>
+            <button type="button" class="refresh-btn" onclick="loadAdminAnalytics()" title="Analitikani yangilash">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                <g clip-path="url(#circle-clip)">
+                  <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                  <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                </g>
+                <g class="refresh-arrows" fill="#FFFFFF">
+                  <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                  <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                </g>
+              </svg>
             </button>
           </div>
         </div>
@@ -675,8 +705,18 @@
                 <option value="REJECTED">❌ Rad etildi</option>
               </select>
             </div>
-            <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminGivens()" title="Yangilash">
-              <span>🔄</span>
+            <button type="button" class="refresh-btn" onclick="loadAdminGivens()" title="Olingan summalarni yangilash">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                <g clip-path="url(#circle-clip)">
+                  <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                  <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                </g>
+                <g class="refresh-arrows" fill="#FFFFFF">
+                  <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                  <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                </g>
+              </svg>
             </button>
           </div>
         </div>
@@ -701,7 +741,22 @@
     <!-- Rahbar 3: Karta to'ldirish so'rovlari -->
     <section class="tab-pane admin-pane" id="pane-admin-topups" style="display: none;">
       <div class="card-box">
-        <h2 class="card-title">💳 Karta so'rovlari</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-title" style="margin-bottom: 0;">💳 Karta so'rovlari</h2>
+          <button type="button" class="refresh-btn" onclick="loadAdminTopups()" title="Karta so'rovlarini yangilash">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+              <g clip-path="url(#circle-clip)">
+                <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+              </g>
+              <g class="refresh-arrows" fill="#FFFFFF">
+                <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+              </g>
+            </svg>
+          </button>
+        </div>
         <div class="table-container table-scroll-10">
           <table class="custom-table">
             <thead>
@@ -758,8 +813,18 @@
               <button type="button" class="btn-success-sm comparison-btn-excel" onclick="exportComparisonToExcel()" title="Kassa taqqoslash jadvalini Excelga yuklash">
                 <span>📥</span> Excel (.xlsx)
               </button>
-              <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminComparison()" title="Yangilash">
-                <span>🔄</span>
+              <button type="button" class="refresh-btn" onclick="loadAdminComparison()" title="Kassa taqqoslashni yangilash">
+                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                  <g clip-path="url(#circle-clip)">
+                    <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                    <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                  </g>
+                  <g class="refresh-arrows" fill="#FFFFFF">
+                    <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                    <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                  </g>
+                </svg>
               </button>
             </div>
           </div>
@@ -808,7 +873,22 @@
     <!-- Rahbar 5: Xodimlar, ishdan bo'shatish va qarz belgilash (Yagona oyna) -->
     <section class="tab-pane admin-pane" id="pane-admin-users" style="display: none;">
       <div class="card-box">
-        <h2 class="card-title">👥 Xodimlar va Qarz boshqaruvi</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-title" style="margin-bottom: 0;">👥 Xodimlar va Qarz boshqaruvi</h2>
+          <button type="button" class="refresh-btn" onclick="loadAdminUsers()" title="Xodimlarni yangilash">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+              <g clip-path="url(#circle-clip)">
+                <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+              </g>
+              <g class="refresh-arrows" fill="#FFFFFF">
+                <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+              </g>
+            </svg>
+          </button>
+        </div>
 
         <!-- 2 ta alohida forma: 1) Yangi xodim qo'shish, 2) Xodimga qarz belgilash -->
         <div class="grid-2" style="margin-bottom: 1.5rem;">
@@ -889,8 +969,18 @@
             </p>
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <button type="button" class="btn-primary" onclick="loadAdminLocationTab(true)" style="font-size: 0.82rem; padding: 0.45rem 0.85rem; display: inline-flex; align-items: center; gap: 0.35rem;">
-              <span>🔄</span> Jonli yangilash
+            <button type="button" class="refresh-btn" onclick="loadAdminLocationTab(true)" title="Jonli yangilash">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                <g clip-path="url(#circle-clip)">
+                  <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                  <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                </g>
+                <g class="refresh-arrows" fill="#FFFFFF">
+                  <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                  <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                </g>
+              </svg>
             </button>
             <button type="button" class="btn" onclick="openLocationHistoryModal()" style="font-size: 0.82rem; padding: 0.45rem 0.95rem; display: inline-flex; align-items: center; gap: 0.4rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);">
               <span>📄</span> Geolokatsiya tarixini olish (DOCX)
@@ -974,7 +1064,22 @@
     <!-- Rahbar 6: Kassir tayinlash va Kassir qabul qilgan summalar tarixi -->
     <section class="tab-pane admin-pane" id="pane-admin-cashier" style="display: none;">
       <div class="card-box">
-        <h2 class="card-title" style="margin-bottom: 1.25rem;">💼 Kassir tayinlash</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+          <h2 class="card-title" style="margin-bottom: 0;">💼 Kassir tayinlash</h2>
+          <button type="button" class="refresh-btn" onclick="loadAdminCashierTab()" title="Kassir ma'lumotlarini yangilash">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+              <g clip-path="url(#circle-clip)">
+                <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+              </g>
+              <g class="refresh-arrows" fill="#FFFFFF">
+                <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+              </g>
+            </svg>
+          </button>
+        </div>
 
         <!-- Kassir saylash bloki -->
         <div class="cashier-appoint-box">
@@ -1119,9 +1224,24 @@
         <div class="card-box">
           <div class="flex justify-between items-center flex-wrap gap-2 mb-2">
             <h3 class="card-title mb-0" style="font-size: 1.1rem;">👥 Xodimlar sim-karta balansi</h3>
-            <button type="button" class="btn-success-sm" onclick="exportSimCardsToExcel()" title="Sim-karta balansini Excelga yuklash">
-              <span>📥</span> Excel (.xlsx)
-            </button>
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn-success-sm" onclick="exportSimCardsToExcel()" title="Sim-karta balansini Excelga yuklash">
+                <span>📥</span> Excel (.xlsx)
+              </button>
+              <button type="button" class="refresh-btn" onclick="loadAdminSimsTab()" title="Sim-karta balansini yangilash">
+                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                  <g clip-path="url(#circle-clip)">
+                    <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                    <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                  </g>
+                  <g class="refresh-arrows" fill="#FFFFFF">
+                    <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                    <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                  </g>
+                </svg>
+              </button>
+            </div>
           </div>
           <div class="table-container table-scroll-10">
             <table class="custom-table">
@@ -1172,6 +1292,19 @@
             <button type="button" class="btn-success-sm rating-excel-btn" onclick="exportRatingToExcel()" title="Reyting jadvalini Excelga yuklash">
               <span>📥</span> Excel (.xlsx)
             </button>
+            <button type="button" class="refresh-btn" onclick="loadLeaderboard('monthly', 'admin')" title="Reytingni yangilash">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                <g clip-path="url(#circle-clip)">
+                  <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                  <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                </g>
+                <g class="refresh-arrows" fill="#FFFFFF">
+                  <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                  <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                </g>
+              </svg>
+            </button>
           </div>
         </div>
         <div class="table-container table-scroll-10">
@@ -1218,7 +1351,22 @@
       </div>
 
       <div class="card-box">
-        <h2 class="card-title">🛡️ Audit loglar</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h2 class="card-title" style="margin-bottom: 0;">🛡️ Audit loglar</h2>
+          <button type="button" class="refresh-btn" onclick="loadAdminAudit()" title="Audit loglarini yangilash">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+              <g clip-path="url(#circle-clip)">
+                <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+              </g>
+              <g class="refresh-arrows" fill="#FFFFFF">
+                <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+              </g>
+            </svg>
+          </button>
+        </div>
         <div class="table-container table-scroll-10">
           <table class="custom-table">
             <thead>
@@ -1252,8 +1400,18 @@
             <button type="button" class="btn btn-primary-sm" onclick="downloadDatabaseBackup()" style="background: #0284c7; border-color: #0284c7; color: #fff;" title="Barcha firmalar va tizimning to'liq zaxira nusxasini (.db) yuklab olish">
               <span>💾</span> Barcha bazani zaxiralash (Full Backup)
             </button>
-            <button type="button" class="btn btn-secondary" onclick="loadSaasCompanies()" style="font-size: 0.82rem; padding: 0.45rem 0.9rem;">
-              🔄 Ro'yxatni yangilash
+            <button type="button" class="refresh-btn" onclick="loadSaasCompanies()" title="Ro'yxatni yangilash">
+              <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="96" fill="#06A9F4" />
+                <g clip-path="url(#circle-clip)">
+                  <polygon points="95,30 120,52 215,147 215,215 112,215 51,136 95,127" fill="#0288D1" />
+                  <polygon points="145,67 215,137 215,215 145,145" fill="#0288D1" />
+                </g>
+                <g class="refresh-arrows" fill="#FFFFFF">
+                  <path d="M 95 43 A 57 57 0 0 0 51 136 L 66 126 A 39 39 0 0 1 95 61 L 95 74 L 121 52 L 95 30 Z" />
+                  <path d="M 105 157 A 57 57 0 0 0 149 64 L 134 74 A 39 39 0 0 1 105 139 L 105 126 L 79 148 L 105 170 Z" />
+                </g>
+              </svg>
             </button>
           </div>
         </div>
@@ -2776,6 +2934,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=894"></script>
+  <script src="/static/js/app.js?v=895"></script>
 </body>
 </html>
