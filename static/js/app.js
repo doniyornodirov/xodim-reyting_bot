@@ -2957,6 +2957,7 @@ function renderMainAnalyticsChart(timeline) {
   const labels = timeline.map(t => `${t.short_date} (${t.weekday})`);
   const subData = timeline.map(t => t.submitted_amount);
   const netData = timeline.map(t => t.net_amount);
+  const paynetData = timeline.map(t => t.paynet_amount || 0);
   const simData = timeline.map(t => t.sim_cards_sold);
   const cardData = timeline.map(t => t.card_topup_amount);
 
@@ -2992,6 +2993,20 @@ function renderMainAnalyticsChart(timeline) {
           pointHoverRadius: 6
         });
       }
+    }
+
+    if (currentChartMetric === "all" || currentChartMetric === "paynet") {
+      datasets.push({
+        label: "⚡ Paynet tushumi (so'm)",
+        data: paynetData,
+        borderColor: "#10b981",
+        backgroundColor: "rgba(16, 185, 129, 0.15)",
+        fill: currentChartMetric === "paynet",
+        tension: 0.35,
+        yAxisID: "yLeft",
+        pointRadius: 4,
+        pointHoverRadius: 6
+      });
     }
 
     if (currentChartMetric === "all" || currentChartMetric === "cards") {
@@ -3269,7 +3284,7 @@ function renderAnalyticsTable(timeline) {
   if (!tbody) return;
 
   if (!timeline || timeline.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">Ma'lumotlar mavjud emas</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-sub); padding: 1.5rem;">Ma'lumotlar mavjud emas</td></tr>`;
     return;
   }
 
@@ -3287,6 +3302,7 @@ function renderAnalyticsTable(timeline) {
       <tr>
         <td><b>${formatDateOnly(t.date)}</b> <span style="font-size: 0.75rem; color: var(--text-sub);">(${t.weekday})</span></td>
         <td style="font-weight: 700; color: #a5b4fc;">${formatNumberSpaces(t.submitted_amount)} so'm</td>
+        <td style="font-weight: 600; color: #10b981;">${formatNumberSpaces(t.paynet_amount || 0)} so'm</td>
         <td style="font-weight: 700; color: #34d399;">${formatNumberSpaces(t.net_amount)} so'm</td>
         <td><span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-weight: 700;">📱 ${t.sim_cards_sold} dona</span></td>
         <td style="font-weight: 600; color: #22d3ee;">${formatNumberSpaces(t.card_topup_amount)} so'm</td>

@@ -81,6 +81,7 @@ async def get_sales_monitoring_data(
                 SELECT report_date,
                        COALESCE(SUM(total_inflow), 0) as submitted_amount,
                        COALESCE(SUM(net_amount), 0) as net_amount,
+                       COALESCE(SUM(paynet), 0) as paynet_amount,
                        COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold,
                        COALESCE(SUM(sim_uzmobile), 0) as sim_uzmobile,
                        COALESCE(SUM(sim_beeline), 0) as sim_beeline,
@@ -98,6 +99,7 @@ async def get_sales_monitoring_data(
                 SELECT report_date,
                        COALESCE(SUM(total_inflow), 0) as submitted_amount,
                        COALESCE(SUM(net_amount), 0) as net_amount,
+                       COALESCE(SUM(paynet), 0) as paynet_amount,
                        COALESCE(SUM(sim_cards_count), 0) as sim_cards_sold,
                        0 as sim_uzmobile, 0 as sim_beeline, 0 as sim_ucell, 0 as sim_mobiuz, 0 as sim_perfectum
                 FROM daily_reports
@@ -124,6 +126,7 @@ async def get_sales_monitoring_data(
         cur = await conn.execute(f"""
             SELECT COALESCE(SUM(total_inflow), 0) as prev_submitted,
                    COALESCE(SUM(net_amount), 0) as prev_net,
+                   COALESCE(SUM(paynet), 0) as prev_paynet,
                    COALESCE(SUM(sim_cards_count), 0) as prev_sims
             FROM daily_reports
             WHERE status = 'APPROVED' AND report_date >= ? AND report_date <= ? AND company_id = ? {emp_filter}
@@ -131,6 +134,7 @@ async def get_sales_monitoring_data(
         prev_rep = await cur.fetchone()
         prev_submitted = prev_rep["prev_submitted"] if prev_rep else 0
         prev_net = prev_rep["prev_net"] if prev_rep else 0
+        prev_paynet = prev_rep["prev_paynet"] if prev_rep else 0
         prev_sims = prev_rep["prev_sims"] if prev_rep else 0
 
         cur = await conn.execute(f"""
@@ -188,6 +192,7 @@ async def get_sales_monitoring_data(
     timeline = []
     total_submitted = 0.0
     total_net = 0.0
+    total_paynet = 0.0
     total_sims = 0
     total_cards = 0.0
     total_card_count = 0
@@ -202,8 +207,22 @@ async def get_sales_monitoring_data(
         rep_info = reports_by_date.get(curr_d_str, {})
         top_info = topups_by_date.get(curr_d_str, {})
 
-        sub_amt = float(rep_info.get("submitted_amount", 0.0))
-        net_amt = float(rep_info.get("net_amount", 0.0))
+        has_report = curr_d_str in reports_by_date
+        c_amt = float(top_info.get("card_amount", 0.0))
+        c_cnt = int(top_info.get("card_count", 0))
+
+        if has_report:
+            sub_amt = float(rep_info.get("submitted_amount", 0.0))
+            net_amt = float(rep_info.get("net_amount", 0.0))
+            paynet_amt = float(rep_info.get("paynet_amount", 0.0))
+        else:
+            # Bugun (yoki hisobot topshirilmagan kunda) tasdiqlangan karta to'ldirishlar
+            # avtomatik hisoblanganligi uchun jonli ravishda Yalpi tushumda ko'rsatiladi.
+            # Keyinchalik hisobot tasdiqlanganda hisobot ichidagi umumiy summa olinadi va 2 marta qo'shilmaydi.
+            sub_amt = c_amt
+            net_amt = c_amt
+            paynet_amt = 0.0
+
         sims_cnt = int(rep_info.get("sim_cards_sold", 0))
 
         u_cnt = int(rep_info.get("sim_uzmobile", 0))
@@ -218,11 +237,9 @@ async def get_sales_monitoring_data(
         elif day_op_sum > sims_cnt:
             sims_cnt = day_op_sum
 
-        c_amt = float(top_info.get("card_amount", 0.0))
-        c_cnt = int(top_info.get("card_count", 0))
-
         total_submitted += sub_amt
         total_net += net_amt
+        total_paynet += paynet_amt
         total_sims += sims_cnt
         total_cards += c_amt
         total_card_count += c_cnt
@@ -241,6 +258,7 @@ async def get_sales_monitoring_data(
             "short_date": label,
             "weekday": w_name,
             "submitted_amount": sub_amt,
+            "paynet_amount": paynet_amt,
             "net_amount": net_amt,
             "sim_cards_sold": sims_cnt,
             "sim_uzmobile": u_cnt,
@@ -282,6 +300,8 @@ async def get_sales_monitoring_data(
     summary = {
         "total_submitted_amount": total_submitted,
         "submitted_growth_pct": calc_pct(total_submitted, prev_submitted),
+        "total_paynet_amount": total_paynet,
+        "paynet_growth_pct": calc_pct(total_paynet, prev_paynet),
         "total_net_amount": total_net,
         "net_growth_pct": calc_pct(total_net, prev_net),
         "total_sim_cards": total_sims,

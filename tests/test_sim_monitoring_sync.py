@@ -180,5 +180,56 @@ class TestSimMonitoringSync(unittest.IsolatedAsyncioTestCase):
             await conn.execute("DELETE FROM users WHERE id = 998")
             await conn.commit()
 
+    async def test_paynet_and_card_topup_no_double_count(self):
+        # 1. Test xodim va bugungi karta to'ldirish
+        async with get_db_connection() as conn:
+            await conn.execute("INSERT OR REPLACE INTO users (id, company_id, telegram_id, full_name, role, password_hash) VALUES (997, 1, 666555444, 'Test Card User', 'EMPLOYEE', 'pwd')")
+            # Bugungi karta to'ldirish: 1 000 000 + 3% ustama = 1 030 000
+            await conn.execute("""
+                INSERT INTO card_topups (company_id, transaction_number, employee_id, card_number, card_holder, amount, surcharge_amount, surcharge_percent, status, created_at)
+                VALUES (1, 99991, 997, '8600 0000 0000 0000', 'Test Holder', 1000000, 1030000, 3, 'APPROVED', CURRENT_TIMESTAMP)
+            """)
+            await conn.commit()
+
+        invalidate_analytics_cache(1)
+
+        # Hali kunlik hisobot topshirilmagan holat:
+        res1 = await get_sales_monitoring_data(company_id=1, period="today", user_id=997)
+        # Bugungi Yalpi Tushumda jonli ravishda karta to'ldirish (1 030 000) ko'rinishi kerak
+        self.assertEqual(res1["summary"]["total_card_topup_amount"], 1030000)
+        self.assertEqual(res1["summary"]["total_submitted_amount"], 1030000)
+        self.assertEqual(res1["summary"]["total_paynet_amount"], 0)
+
+        # 2. Kechqurun xodim hisobot topshirdi (Paynet: 2 000 000, Karta: 1 030 000, Jami inflow: 3 030 000)
+        async with get_db_connection() as conn:
+            from app.security import get_tashkent_today_str
+            t_date = get_tashkent_today_str()
+            await conn.execute("""
+                INSERT INTO daily_reports (
+                    company_id, employee_id, report_date, paynet, card_amount, leviy, debt_snapshot, debt_paid,
+                    sim_cards_count, kunlik, terminal, given_amount, skidka, xarajat, total_inflow, total_outflow, net_amount, status
+                ) VALUES (
+                    1, 997, ?, 2000000, 1030000, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 3030000, 0, 3030000, 'APPROVED'
+                )
+            """, (t_date,))
+            await conn.commit()
+
+        invalidate_analytics_cache(1)
+
+        # Hisobot tasdiqlangan holat:
+        res2 = await get_sales_monitoring_data(company_id=1, period="today", user_id=997)
+        # Yalpi tushum 3 030 000 bo'lishi kerak! Karta to'ldirish (1 030 000) 2 marta qo'shilib 4 060 000 bo'lib ketmasligi shart!
+        self.assertEqual(res2["summary"]["total_submitted_amount"], 3030000, "Hisobot tasdiqlanganda karta to'ldirish 2 marta hisoblanmasligi kerak!")
+        self.assertEqual(res2["summary"]["total_paynet_amount"], 2000000, "Paynet 2 000 000 so'm bo'lishi kerak!")
+        self.assertEqual(res2["summary"]["total_card_topup_amount"], 1030000)
+
+        # Tozalash
+        async with get_db_connection() as conn:
+            await conn.execute("DELETE FROM card_topups WHERE transaction_number = 99991")
+            await conn.execute("DELETE FROM daily_reports WHERE employee_id = 997")
+            await conn.execute("DELETE FROM users WHERE id = 997")
+            await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()
