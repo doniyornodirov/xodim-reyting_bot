@@ -488,14 +488,14 @@ function numberToUzbekWords(num) {
 // Summa hajmiga qarab reaktiv hayratlanish emojisi (Rekord 100 000 000 so'm)
 function getAmountEmoji(amount) {
   if (!amount || amount <= 0) return { emoji: "🙂", label: "Kiritilmoqda..." };
-  if (amount < 30000) return { emoji: "⚠️", label: "Minimal: 30 000 so'm" };
   if (amount < 100000) return { emoji: "🙂", label: "Standart to'lov" };
   if (amount < 500000) return { emoji: "👍", label: "Yaxshi summa" };
   if (amount < 2000000) return { emoji: "😃", label: "Katta to'lov" };
   if (amount < 10000000) return { emoji: "🔥", label: "Yuqori summa!" };
   if (amount < 50000000) return { emoji: "😲", label: "Juda yirik summa!" };
   if (amount < 100000000) return { emoji: "🤯", label: "Ulkan to'lov!" };
-  return { emoji: "🤑 💥", label: "Rekord darajadagi summa!" };
+  if (amount < 1000000000) return { emoji: "🤑 💥", label: "Rekord darajadagi summa!" };
+  return { emoji: "🏆 👑", label: "Maksimal: 1 milliard so'm!" };
 }
 
 // Formatters
@@ -509,6 +509,30 @@ function formatNumberSpaces(val) {
 function parseFormattedNumber(val) {
   if (!val) return 0;
   return parseFloat(val.toString().replace(/\s/g, "")) || 0;
+}
+
+// Global Summa Chegarasi: 0 dan 1 milliardgacha (1 000 000 000 so'm)
+const MAX_AMOUNT_LIMIT = 1000000000;
+
+/**
+ * Summa kiritish maydonlarini 0 dan 1 milliardgacha cheklash va probellar bilan formatlash.
+ * Undan kichik (<0) yoki katta (>1 mlrd) summa kiritib bo'lmaydi.
+ */
+function handleAmountInput(e, callback) {
+  let raw = (e.target.value || "").toString().replace(/\D/g, "");
+  if (raw === "") {
+    e.target.value = "";
+    if (callback) callback(0);
+    return;
+  }
+  let num = parseInt(raw, 10);
+  if (isNaN(num) || num < 0) num = 0;
+  if (num > MAX_AMOUNT_LIMIT) {
+    num = MAX_AMOUNT_LIMIT;
+    raw = MAX_AMOUNT_LIMIT.toString();
+  }
+  e.target.value = formatNumberSpaces(raw);
+  if (callback) callback(num);
 }
 
 // Copy to Clipboard
@@ -1710,32 +1734,30 @@ function setupCardTopupInputs() {
     e.target.value = e.target.value.replace(/[^a-zA-Zа-яА-ЯёЁ\s']/g, "").toUpperCase();
   });
 
-  // Summa: 3 xonadan probel, so'z bilan o'qilishi, +3% va hayratlanish emojisi
+  // Summa: 0 dan 1 milliardgacha, 3 xonadan probel, so'z bilan o'qilishi, +3% va hayratlanish emojisi
   amountInput.addEventListener("input", (e) => {
-    let raw = e.target.value.replace(/\D/g, "");
-    e.target.value = formatNumberSpaces(raw);
-    const amount = parseFormattedNumber(raw);
+    handleAmountInput(e, (amount) => {
+      const wordsEl = document.getElementById("topup-words-readout");
+      const surchargeEl = document.getElementById("topup-surcharge-readout");
+      const emojiEl = document.getElementById("topup-emoji-readout");
+      const emojiLabel = document.getElementById("topup-emoji-label");
 
-    const wordsEl = document.getElementById("topup-words-readout");
-    const surchargeEl = document.getElementById("topup-surcharge-readout");
-    const emojiEl = document.getElementById("topup-emoji-readout");
-    const emojiLabel = document.getElementById("topup-emoji-label");
+      if (amount > 0) {
+        if (wordsEl) wordsEl.innerText = numberToUzbekWords(amount);
+        // 3% ustamani 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)
+        const surcharge = Math.ceil((amount * 1.03) / 1000) * 1000;
+        if (surchargeEl) surchargeEl.innerText = `+3% Ustama bilan: ${formatNumberSpaces(surcharge)} so'm`;
 
-    if (amount > 0) {
-      wordsEl.innerText = numberToUzbekWords(amount);
-      // 3% ustamani 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)
-      const surcharge = Math.ceil((amount * 1.03) / 1000) * 1000;
-      surchargeEl.innerText = `+3% Ustama bilan: ${formatNumberSpaces(surcharge)} so'm`;
-
-      const emojiData = getAmountEmoji(amount);
-      emojiEl.innerText = emojiData.emoji;
-      emojiLabel.innerText = emojiData.label;
-    } else {
-      wordsEl.innerText = "";
-      surchargeEl.innerText = "+3% Ustama bilan: 0 so'm";
-      emojiEl.innerText = "🙂";
-      emojiLabel.innerText = "";
-    }
+        const emojiData = getAmountEmoji(amount);
+        if (emojiEl) emojiEl.innerText = emojiData.emoji;
+        if (emojiLabel) emojiLabel.innerText = emojiData.label;
+      } else {
+        if (wordsEl) wordsEl.innerText = "";
+        if (surchargeEl) surchargeEl.innerText = "+3% Ustama bilan: 0 so'm";
+        if (emojiEl) emojiEl.innerText = "🙂";
+        if (emojiLabel) emojiLabel.innerText = "";
+      }
+    });
   });
 }
 
@@ -1757,8 +1779,8 @@ async function handleCardTopupSubmit(e) {
     showToast("Karta egasini kiriting!", "danger");
     return;
   }
-  if (amount < 30000) {
-    showToast("Karta to'ldirish uchun eng kam summa: 30 000 so'm!", "danger");
+  if (amount < 0 || amount > MAX_AMOUNT_LIMIT) {
+    showToast("Summa 0 dan 1 milliard so'mgacha bo'lishi shart!", "danger");
     return;
   }
 
@@ -1830,10 +1852,11 @@ async function handleRejectMyCardTopup(topupId, txNum) {
 
 function setupGivenAmountInputs() {
   const amountInput = document.getElementById("given-amount-input");
-
-  amountInput.addEventListener("input", (e) => {
-    e.target.value = formatNumberSpaces(e.target.value.replace(/\D/g, ""));
-  });
+  if (amountInput) {
+    amountInput.addEventListener("input", (e) => {
+      handleAmountInput(e);
+    });
+  }
 }
 
 async function handleGivenAmountSubmit(e) {
@@ -1845,8 +1868,8 @@ async function handleGivenAmountSubmit(e) {
   const amount = parseFormattedNumber(document.getElementById("given-amount-input").value);
   const comment = document.getElementById("given-comment-input").value.trim();
 
-  if (amount <= 0) {
-    showToast("Summani to'g'ri kiriting!", "danger");
+  if (amount < 0 || amount > MAX_AMOUNT_LIMIT) {
+    showToast("Summa 0 dan 1 milliard so'mgacha bo'lishi shart!", "danger");
     return;
   }
   if (!comment) {
@@ -2028,8 +2051,9 @@ function setupReportCalculationListeners() {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener("input", (e) => {
-        e.target.value = formatNumberSpaces(e.target.value.replace(/\D/g, ""));
-        calculateLiveReportFormula();
+        handleAmountInput(e, () => {
+          calculateLiveReportFormula();
+        });
       });
     }
   });
@@ -2114,6 +2138,22 @@ async function handleReportSubmit(e) {
   const skidka = parseFormattedNumber(document.getElementById("rep-skidka").value);
   const xarajat = parseFormattedNumber(document.getElementById("rep-xarajat").value);
   const comment = document.getElementById("rep-comment").value.trim();
+
+  const reportAmounts = [
+    { name: "Paynet", val: paynet },
+    { name: "Leviy", val: leviy },
+    { name: "Qarz to'lovi", val: debtPaid },
+    { name: "Kunlik", val: kunlik },
+    { name: "Terminal", val: terminal },
+    { name: "Skidka", val: skidka },
+    { name: "Xarajat", val: xarajat }
+  ];
+  for (const item of reportAmounts) {
+    if (item.val < 0 || item.val > MAX_AMOUNT_LIMIT) {
+      showToast(`${item.name} summasi 0 dan 1 milliard so'mgacha bo'lishi shart!`, "danger");
+      return;
+    }
+  }
 
   try {
     const res = await api("/api/reports/submit", "POST", {
@@ -2243,8 +2283,9 @@ function setupCashierInputs() {
     if (inp && !inp.dataset.listenerAttached) {
       inp.dataset.listenerAttached = "true";
       inp.addEventListener("input", (e) => {
-        e.target.value = formatNumberSpaces(e.target.value.replace(/\D/g, ""));
-        calculateCashierLiveTotal();
+        handleAmountInput(e, () => {
+          calculateCashierLiveTotal();
+        });
       });
     }
   });
@@ -2286,8 +2327,17 @@ async function handleCashierHandoverSubmit(e) {
     showToast("Iltimos, xodimni tanlang!", "danger");
     return;
   }
-  if (uzs <= 0 && usd <= 0) {
-    showToast("Iltimos, so'm yoki dollar summasini kiriting!", "danger");
+  if (uzs < 0 || uzs > MAX_AMOUNT_LIMIT) {
+    showToast("So'm summasi 0 dan 1 milliard so'mgacha bo'lishi shart!", "danger");
+    return;
+  }
+  if (usd < 0 || usd > MAX_AMOUNT_LIMIT) {
+    showToast("Dollar summasi 0 dan 1 milliardgacha bo'lishi shart!", "danger");
+    return;
+  }
+  const total = uzs + (usd * rate);
+  if (total < 0 || total > MAX_AMOUNT_LIMIT) {
+    showToast("Jami ekvivalent summa 0 dan 1 milliard so'mgacha bo'lishi shart!", "danger");
     return;
   }
 
@@ -4064,8 +4114,8 @@ async function handleAssignDebtSubmit(e) {
     showToast("Iltimos, xodimni tanlang!", "danger");
     return;
   }
-  if (amount <= 0) {
-    showToast("Qarz summasi 0 dan katta bo'lishi shart!", "danger");
+  if (amount < 0 || amount > MAX_AMOUNT_LIMIT) {
+    showToast("Qarz summasi 0 dan 1 milliard so'mgacha bo'lishi shart!", "danger");
     return;
   }
   if (!reason || reason.length < 2) {
@@ -4613,8 +4663,8 @@ async function handleUsdRateSubmit(e) {
   const input = document.getElementById("usd-rate-input");
   const rateVal = parseFormattedNumber(input.value);
 
-  if (!rateVal || rateVal <= 0) {
-    showToast("Iltimos, to'g'ri dollar kursini kiriting!", "danger");
+  if (rateVal < 0 || rateVal > MAX_AMOUNT_LIMIT) {
+    showToast("Dollar kursi 0 dan 1 milliard so'mgacha bo'lishi shart!", "danger");
     return;
   }
 
@@ -4632,10 +4682,9 @@ function setupUsdRateInput() {
   if (!input) return;
 
   input.addEventListener("input", (e) => {
-    const raw = e.target.value.replace(/\D/g, "");
-    e.target.value = formatNumberSpaces(raw);
-    const num = parseFormattedNumber(e.target.value);
-    preview.innerHTML = `Ko'rinishi: <b>1$ = ${formatNumberSpaces(num || 0)} so'm</b>`;
+    handleAmountInput(e, (num) => {
+      preview.innerHTML = `Ko'rinishi: <b>1$ = ${formatNumberSpaces(num || 0)} so'm</b>`;
+    });
   });
 }
 
@@ -8029,7 +8078,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const debtAmtInput = document.getElementById("assign-debt-amount");
   if (debtAmtInput) {
     debtAmtInput.addEventListener("input", (e) => {
-      e.target.value = formatNumberSpaces(e.target.value);
+      handleAmountInput(e);
     });
   }
 

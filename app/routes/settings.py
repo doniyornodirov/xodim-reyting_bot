@@ -7,7 +7,7 @@ from app.dependencies import get_current_user, require_role
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 class UpdateUsdRateRequest(BaseModel):
-    rate: float = Field(gt=0, description="Dollar kursi musbat son bo'lishi shart")
+    rate: float = Field(ge=0, le=1000000000, description="Dollar kursi 0 dan 1 milliardgacha bo'lishi shart")
 
 @router.get("/usd-rate")
 async def get_usd_rate(user: dict = Depends(get_current_user)):

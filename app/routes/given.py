@@ -38,8 +38,8 @@ async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(requi
         return cached_res
 
     amount = float(req.amount)
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Summa musbat bo'lishi shart!")
+    if amount < 0 or amount > 1_000_000_000:
+        raise HTTPException(status_code=400, detail="Summa 0 dan 1 000 000 000 so'mgacha bo'lishi shart!")
     validated_comment = validate_comment(req.comment)
 
     comp_id = user.get("company_id") or 1

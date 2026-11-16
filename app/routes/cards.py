@@ -53,10 +53,10 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
     formatted_card = format_card_number(req.card_number)
     validated_holder = validate_card_holder(req.card_holder)
     amount = float(req.amount)
-    if amount < 30000:
+    if amount < 0 or amount > 1_000_000_000:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Karta to'ldirish uchun eng kam summa: 30 000 so'm!"
+            detail="Karta to'ldirish summasi 0 dan 1 000 000 000 so'mgacha bo'lishi shart!"
         )
 
     # 3% ustamani 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)

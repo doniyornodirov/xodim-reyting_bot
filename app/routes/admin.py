@@ -280,8 +280,8 @@ async def assign_debt(user_id: int, req: SetDebtRequest, admin: dict = Depends(r
 
         # TT: "agar rahbar yangi qarz belgilasa mavjud qarzdorlikka qo'shib hisoblanib boriladi"
         added_amount = float(req.debt_amount)
-        if added_amount <= 0:
-            raise HTTPException(status_code=400, detail="Qarz summasi 0 dan katta bo'lishi shart!")
+        if added_amount < 0 or added_amount > 1_000_000_000:
+            raise HTTPException(status_code=400, detail="Qarz summasi 0 dan 1 000 000 000 so'mgacha bo'lishi shart!")
 
         reason_text = req.reason.strip() if req.reason else "Ko'rsatilmadi"
         new_total_debt = round(user["debt_amount"] + added_amount, 2)

@@ -92,11 +92,16 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
         if amount_uzs == 0 and amount_usd == 0 and req.amount > 0:
             amount_uzs = float(req.amount)
 
+        if amount_uzs < 0 or amount_uzs > 1_000_000_000:
+            raise HTTPException(status_code=400, detail="So'mda qabul qilingan summa 0 dan 1 000 000 000 so'mgacha bo'lishi shart!")
+        if amount_usd < 0 or amount_usd > 1_000_000_000:
+            raise HTTPException(status_code=400, detail="Dollarda qabul qilingan summa 0 dan 1 000 000 000 gacha bo'lishi shart!")
+
         # Decimal aniqligida ekvivalent summani yaxlitlash (Zero float drift)
         d_total = to_decimal(amount_uzs) + (to_decimal(amount_usd) * to_decimal(usd_rate))
         total_amount = float(round_uzs(d_total))
-        if total_amount <= 0:
-            raise HTTPException(status_code=400, detail="Qabul qilinayotgan summa 0 dan katta bo'lishi shart!")
+        if total_amount < 0 or total_amount > 1_000_000_000:
+            raise HTTPException(status_code=400, detail="Umumiy summa 0 dan 1 000 000 000 so'mgacha bo'lishi shart!")
 
         cursor = await conn.execute("SELECT full_name, telegram_id, role FROM users WHERE id = ? AND company_id = ?", (req.employee_id, comp_id))
         emp = await cursor.fetchone()

@@ -375,5 +375,55 @@ class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
             row = await cur.fetchone()
             self.assertEqual(row["bound_device_name"], "Android telefon")
 
+    def test_13_amount_range_validation_0_to_1_billion(self):
+        """Summa kiritish maydonlarida 0 dan 1 milliardgacha ruxsat, undan katta/kichik man etilganini tekshirish"""
+        from pydantic import ValidationError
+        from app.models import (
+            CardTopupCreate,
+            GivenAmountCreate,
+            DailyReportCreate,
+            CashierHandoverCreate,
+            SetDebtRequest
+        )
+
+        # 1. Karta to'ldirish
+        self.assertTrue(CardTopupCreate(card_number="8600123456789012", card_holder="ALI VALIYEV", amount=0))
+        self.assertTrue(CardTopupCreate(card_number="8600123456789012", card_holder="ALI VALIYEV", amount=1_000_000_000))
+        with self.assertRaises(ValidationError):
+            CardTopupCreate(card_number="8600123456789012", card_holder="ALI VALIYEV", amount=-1)
+        with self.assertRaises(ValidationError):
+            CardTopupCreate(card_number="8600123456789012", card_holder="ALI VALIYEV", amount=1_000_000_001)
+
+        # 2. Berilgan summa
+        self.assertTrue(GivenAmountCreate(amount=0, comment="Test"))
+        self.assertTrue(GivenAmountCreate(amount=1_000_000_000, comment="Test"))
+        with self.assertRaises(ValidationError):
+            GivenAmountCreate(amount=-5, comment="Test")
+        with self.assertRaises(ValidationError):
+            GivenAmountCreate(amount=1_000_000_001, comment="Test")
+
+        # 3. Kunlik hisobot
+        self.assertTrue(DailyReportCreate(paynet=0, leviy=1_000_000_000, kunlik=500000))
+        with self.assertRaises(ValidationError):
+            DailyReportCreate(paynet=-100)
+        with self.assertRaises(ValidationError):
+            DailyReportCreate(paynet=1_000_000_001)
+
+        # 4. Kassa topshirish
+        self.assertTrue(CashierHandoverCreate(employee_id=1, amount_uzs=0, amount_usd=0))
+        self.assertTrue(CashierHandoverCreate(employee_id=1, amount_uzs=1_000_000_000, amount_usd=1_000_000_000))
+        with self.assertRaises(ValidationError):
+            CashierHandoverCreate(employee_id=1, amount_uzs=-100)
+        with self.assertRaises(ValidationError):
+            CashierHandoverCreate(employee_id=1, amount_uzs=1_000_000_001)
+
+        # 5. Qarz belgilash
+        self.assertTrue(SetDebtRequest(user_id=1, debt_amount=0, reason="Avans"))
+        self.assertTrue(SetDebtRequest(user_id=1, debt_amount=1_000_000_000, reason="Katta qarz"))
+        with self.assertRaises(ValidationError):
+            SetDebtRequest(user_id=1, debt_amount=-1, reason="Test")
+        with self.assertRaises(ValidationError):
+            SetDebtRequest(user_id=1, debt_amount=1_000_000_001, reason="Test")
+
 if __name__ == "__main__":
     unittest.main()
