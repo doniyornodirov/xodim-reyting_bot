@@ -198,15 +198,6 @@ async def get_sales_monitoring_data(
             "Perfectum": "/static/icons/operators/perfectum.png"
         }
 
-        operators = [
-            {
-                "operator_type": name,
-                "count": op_counts[name],
-                "logo": operator_icons.get(name, "")
-            }
-            for name in ["Uzmobile", "Beeline", "Ucell", "Mobiuz", "Perfectum"]
-        ]
-
     # Timeline qurish
     timeline = []
     total_submitted = 0.0
@@ -228,6 +219,18 @@ async def get_sales_monitoring_data(
         sub_amt = float(rep_info.get("submitted_amount", 0.0))
         net_amt = float(rep_info.get("net_amount", 0.0))
         sims_cnt = int(rep_info.get("sim_cards_sold", 0))
+
+        u_cnt = int(rep_info.get("sim_uzmobile", 0))
+        b_cnt = int(rep_info.get("sim_beeline", 0))
+        uc_cnt = int(rep_info.get("sim_ucell", 0))
+        m_cnt = int(rep_info.get("sim_mobiuz", 0))
+        p_cnt = int(rep_info.get("sim_perfectum", 0))
+        day_op_sum = u_cnt + b_cnt + uc_cnt + m_cnt + p_cnt
+        if sims_cnt > day_op_sum:
+            # Agar eski hisobotda operatorlar bo'linmagan bo'lsa, qolganini Uzmobile ga qo'shish
+            u_cnt += (sims_cnt - day_op_sum)
+        elif day_op_sum > sims_cnt:
+            sims_cnt = day_op_sum
 
         c_amt = float(top_info.get("card_amount", 0.0))
         c_cnt = int(top_info.get("card_count", 0))
@@ -254,15 +257,31 @@ async def get_sales_monitoring_data(
             "submitted_amount": sub_amt,
             "net_amount": net_amt,
             "sim_cards_sold": sims_cnt,
-            "sim_uzmobile": int(rep_info.get("sim_uzmobile", 0)),
-            "sim_beeline": int(rep_info.get("sim_beeline", 0)),
-            "sim_ucell": int(rep_info.get("sim_ucell", 0)),
-            "sim_mobiuz": int(rep_info.get("sim_mobiuz", 0)),
-            "sim_perfectum": int(rep_info.get("sim_perfectum", 0)),
+            "sim_uzmobile": u_cnt,
+            "sim_beeline": b_cnt,
+            "sim_ucell": uc_cnt,
+            "sim_mobiuz": m_cnt,
+            "sim_perfectum": p_cnt,
             "card_topup_amount": c_amt,
             "card_topup_count": c_cnt,
             "day_change_pct": day_change
         })
+
+    # Operatorlar taqsimoti va umumiy sim-kartalar sonining 100% mutanosibligini kafolatlash (Zero Discrepancy)
+    op_total = sum(op_counts.values())
+    if total_sims > op_total:
+        op_counts["Uzmobile"] += (total_sims - op_total)
+    elif op_total > total_sims:
+        total_sims = op_total
+
+    operators = [
+        {
+            "operator_type": name,
+            "count": op_counts[name],
+            "logo": operator_icons.get(name, "")
+        }
+        for name in ["Uzmobile", "Beeline", "Ucell", "Mobiuz", "Perfectum"]
+    ]
 
     def calc_pct(cur_val, prev_val):
         if prev_val > 0:

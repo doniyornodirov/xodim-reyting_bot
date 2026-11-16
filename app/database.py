@@ -133,6 +133,18 @@ async def init_db():
                 except Exception as e:
                     logger.warning(f"PostgreSQL daily_reports {col_name} migratsiyasida ogohlantirish: {e}")
 
+            # 5.1. Tarixiy hisobotlarni sinxronlash: agar sim_cards_count > 0 bo'lib, operatorlar 0 bo'lsa, barchasini Uzmobile'ga biriktirish
+            try:
+                await conn.execute("""
+                    UPDATE daily_reports
+                    SET sim_uzmobile = sim_cards_count
+                    WHERE sim_cards_count > 0 
+                      AND (COALESCE(sim_uzmobile, 0) + COALESCE(sim_beeline, 0) + COALESCE(sim_ucell, 0) + COALESCE(sim_mobiuz, 0) + COALESCE(sim_perfectum, 0)) = 0;
+                """)
+                logger.info("PostgreSQL tarixiy sim-karta hisobotlari Uzmobile bilan muvaffaqiyatli sinxronlandi.")
+            except Exception as e:
+                logger.warning(f"PostgreSQL tarixiy sim-karta migratsiyasida ogohlantirish: {e}")
+
             # 6. SaaS Multi-tenancy: Barcha jadvallarga company_id ustunini ta'minlash (PostgreSQL)
             pg_saas_tables = [
                 "users", "card_topups", "given_amounts", "daily_reports", 
@@ -368,6 +380,17 @@ async def init_db():
                 await conn.execute(col_sql)
             except Exception:
                 pass
+
+        # Tarixiy ma'lumotlarni sinxronlash: agar sim_cards_count > 0 bo'lib, operatorlar bo'sh bo'lsa, Uzmobile'ga tenglashtirish
+        try:
+            await conn.execute("""
+                UPDATE daily_reports 
+                SET sim_uzmobile = sim_cards_count 
+                WHERE sim_cards_count > 0 
+                  AND (COALESCE(sim_uzmobile, 0) + COALESCE(sim_beeline, 0) + COALESCE(sim_ucell, 0) + COALESCE(sim_mobiuz, 0) + COALESCE(sim_perfectum, 0)) = 0;
+            """)
+        except Exception:
+            pass
 
         # Migratsiyalar: users jadvaliga har bir xodim uchun alohida geolokatsiya va ish/dam statusi ustunlari
         for col_sql in [

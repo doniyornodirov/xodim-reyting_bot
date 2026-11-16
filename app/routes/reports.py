@@ -126,9 +126,22 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
         total_outflow = float(round_uzs(d_outflow))
         net_amount = float(round_uzs(d_inflow - d_outflow))
 
-        # 5 ta operator bo'yicha sim-karta hisobi
-        total_op_sims = int(req.sim_uzmobile) + int(req.sim_beeline) + int(req.sim_ucell) + int(req.sim_mobiuz) + int(req.sim_perfectum)
-        final_sims = total_op_sims if total_op_sims > 0 else int(req.sim_cards_count or 0)
+        # 5 ta operator bo'yicha sim-karta hisobi (100% sinxron va mutanosib)
+        sim_uz = int(req.sim_uzmobile or 0)
+        sim_bee = int(req.sim_beeline or 0)
+        sim_uc = int(req.sim_ucell or 0)
+        sim_mob = int(req.sim_mobiuz or 0)
+        sim_perf = int(req.sim_perfectum or 0)
+        total_op_sims = sim_uz + sim_bee + sim_uc + sim_mob + sim_perf
+
+        legacy_sims = int(req.sim_cards_count or 0)
+        if total_op_sims > 0:
+            final_sims = total_op_sims
+        elif legacy_sims > 0:
+            final_sims = legacy_sims
+            sim_uz = legacy_sims  # Operatorlar kiritilmagan bo'lsa, asosiy operator Uzmobile'ga biriktiriladi
+        else:
+            final_sims = 0
 
         if existing:
             # Rollback & Overwrite: Eski kutilayotgan hisobot o'rniga yangisi toza bazaviy holatdan yangilanadi
@@ -143,8 +156,8 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
                 WHERE id = ? AND company_id = ?
             """, (
                 req.paynet, card_amount, req.leviy, debt_snapshot,
-                req.debt_paid, final_sims, req.sim_uzmobile, req.sim_beeline,
-                req.sim_ucell, req.sim_mobiuz, req.sim_perfectum, req.kunlik, req.terminal,
+                req.debt_paid, final_sims, sim_uz, sim_bee,
+                sim_uc, sim_mob, sim_perf, req.kunlik, req.terminal,
                 given_amount, req.skidka, req.xarajat, total_inflow,
                 total_outflow, net_amount, comment, existing["id"], comp_id
             ))
@@ -184,8 +197,8 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
                 """, (
                     comp_id, user["id"], today_str, req.paynet, card_amount, req.leviy,
-                    debt_snapshot, req.debt_paid, final_sims, req.sim_uzmobile, req.sim_beeline,
-                    req.sim_ucell, req.sim_mobiuz, req.sim_perfectum, req.kunlik, req.terminal,
+                    debt_snapshot, req.debt_paid, final_sims, sim_uz, sim_bee,
+                    sim_uc, sim_mob, sim_perf, req.kunlik, req.terminal,
                     given_amount, req.skidka, req.xarajat, total_inflow, total_outflow,
                     net_amount, comment
                 ))
@@ -219,11 +232,11 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             "debt_snapshot": debt_snapshot,
             "debt_paid": req.debt_paid,
             "sim_cards_count": final_sims,
-            "sim_uzmobile": req.sim_uzmobile,
-            "sim_beeline": req.sim_beeline,
-            "sim_ucell": req.sim_ucell,
-            "sim_mobiuz": req.sim_mobiuz,
-            "sim_perfectum": req.sim_perfectum,
+            "sim_uzmobile": sim_uz,
+            "sim_beeline": sim_bee,
+            "sim_ucell": sim_uc,
+            "sim_mobiuz": sim_mob,
+            "sim_perfectum": sim_perf,
             "kunlik": req.kunlik,
             "terminal": req.terminal,
             "given_amount": given_amount,
