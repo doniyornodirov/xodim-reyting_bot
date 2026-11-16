@@ -262,19 +262,18 @@ body.theme-light .header-filter-select option {
   padding: 0.65rem 0.85rem !important;
 }
 
-body.theme-light .card-number-input {
-  background-color: #ffffff !important;
-  color: #1d4ed8 !important;
-  font-weight: 700 !important;
-  border: 1px solid #cbd5e1 !important;
-}
-
+body.theme-light .card-number-input,
+body.theme-light #topup-card-number,
 body.theme-light .card-holder-input,
-body.theme-light #topup-card-holder {
+body.theme-light #topup-card-holder,
+body.theme-light #topup-amount {
+  font-family: inherit !important;
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
   background-color: #ffffff !important;
   color: #0f172a !important;
-  font-weight: 700 !important;
   border: 1px solid #cbd5e1 !important;
+  min-height: 50px !important;
 }
 
 body.theme-light #otp-code-input {
@@ -1938,34 +1937,40 @@ select.form-input option {
   color: #f8fafc !important;
 }
 
-/* Card Number Special Format */
-.card-number-input {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: clamp(1.05rem, 4.2vw, 1.35rem);
-  letter-spacing: clamp(0.06em, 1.5vw, 0.15em);
-  font-weight: 700;
-  color: #60a5fa !important;
+/* Karta to'ldirish maydonlari: Karta raqami, Karta egasi va Summa to'liq bir xil shrift va o'lchamda */
+.card-number-input,
+#topup-card-number {
+  font-family: inherit !important;
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  color: #38bdf8 !important;
   background: #0b1120 !important;
   border-color: #1e293b !important;
+  min-height: 50px !important;
 }
 
-/* Card Holder Special Format (Karta raqami va Summa bilan bir xil ko'rinish va balandlik) */
 .card-holder-input,
 #topup-card-holder {
-  font-size: clamp(1.05rem, 4.2vw, 1.35rem);
-  font-weight: 700;
+  font-family: inherit !important;
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
   color: #f8fafc !important;
   background: #0b1120 !important;
   border-color: #1e293b !important;
   text-transform: uppercase;
+  min-height: 50px !important;
 }
 
-/* Karta to'ldirish maydonlarining balandligini to'liq bir xil (50px) qilish */
-.card-number-input,
-.card-holder-input,
-#topup-card-number,
-#topup-card-holder,
 #topup-amount {
+  font-family: inherit !important;
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  color: #f8fafc !important;
+  background: #0b1120 !important;
+  border-color: #1e293b !important;
   min-height: 50px !important;
 }
 
@@ -3662,27 +3667,16 @@ button:active,
     min-height: 38px;
   }
 
-  /* Maxsus kiritish maydonlari clamp responsive o'lchamlari */
-  .card-number-input {
-    font-size: clamp(1rem, 4.2vw, 1.25rem) !important;
-    letter-spacing: clamp(1px, 0.35vw, 2.2px) !important;
-  }
-
-  .card-holder-input,
-  #topup-card-holder {
-    font-size: clamp(1rem, 4.2vw, 1.25rem) !important;
-  }
-
+  /* Karta to'ldirish maydonlari: Karta raqami, Karta egasi va Summa to'liq bir xil shrift va o'lchamda */
   .card-number-input,
-  .card-holder-input,
   #topup-card-number,
+  .card-holder-input,
   #topup-card-holder,
   #topup-amount {
-    min-height: 46px !important;
-  }
-
-  #topup-amount {
-    font-size: clamp(1.15rem, 5vw, 1.4rem) !important;
+    font-family: inherit !important;
+    font-size: clamp(1.1rem, 4.5vw, 1.35rem) !important;
+    font-weight: 700 !important;
+    min-height: 48px !important;
   }
 
   #otp-code-input {

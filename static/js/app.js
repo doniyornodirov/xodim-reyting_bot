@@ -1694,9 +1694,9 @@ function setupCardTopupInputs() {
     e.target.value = formatted;
   });
 
-  // Karta egasi: Faqat harflar
+  // Karta egasi: Faqat harflar va avtomatik bosh harfga o'tkazish
   holderInput.addEventListener("input", (e) => {
-    e.target.value = e.target.value.replace(/[^a-zA-Zа-яА-ЯёЁ\s']/g, "");
+    e.target.value = e.target.value.replace(/[^a-zA-Zа-яА-ЯёЁ\s']/g, "").toUpperCase();
   });
 
   // Summa: 3 xonadan probel, so'z bilan o'qilishi, +3% va hayratlanish emojisi
