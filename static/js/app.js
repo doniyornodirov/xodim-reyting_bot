@@ -3122,9 +3122,9 @@ function renderOperatorChart(operators) {
         const pct = totalOpCount > 0 ? Math.round((count / totalOpCount) * 100) : 0;
         const logo = op.logo || opLogos[op.operator_type] || "";
         chipsContainer.innerHTML += `
-          <div class="op-badge" style="gap: 0.45rem; padding: 0.25rem 0.65rem;">
+          <div class="op-badge" style="gap: 0.45rem; padding: 0.25rem 0.65rem;" title="${op.operator_type}: ${count} ta (${pct}%)">
             ${logo ? `<img src="${logo}" alt="${op.operator_type}" class="op-badge-logo">` : ''}
-            <span><b>${op.operator_type}:</b> ${count} ta <span style="color: var(--text-muted); font-size: 0.75rem;">(${pct}%)</span></span>
+            <span><b>${count} ta</b> <span style="color: var(--text-muted); font-size: 0.75rem;">(${pct}%)</span></span>
           </div>
         `;
       });
