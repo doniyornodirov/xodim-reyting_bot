@@ -314,5 +314,34 @@ class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
             self.assertIn("checkpointed", cp_result)
             self.assertIsInstance(cp_result["busy"], bool)
 
+    async def test_12_postgres_context_manager_and_cashier_comparison(self):
+        """12. PostgresContextManager (await va async with) hamda Kassa taqqoslash hisobi tekshiruvi"""
+        from app.pg_engine import PostgresExecuteContextManager, PostgresCursorWrapper
+        from app.database import get_db_connection
+        from app.services.cashier_service import calculate_daily_cashier_comparison, summarize_cashier_comparison
+
+        # 1. PostgresExecuteContextManager await va async with qobiliyati
+        async def mock_coro():
+            return PostgresCursorWrapper(rows=[], lastrowid=99, rowcount=1)
+
+        cm1 = PostgresExecuteContextManager(mock_coro())
+        cur1 = await cm1
+        self.assertEqual(cur1.lastrowid, 99)
+
+        cm2 = PostgresExecuteContextManager(mock_coro())
+        async with cm2 as cur2:
+            self.assertEqual(cur2.rowcount, 1)
+
+        # 2. calculate_daily_cashier_comparison va summarize_cashier_comparison
+        async with get_db_connection() as conn:
+            results = await calculate_daily_cashier_comparison(conn, company_id=1, target_date="2026-11-16")
+            self.assertIsInstance(results, list)
+            summary = summarize_cashier_comparison(results)
+            self.assertIn("total_expected_uzs", summary)
+            self.assertIn("total_collected_uzs", summary)
+            self.assertIn("total_difference_uzs", summary)
+            self.assertIn("is_zero_discrepancy", summary)
+            self.assertIn("status_text", summary)
+
 if __name__ == "__main__":
     unittest.main()

@@ -163,20 +163,20 @@ async def get_companies_overview(conn: aiosqlite.Connection) -> List[Dict[str, A
     Avvalgi 140+ individual so'rovlarni 4 taga qisqartiradi (35x tezlanish).
     """
     # 1. Barcha kompaniyalarni olish
-    async with conn.execute("""
+    cur = await conn.execute("""
         SELECT c.*,
                u.full_name as owner_name
         FROM companies c
         LEFT JOIN users u ON u.telegram_id = c.owner_telegram_id AND u.company_id = c.id
         WHERE c.id > 0
         ORDER BY c.id ASC
-    """) as cur:
-        companies_raw = await cur.fetchall()
+    """)
+    companies_raw = await cur.fetchall()
     if not companies_raw:
         return []
 
     # 2. Xodimlar va kassirlar soni hamda xodimlar qarzi (Batch GROUP BY)
-    async with conn.execute("""
+    cur_users = await conn.execute("""
         SELECT company_id,
                COUNT(CASE WHEN UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN') THEN 1 END) as users_count,
                COUNT(CASE WHEN UPPER(COALESCE(role, '')) = 'CASHIER' THEN 1 END) as cashiers_count,
@@ -184,60 +184,60 @@ async def get_companies_overview(conn: aiosqlite.Connection) -> List[Dict[str, A
         FROM users
         WHERE is_active = 1
         GROUP BY company_id
-    """) as cur_users:
-        users_stats = {
-            row["company_id"]: {
-                "users_count": int(row["users_count"]),
-                "cashiers_count": int(row["cashiers_count"]),
-                "total_debt": float(row["total_debt"])
-            }
-            for row in await cur_users.fetchall()
+    """)
+    users_stats = {
+        row["company_id"]: {
+            "users_count": int(row["users_count"]),
+            "cashiers_count": int(row["cashiers_count"]),
+            "total_debt": float(row["total_debt"])
         }
+        for row in await cur_users.fetchall()
+    }
 
     # 3. Hisobotlar soni va jami savdo aylanmasi (Batch GROUP BY)
-    async with conn.execute("""
+    cur_reports = await conn.execute("""
         SELECT company_id,
                COUNT(*) as reports_count,
                COALESCE(SUM(total_inflow), 0) as total_turnover,
                MAX(created_at) as last_report_date
         FROM daily_reports
         GROUP BY company_id
-    """) as cur_reports:
-        reports_stats = {
-            row["company_id"]: {
-                "reports_count": int(row["reports_count"]),
-                "total_turnover": float(row["total_turnover"]),
-                "last_report_date": row["last_report_date"]
-            }
-            for row in await cur_reports.fetchall()
+    """)
+    reports_stats = {
+        row["company_id"]: {
+            "reports_count": int(row["reports_count"]),
+            "total_turnover": float(row["total_turnover"]),
+            "last_report_date": row["last_report_date"]
         }
+        for row in await cur_reports.fetchall()
+    }
 
     # 4. Karta so'rovlari va kassa topshirish oxirgi faolliklari (Batch GROUP BY)
-    async with conn.execute("""
+    cur_topups = await conn.execute("""
         SELECT company_id,
                COUNT(*) as topups_count,
                MAX(created_at) as last_topup_date
         FROM card_topups
         GROUP BY company_id
-    """) as cur_topups:
-        topups_stats = {
-            row["company_id"]: {
-                "topups_count": int(row["topups_count"]),
-                "last_topup_date": row["last_topup_date"]
-            }
-            for row in await cur_topups.fetchall()
+    """)
+    topups_stats = {
+        row["company_id"]: {
+            "topups_count": int(row["topups_count"]),
+            "last_topup_date": row["last_topup_date"]
         }
+        for row in await cur_topups.fetchall()
+    }
 
-    async with conn.execute("""
+    cur_handovers = await conn.execute("""
         SELECT company_id,
                MAX(created_at) as last_handover_date
         FROM cashier_handovers
         GROUP BY company_id
-    """) as cur_handovers:
-        handovers_stats = {
-            row["company_id"]: row["last_handover_date"]
-            for row in await cur_handovers.fetchall()
-        }
+    """)
+    handovers_stats = {
+        row["company_id"]: row["last_handover_date"]
+        for row in await cur_handovers.fetchall()
+    }
 
     # 5. Xotirada birlashtirish
     result = []

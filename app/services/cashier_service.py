@@ -46,8 +46,8 @@ async def calculate_daily_cashier_comparison(
     WHERE u.is_active = 1 AND u.role NOT IN ('ADMIN', 'DEVELOPER') AND u.company_id = ?
     ORDER BY u.full_name ASC
     """
-    async with conn.execute(query, (target_date, company_id, target_date, company_id, company_id)) as cursor:
-        rows = await cursor.fetchall()
+    cursor = await conn.execute(query, (target_date, company_id, target_date, company_id, company_id))
+    rows = await cursor.fetchall()
 
     results = []
     for r in rows:

@@ -202,13 +202,33 @@ async def get_my_handovers(user: dict = Depends(require_role(["CASHIER", "ADMIN"
 
 @router.get("/comparison")
 async def get_comparison(date: str = None, user: dict = Depends(require_role(["ADMIN"]))):
-    target_date = date or get_tashkent_today_str()
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        clean_date = (date or "").strip()
+        if not clean_date or clean_date.lower() in ("undefined", "null"):
+            target_date = get_tashkent_today_str()
+        else:
+            from datetime import datetime
+            datetime.strptime(clean_date, "%Y-%m-%d")
+            target_date = clean_date
+    except (ValueError, TypeError):
+        target_date = get_tashkent_today_str()
+
     comp_id = user.get("company_id") or 1
 
-    async with get_db_connection() as conn:
-        results = await calculate_daily_cashier_comparison(conn, comp_id, target_date)
-        summary = summarize_cashier_comparison(results)
-        return {"success": True, "date": target_date, "summary": summary, "data": results}
+    try:
+        async with get_db_connection() as conn:
+            results = await calculate_daily_cashier_comparison(conn, comp_id, target_date)
+            summary = summarize_cashier_comparison(results)
+            return {"success": True, "date": target_date, "summary": summary, "data": results}
+    except Exception as e:
+        logger.error(f"Kassa taqqoslashda xatolik ({target_date}, comp_id={comp_id}): {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Kassa taqqoslash ma'lumotlarini yuklashda xatolik yuz berdi. Iltimos qayta urinib ko'ring."
+        )
 
 @router.get("/all-handovers")
 async def get_all_handovers(user: dict = Depends(require_role(["ADMIN"]))):

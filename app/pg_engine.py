@@ -210,6 +210,33 @@ class PostgresCursorWrapper:
             raise StopAsyncIteration
         return row
 
+    async def close(self) -> None:
+        """Cursor resurslarini tozalash (aiosqlite muvofiqligi)"""
+        pass
+
+
+class PostgresExecuteContextManager:
+    """
+    Asinxron Context Manager va Awaitable wrapper:
+    aiosqlite bilan 100% bir xil interfeys beradi:
+    1. cur = await conn.execute(sql, params)
+    2. async with conn.execute(sql, params) as cur:
+    """
+    def __init__(self, coro):
+        self._coro = coro
+        self._cursor = None
+
+    def __await__(self):
+        return self._coro.__await__()
+
+    async def __aenter__(self):
+        self._cursor = await self._coro
+        return self._cursor
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._cursor and hasattr(self._cursor, "close"):
+            await self._cursor.close()
+
 
 class PostgresConnectionWrapper:
     """Connection that wraps an asyncpg pool acquisition"""
@@ -233,35 +260,38 @@ class PostgresConnectionWrapper:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.close()
 
-    async def execute(self, sql: str, params: Any = None) -> PostgresCursorWrapper:
-        if not self._conn:
-            self._conn = await self._pool.acquire()
+    def execute(self, sql: str, params: Any = None) -> PostgresExecuteContextManager:
+        async def _run() -> PostgresCursorWrapper:
+            if not self._conn:
+                self._conn = await self._pool.acquire()
 
-        pg_sql, pg_params, appended_ret = translate_query_for_postgres(sql, params)
-        upper_sql = pg_sql.strip().upper()
+            pg_sql, pg_params, appended_ret = translate_query_for_postgres(sql, params)
+            upper_sql = pg_sql.strip().upper()
 
-        lastrowid = None
-        rowcount = 0
+            lastrowid = None
+            rowcount = 0
 
-        try:
-            if upper_sql.startswith("SELECT") or "RETURNING" in upper_sql:
-                records = await self._conn.fetch(pg_sql, *pg_params)
-                rowcount = len(records)
-                if appended_ret and records:
-                    first = records[0]
-                    if "id" in first:
-                        lastrowid = int(first["id"])
-                return PostgresCursorWrapper(rows=records, lastrowid=lastrowid, rowcount=rowcount)
-            else:
-                status = await self._conn.execute(pg_sql, *pg_params)
-                # Parse status e.g. 'UPDATE 1', 'INSERT 0 1', 'DELETE 5'
-                parts = status.split()
-                if parts and parts[-1].isdigit():
-                    rowcount = int(parts[-1])
-                return PostgresCursorWrapper(rows=[], lastrowid=lastrowid, rowcount=rowcount)
-        except Exception as e:
-            logger.error(f"PostgreSQL xatosi: {e} | SQL: {pg_sql} | Params: {pg_params}")
-            raise
+            try:
+                if upper_sql.startswith("SELECT") or "RETURNING" in upper_sql:
+                    records = await self._conn.fetch(pg_sql, *pg_params)
+                    rowcount = len(records)
+                    if appended_ret and records:
+                        first = records[0]
+                        if "id" in first:
+                            lastrowid = int(first["id"])
+                    return PostgresCursorWrapper(rows=records, lastrowid=lastrowid, rowcount=rowcount)
+                else:
+                    status = await self._conn.execute(pg_sql, *pg_params)
+                    # Parse status e.g. 'UPDATE 1', 'INSERT 0 1', 'DELETE 5'
+                    parts = status.split()
+                    if parts and parts[-1].isdigit():
+                        rowcount = int(parts[-1])
+                    return PostgresCursorWrapper(rows=[], lastrowid=lastrowid, rowcount=rowcount)
+            except Exception as e:
+                logger.error(f"PostgreSQL xatosi: {e} | SQL: {pg_sql} | Params: {pg_params}")
+                raise
+
+        return PostgresExecuteContextManager(_run())
 
     async def executescript(self, script: str) -> None:
         if not self._conn:
@@ -271,30 +301,33 @@ class PostgresConnectionWrapper:
         for stmt in statements:
             await self.execute(stmt)
 
-    async def executemany(self, sql: str, seq_of_params: Any) -> PostgresCursorWrapper:
-        if not self._conn:
-            self._conn = await self._pool.acquire()
+    def executemany(self, sql: str, seq_of_params: Any) -> PostgresExecuteContextManager:
+        async def _run_many() -> PostgresCursorWrapper:
+            if not self._conn:
+                self._conn = await self._pool.acquire()
 
-        if not seq_of_params:
-            return PostgresCursorWrapper(rows=[], lastrowid=None, rowcount=0)
+            if not seq_of_params:
+                return PostgresCursorWrapper(rows=[], lastrowid=None, rowcount=0)
 
-        # Translate the base SQL query
-        pg_sql, _, _ = translate_query_for_postgres(sql, None)
+            # Translate the base SQL query
+            pg_sql, _, _ = translate_query_for_postgres(sql, None)
 
-        # Sanitize all parameter tuples
-        sanitized_args = []
-        for params in seq_of_params:
-            if isinstance(params, (tuple, list)):
-                sanitized_args.append([sanitize_param_for_pg(p) for p in params])
-            else:
-                sanitized_args.append([sanitize_param_for_pg(params)])
+            # Sanitize all parameter tuples
+            sanitized_args = []
+            for params in seq_of_params:
+                if isinstance(params, (tuple, list)):
+                    sanitized_args.append([sanitize_param_for_pg(p) for p in params])
+                else:
+                    sanitized_args.append([sanitize_param_for_pg(params)])
 
-        try:
-            await self._conn.executemany(pg_sql, sanitized_args)
-            return PostgresCursorWrapper(rows=[], lastrowid=None, rowcount=len(sanitized_args))
-        except Exception as e:
-            logger.error(f"PostgreSQL executemany xatosi: {e} | SQL: {pg_sql}")
-            raise
+            try:
+                await self._conn.executemany(pg_sql, sanitized_args)
+                return PostgresCursorWrapper(rows=[], lastrowid=None, rowcount=len(sanitized_args))
+            except Exception as e:
+                logger.error(f"PostgreSQL executemany xatosi: {e} | SQL: {pg_sql}")
+                raise
+
+        return PostgresExecuteContextManager(_run_many())
 
     async def commit(self) -> None:
         # Autocommit is default in asyncpg
