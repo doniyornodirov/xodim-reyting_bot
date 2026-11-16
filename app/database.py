@@ -63,6 +63,66 @@ async def get_next_transaction_number(conn: aiosqlite.Connection, company_id: in
     row = await cur.fetchone()
     return int(row[0]) if row else 101
 
+async def reconcile_sim_cards_with_approved_reports(conn):
+    """
+    Tasdiqlangan hisobotlardagi sim-kartalarni operatorlar bo'yicha sim_cards da 'SOLD' / 'GIVEN' holatiga 100% to'g'ri sinxronlash (Self-Healing Reconciliation).
+    """
+    op_col_map = {
+        "Uzmobile": "sim_uzmobile",
+        "Beeline": "sim_beeline",
+        "Ucell": "sim_ucell",
+        "Mobiuz": "sim_mobiuz",
+        "Perfectum": "sim_perfectum",
+    }
+
+    try:
+        cur_emp_ops = await conn.execute("""
+            SELECT DISTINCT employee_id, company_id, operator_type 
+            FROM sim_cards
+        """)
+        emp_ops = await cur_emp_ops.fetchall()
+
+        for eo in emp_ops:
+            emp_id = eo[0]
+            comp_id = eo[1] if eo[1] is not None else 1
+            op_name = eo[2] or "Uzmobile"
+            col_name = op_col_map.get(op_name, "sim_uzmobile")
+
+            cur_sold = await conn.execute(f"""
+                SELECT COALESCE(SUM({col_name}), 0) 
+                FROM daily_reports 
+                WHERE employee_id = ? AND company_id = ? AND status = 'APPROVED'
+            """, (emp_id, comp_id))
+            sold_row = await cur_sold.fetchone()
+            total_sold_op = int(sold_row[0]) if sold_row else 0
+
+            cur_cards = await conn.execute("""
+                SELECT id, status 
+                FROM sim_cards 
+                WHERE employee_id = ? AND company_id = ? AND operator_type = ?
+                ORDER BY id ASC
+            """, (emp_id, comp_id, op_name))
+            cards = await cur_cards.fetchall()
+
+            for i, c in enumerate(cards):
+                if i < total_sold_op:
+                    if c["status"] != "SOLD":
+                        await conn.execute("""
+                            UPDATE sim_cards 
+                            SET status = 'SOLD', sold_at = COALESCE(sold_at, CURRENT_TIMESTAMP)
+                            WHERE id = ?
+                        """, (c["id"],))
+                else:
+                    if c["status"] != "GIVEN":
+                        await conn.execute("""
+                            UPDATE sim_cards 
+                            SET status = 'GIVEN', sold_at = NULL
+                            WHERE id = ?
+                        """, (c["id"],))
+        await conn.commit()
+    except Exception as e:
+        logger.warning(f"sim_cards reconciliation xatosi: {e}")
+
 async def init_db():
     """Baza sxemasini yaratish va boshlang'ich ma'lumotlarni kiritish"""
     from app.pg_engine import is_postgres_active
@@ -203,6 +263,9 @@ async def init_db():
                 await conn.execute("ALTER TABLE card_topups ADD COLUMN IF NOT EXISTS surcharge_percent INTEGER NOT NULL DEFAULT 3;")
             except Exception as e:
                 logger.warning(f"PostgreSQL card_topups surcharge_percent qo'shishda ogohlantirish: {e}")
+
+            # 9. PostgreSQL da sim-kartalarni hisobotlar bilan operator bo'yicha to'g'ri sinxronlash
+            await reconcile_sim_cards_with_approved_reports(conn)
 
             await conn.commit()
         return
@@ -657,32 +720,8 @@ async def init_db():
                 GROUP BY s.operator_type, s.employee_id, s.distributed_by_id, s.distributed_at
             """)
 
-        # Tasdiqlangan hisobotlardagi sim-kartalarni sim_cards da 'SOLD' holatiga sinxronlash
-        cur_app_rep = await conn.execute("""
-            SELECT employee_id, SUM(sim_cards_count) as total_sold
-            FROM daily_reports
-            WHERE status = 'APPROVED'
-            GROUP BY employee_id
-        """)
-        approved_reports = await cur_app_rep.fetchall()
-        for row in approved_reports:
-            emp_id = row[0]
-            total_sold = row[1] or 0
-            if total_sold > 0:
-                c_sold = await conn.execute("SELECT COUNT(*) FROM sim_cards WHERE employee_id = ? AND status = 'SOLD'", (emp_id,))
-                already_sold = (await c_sold.fetchone())[0]
-                diff = total_sold - already_sold
-                if diff > 0:
-                    await conn.execute("""
-                        UPDATE sim_cards 
-                        SET status = 'SOLD', sold_at = CURRENT_TIMESTAMP
-                        WHERE id IN (
-                            SELECT id FROM sim_cards 
-                            WHERE employee_id = ? AND status = 'GIVEN'
-                            ORDER BY id ASC
-                            LIMIT ?
-                        )
-                    """, (emp_id, diff))
+        # Tasdiqlangan hisobotlardagi sim-kartalarni operatorlar bo'yicha sim_cards da 'SOLD' / 'GIVEN' holatiga 100% to'g'ri sinxronlash
+        await reconcile_sim_cards_with_approved_reports(conn)
 
         # SaaS Multi-tenancy Migratsiyasi: Barcha jadvallarga company_id ustuni va indekslarini qo'shish
         saas_tables = [
