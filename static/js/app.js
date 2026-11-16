@@ -2969,7 +2969,7 @@ function renderMainAnalyticsChart(timeline) {
 
     if (currentChartMetric === "all" || currentChartMetric === "submitted") {
       datasets.push({
-        label: "💰 Topshirilgan summa (so'm)",
+        label: "💰 Yalpi tushum (so'm)",
         data: subData,
         borderColor: "#6366f1",
         backgroundColor: "rgba(99, 102, 241, 0.18)",
@@ -3129,7 +3129,7 @@ function renderGrowthChart(timeline) {
       data: {
         labels,
         datasets: [{
-          label: "Kunlik o'sish / pasayish (%)",
+          label: "Kunlik yalpi tushum o'zgarishi (%)",
           data: changes,
           backgroundColor: bgColors,
           borderColor: borderColors,

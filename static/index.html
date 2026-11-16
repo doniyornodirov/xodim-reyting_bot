@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=904">
+  <link rel="stylesheet" href="/static/css/style.css?v=907">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -610,10 +610,10 @@
 
         <!-- 4 ta Asosiy KPI Kartochkasi (Executive SaaS Metric Cards) -->
         <div class="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
-          <!-- 1. Jami topshirilgan summa -->
+          <!-- 1. Yalpi tushum -->
           <div class="analytics-kpi-card kpi-card-revenue p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
             <div class="kpi-header flex justify-between items-center mb-1.5">
-              <span class="kpi-title text-xs font-medium">💰 Jami Topshirilgan Summa</span>
+              <span class="kpi-title text-xs font-medium">💰 Yalpi Tushum</span>
               <span class="kpi-badge trend-flat inline-flex items-center gap-1 px-2 h-5 rounded-full text-xs font-semibold" id="kpi-revenue-trend">0%</span>
             </div>
             <div class="kpi-value text-2xl font-bold tracking-tight" id="kpi-revenue-val">0 so'm</div>
@@ -662,7 +662,7 @@
           <!-- Diagramma metrikalarini tanlash tugmalari -->
           <div class="chart-metric-selector inline-flex items-center p-1 rounded-lg gap-1 flex-wrap" id="chart-metric-buttons">
             <button class="chart-metric-btn active px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="all" onclick="setChartMetric('all')">Hammasi</button>
-            <button class="chart-metric-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="submitted" onclick="setChartMetric('submitted')">💰 Topshirilgan summa</button>
+            <button class="chart-metric-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="submitted" onclick="setChartMetric('submitted')">💰 Yalpi tushum</button>
             <button class="chart-metric-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="sims" onclick="setChartMetric('sims')">📱 Sim-kartalar</button>
             <button class="chart-metric-btn px-3 py-1.5 rounded-md text-xs font-medium transition" data-metric="cards" onclick="setChartMetric('cards')">💳 Karta to'ldirish</button>
           </div>
@@ -679,7 +679,7 @@
         <!-- Diagramma 2A: Kunbay O'sish/Pasayish Bar Chart -->
         <div class="card-box">
           <h3 class="card-title text-sm font-bold flex items-center gap-2 mb-3">
-            <span>⚡</span> Kunbay O'sish va Pasayish Foizlari (Trend)
+            <span>⚡</span> Kunbay Yalpi Tushum O'sish Trendi
           </h3>
           <div class="relative h-[260px] w-full">
             <canvas id="monitoring-growth-chart"></canvas>
@@ -709,7 +709,7 @@
             <thead>
               <tr>
                 <th>Sana</th>
-                <th>Topshirilgan summa</th>
+                <th>Yalpi Tushum</th>
                 <th>Sof kassa (Net)</th>
                 <th>Sotilgan sim-karta</th>
                 <th>Karta to'ldirish (+3%)</th>
@@ -2992,6 +2992,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=904"></script>
+  <script src="/static/js/app.js?v=907"></script>
 </body>
 </html>

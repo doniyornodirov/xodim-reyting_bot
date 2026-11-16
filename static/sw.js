@@ -1,5 +1,5 @@
 // Service Worker for XodimKPI CRM PWA
-const CACHE_NAME = 'xodimkpi-crm-v904';
+const CACHE_NAME = 'xodimkpi-crm-v907';
 
 const STATIC_ASSETS = [
   '/',
