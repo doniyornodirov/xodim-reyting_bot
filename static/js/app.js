@@ -7567,24 +7567,30 @@ function openComparisonDatePicker(triggerEl) {
 
   popover.style.display = "block";
 
-  // Popover joylashuvini hisoblash (triggerEl tagiga qulay joylash)
-  const rect = triggerEl.getBoundingClientRect();
-  const popoverWidth = 290;
-  const popoverHeight = 330;
+  // Popover joylashuvini hisoblash (Desktop va Katta planshetlarda tugma ostiga, Mobilda markazga)
+  if (window.innerWidth >= 640) {
+    const rect = triggerEl.getBoundingClientRect();
+    const popoverWidth = 290;
+    const popoverHeight = 330;
 
-  let left = window.scrollX + rect.left + (rect.width - popoverWidth) / 2;
-  if (left + popoverWidth > window.innerWidth - 10) {
-    left = window.innerWidth - popoverWidth - 12;
+    let left = window.scrollX + rect.left + (rect.width - popoverWidth) / 2;
+    if (left + popoverWidth > window.innerWidth - 10) {
+      left = window.innerWidth - popoverWidth - 12;
+    }
+    if (left < 10) left = 10;
+
+    let top = window.scrollY + rect.bottom + 6;
+    if (rect.bottom + popoverHeight + 15 > window.innerHeight && rect.top > popoverHeight + 20) {
+      top = window.scrollY + rect.top - popoverHeight - 6;
+    }
+
+    popover.style.top = `${top}px`;
+    popover.style.left = `${left}px`;
+  } else {
+    // Smartfonlarda CSS fixed markazlashtirish to'liq ishlashi uchun inline koordinatalar tozalanadi
+    popover.style.top = "";
+    popover.style.left = "";
   }
-  if (left < 10) left = 10;
-
-  let top = window.scrollY + rect.bottom + 6;
-  if (rect.bottom + popoverHeight + 15 > window.innerHeight && rect.top > popoverHeight + 20) {
-    top = window.scrollY + rect.top - popoverHeight - 6;
-  }
-
-  popover.style.top = `${top}px`;
-  popover.style.left = `${left}px`;
 }
 
 function closeComparisonDatePicker() {

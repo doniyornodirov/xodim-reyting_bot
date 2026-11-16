@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=886', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=887', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=886">
+  <link rel="stylesheet" href="/static/css/style.css?v=887">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -625,60 +625,62 @@
             <h2 class="card-title mb-0.5">⚖️ Kassa taqqoslash</h2>
             <span class="card-desc text-xs block mb-0">Xodim topshirgan sof kassa va kassir qabul qilgan mablag'lar solishtirmasi</span>
           </div>
-          <div class="flex items-center gap-2 flex-wrap">
+          <div class="comparison-header-controls flex items-center gap-2 flex-wrap">
             <!-- 📅 Chiroyli Popover Sana Tanlagich -->
-            <div class="relative inline-flex items-center" style="position: relative;">
-              <button type="button" id="btn-comparison-datepicker" class="form-input header-filter-select" onclick="openComparisonDatePicker(this)" style="min-width: 145px; height: 34px; padding: 0.25rem 0.65rem; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: space-between; gap: 0.4rem; cursor: pointer; border-radius: 8px;">
-                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+            <div class="relative inline-flex items-center comparison-datepicker-wrap">
+              <button type="button" id="btn-comparison-datepicker" class="form-input header-filter-select comparison-date-btn" onclick="openComparisonDatePicker(this)">
+                <span class="inline-flex items-center gap-1.5">
                   <span style="color: #818cf8; font-size: 0.9rem;">📅</span>
                   <span id="comparison-selected-date-text">Bugun</span>
                 </span>
-                <span style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.8;">▾</span>
+                <span class="comparison-arrow">▾</span>
               </button>
               <input type="hidden" id="admin-comparison-date" value="">
             </div>
             
             <!-- ⚖️ Tafovut filtri (Tafovut bor / Tafovut yo'q) -->
-            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap">
-              <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
+            <div class="inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap comparison-filter-wrap">
+              <span class="comparison-filter-label">
                 <span>⚖️</span> Filtr:
               </span>
-              <select id="admin-comparison-filter" class="form-input header-filter-select" onchange="applyAdminComparisonFilter()" style="min-width: 175px;">
+              <select id="admin-comparison-filter" class="form-input header-filter-select" onchange="applyAdminComparisonFilter()">
                 <option value="all">🌐 Barchasi</option>
                 <option value="with_diff">⚠️ Tafovut bor</option>
                 <option value="no_diff">✅ Tafovut yo'q (Mos)</option>
               </select>
             </div>
-            <button type="button" class="btn-success-sm" onclick="exportComparisonToExcel()" title="Kassa taqqoslash jadvalini Excelga yuklash">
-              <span>📥</span> Excel (.xlsx)
-            </button>
-            <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminComparison()" title="Yangilash">
-              <span>🔄</span>
-            </button>
+            <div class="comparison-actions-wrap inline-flex items-center gap-2">
+              <button type="button" class="btn-success-sm comparison-btn-excel" onclick="exportComparisonToExcel()" title="Kassa taqqoslash jadvalini Excelga yuklash">
+                <span>📥</span> Excel (.xlsx)
+              </button>
+              <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminComparison()" title="Yangilash">
+                <span>🔄</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <!-- FinTech Zero Discrepancy KPI Xulosasi -->
-        <div id="admin-comparison-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
-          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">📋 Kutilgan Sof Kassa</div>
-            <div id="comp-kpi-expected" style="font-size: 1.15rem; font-weight: 800; color: #3b82f6; margin-top: 0.2rem;">0 so'm</div>
-            <div style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">Hisobotlar bo'yicha</div>
+        <div id="admin-comparison-kpi-grid" class="comparison-kpi-grid">
+          <div class="comparison-kpi-card">
+            <div class="comparison-kpi-label">📋 Kutilgan Sof Kassa</div>
+            <div id="comp-kpi-expected" class="comparison-kpi-val" style="color: #3b82f6;">0 so'm</div>
+            <div class="comparison-kpi-sub">Hisobotlar bo'yicha</div>
           </div>
-          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">💵 Kassirlar Qabul Qilgan</div>
-            <div id="comp-kpi-collected" style="font-size: 1.15rem; font-weight: 800; color: #10b981; margin-top: 0.2rem;">0 so'm</div>
-            <div id="comp-kpi-collected-sub" style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">So'm + USD ekvivalent</div>
+          <div class="comparison-kpi-card">
+            <div class="comparison-kpi-label">💵 Kassirlar Qabul Qilgan</div>
+            <div id="comp-kpi-collected" class="comparison-kpi-val" style="color: #10b981;">0 so'm</div>
+            <div id="comp-kpi-collected-sub" class="comparison-kpi-sub">So'm + USD ekvivalent</div>
           </div>
-          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">⚖️ Kassa Tafovuti (Farq)</div>
-            <div id="comp-kpi-diff" style="font-size: 1.15rem; font-weight: 800; color: #10b981; margin-top: 0.2rem;">0 so'm</div>
-            <div id="comp-kpi-diff-sub" style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">Balans holati</div>
+          <div class="comparison-kpi-card">
+            <div class="comparison-kpi-label">⚖️ Kassa Tafovuti (Farq)</div>
+            <div id="comp-kpi-diff" class="comparison-kpi-val" style="color: #10b981;">0 so'm</div>
+            <div id="comp-kpi-diff-sub" class="comparison-kpi-sub">Balans holati</div>
           </div>
-          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">🛡️ Zero Discrepancy</div>
-            <div id="comp-kpi-status" style="font-size: 0.95rem; font-weight: 800; color: #10b981; margin-top: 0.35rem;">✅ To'liq mos</div>
-            <div id="comp-kpi-counts" style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">0 ta mos / 0 ta tafovut</div>
+          <div class="comparison-kpi-card">
+            <div class="comparison-kpi-label">🛡️ Zero Discrepancy</div>
+            <div id="comp-kpi-status" class="comparison-kpi-val" style="color: #10b981; font-size: 0.95rem;">✅ To'liq mos</div>
+            <div id="comp-kpi-counts" class="comparison-kpi-sub">0 ta mos / 0 ta tafovut</div>
           </div>
         </div>
         <div class="table-container table-scroll-10">
@@ -2667,6 +2669,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=886"></script>
+  <script src="/static/js/app.js?v=887"></script>
 </body>
 </html>

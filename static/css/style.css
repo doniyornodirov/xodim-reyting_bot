@@ -6034,3 +6034,375 @@ body.theme-light .header-filter-select option {
   color: #0f172a !important;
 }
 
+/* ========================================================================== */
+/* 12. KASSA TAQQOSLASH VA FINTECH BLOKLARI RESPONSIBILIGI                    */
+/* ========================================================================== */
+
+.comparison-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
+.comparison-kpi-card {
+  background: var(--bg-surface-elevated, #111827);
+  border: 1px solid var(--border-color, #1f2937);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+body.theme-light .comparison-kpi-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.comparison-kpi-label {
+  font-size: 0.74rem;
+  color: var(--text-muted, #9ca3af);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+body.theme-light .comparison-kpi-label {
+  color: #64748b !important;
+}
+
+.comparison-kpi-val {
+  font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+  font-weight: 800;
+  margin-top: 0.35rem;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.comparison-kpi-sub {
+  font-size: 0.72rem;
+  color: var(--text-sub, #6b7280);
+  margin-top: 0.25rem;
+  line-height: 1.3;
+}
+
+body.theme-light .comparison-kpi-sub {
+  color: #94a3b8 !important;
+}
+
+/* Sana tanlash tugmasi */
+.comparison-date-btn {
+  min-width: 145px;
+  height: 34px !important;
+  padding: 0.25rem 0.65rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.4rem !important;
+  cursor: pointer !important;
+  border-radius: 8px !important;
+}
+
+.comparison-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
+.comparison-filter-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.comparison-filter-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding-left: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+#admin-comparison-filter {
+  min-width: 170px;
+}
+
+/* ========================================================================== */
+/* 13. TO'LIQ MULTI-DEVICE RESPONSIBILIK (RESPONSIVE FOR ALL SCREEN SIZES)     */
+/* ========================================================================== */
+
+/* 13.1. PLANSHETLAR VA O'RTA EKRANLAR (MAX-WIDTH: 1024px) */
+@media (max-width: 1024px) {
+  .comparison-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.7rem !important;
+  }
+}
+
+/* 13.2. MOBIL QURILMALAR VA SMARTFONLAR (MAX-WIDTH: 768px) */
+@media (max-width: 768px) {
+  /* Kassa taqqoslash sarlavha paneli */
+  #pane-admin-comparison .card-box > .flex:first-child {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .comparison-header-controls {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    gap: 0.45rem !important;
+  }
+
+  .comparison-datepicker-wrap {
+    flex: 1 1 calc(50% - 0.25rem) !important;
+    min-width: 135px !important;
+  }
+
+  .comparison-date-btn {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .comparison-filter-wrap {
+    flex: 1 1 calc(50% - 0.25rem) !important;
+    min-width: 135px !important;
+    padding: 0.15rem 0.25rem !important;
+  }
+
+  #admin-comparison-filter {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .comparison-actions-wrap {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 0.45rem !important;
+  }
+
+  .comparison-actions-wrap .comparison-btn-excel {
+    flex: 1 !important;
+    justify-content: center !important;
+    height: 34px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+
+  /* SaaS Boshqaruv banneri */
+  .saas-banner-box > div {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .saas-banner-box > div > div:last-child {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+
+  .saas-banner-box button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .saas-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.6rem !important;
+  }
+
+  .saas-stat-card {
+    padding: 0.75rem 0.85rem !important;
+  }
+
+  .saas-stat-value {
+    font-size: clamp(1.2rem, 4vw, 1.5rem) !important;
+  }
+
+  #saas-create-company-form > div:first-child {
+    grid-template-columns: 1fr !important;
+    gap: 0.65rem !important;
+  }
+
+  /* Kassa taqqoslash jadvali ustuni mobil uchun */
+  .custom-table th,
+  .custom-table td {
+    padding: 0.6rem 0.55rem !important;
+    font-size: 0.8rem !important;
+  }
+
+  .custom-table td .val-net {
+    font-size: 0.84rem !important;
+    font-weight: 700 !important;
+  }
+
+  .custom-table td .val-sub {
+    font-size: 0.68rem !important;
+    color: var(--text-muted) !important;
+  }
+}
+
+/* 13.3. ZAMONAVIY SMARTFONLAR (MAX-WIDTH: 640px) */
+@media (max-width: 640px) {
+  /* Kassa taqqoslash Popover Kalendari mobilda ekranning markazida modal bo'lib ochiladi */
+  .compact-comparison-datepicker-popover {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: min(325px, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    z-index: 100100 !important;
+    box-shadow: 0 25px 65px rgba(0, 0, 0, 0.85), 0 0 0 100vmax rgba(0, 0, 0, 0.68) !important;
+    padding: 1rem 0.95rem !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(99, 102, 241, 0.4) !important;
+  }
+
+  body.theme-light .compact-comparison-datepicker-popover {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 100vmax rgba(15, 23, 42, 0.45) !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  .compact-comparison-datepicker-popover .saas-cal-days-grid {
+    gap: 4px !important;
+  }
+
+  .compact-comparison-datepicker-popover .saas-cal-day-cell {
+    height: 36px !important;
+    font-size: 0.84rem !important;
+  }
+
+  .compact-comparison-datepicker-popover .time-chip-btn {
+    font-size: 0.74rem !important;
+    padding: 0.32rem 0.55rem !important;
+  }
+
+  /* SaaS Bitta maydonli tahrirlash modali va Obuna modallari mobilda pastki sheet uslubida */
+  #saas-edit-company-modal.modal-overlay,
+  #saas-plan-modal.modal-overlay,
+  #saas-limit-modal.modal-overlay,
+  #saas-extend-modal.modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  #saas-edit-company-modal .modal-content,
+  #saas-plan-modal .modal-content,
+  #saas-limit-modal .modal-content,
+  #saas-extend-modal .modal-content {
+    max-width: 100% !important;
+    width: 100% !important;
+    border-radius: 1.5rem 1.5rem 0 0 !important;
+    padding: 1.25rem 1.1rem !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.6) !important;
+    margin: 0 !important;
+  }
+
+  /* Modallar ichidagi harakat tugmalari to'liq eni bo'ylab qulay */
+  #saas-extend-form div:last-child {
+    flex-direction: column-reverse !important;
+    gap: 0.5rem !important;
+  }
+
+  #saas-extend-form div:last-child button {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 42px !important;
+  }
+
+  /* Inputlar shrifti iOS Safari auto-zoomining oldini olish uchun 16px */
+  .form-input,
+  .header-filter-select {
+    font-size: 16px !important;
+  }
+
+  .comparison-kpi-val {
+    font-size: clamp(0.98rem, 3.8vw, 1.15rem) !important;
+  }
+}
+
+/* 13.4. KICHIK EKRANLI SMARTFONLAR (MAX-WIDTH: 480px) */
+@media (max-width: 480px) {
+  .comparison-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.45rem !important;
+  }
+
+  .comparison-kpi-card {
+    padding: 0.65rem 0.65rem !important;
+    border-radius: 10px !important;
+  }
+
+  .comparison-kpi-label {
+    font-size: 0.68rem !important;
+  }
+
+  .comparison-kpi-sub {
+    font-size: 0.66rem !important;
+  }
+
+  .comparison-filter-label {
+    display: none !important; /* Kichik smartfonda filtr yozuvi yashirilib faqat dropdown qoladi */
+  }
+
+  .saas-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+
+  /* Kassa qabul qilish dual summa */
+  #cashier-amount-uzs,
+  #cashier-amount-usd {
+    font-size: 1.05rem !important;
+  }
+
+  .table-container {
+    margin-left: -0.25rem;
+    margin-right: -0.25rem;
+    width: calc(100% + 0.5rem);
+    border-radius: 8px;
+  }
+}
+
+/* 13.5. ULTRA-KICHIK EKRANLAR (MAX-WIDTH: 360px - Masalan, Galaxy Fold cover, iPhone SE) */
+@media (max-width: 360px) {
+  .comparison-kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.4rem !important;
+  }
+
+  .comparison-datepicker-wrap {
+    flex: 1 1 100% !important;
+  }
+
+  .comparison-filter-wrap {
+    flex: 1 1 100% !important;
+  }
+
+  .compact-comparison-datepicker-popover {
+    width: calc(100vw - 12px) !important;
+    padding: 0.75rem 0.65rem !important;
+  }
+
+  .compact-comparison-datepicker-popover .saas-cal-day-cell {
+    height: 32px !important;
+    font-size: 0.78rem !important;
+  }
+}
+
+
