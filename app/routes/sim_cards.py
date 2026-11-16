@@ -139,9 +139,14 @@ async def distribute_sim_cards(
                     "date_time": get_tashkent_now().strftime("%d.%m.%Y %H:%M")
                 }
             ))
-    except aiosqlite.IntegrityError:
+    except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="Kiritilgan diapazonda takrorlanuvchi sim-karta seriyalari mavjud.")
+        err_msg = str(e)
+        if "unique" in err_msg.lower() or "duplicate" in err_msg.lower() or "integrity" in err_msg.lower():
+            raise HTTPException(status_code=400, detail="Kiritilgan diapazonda takrorlanuvchi sim-karta seriyalari mavjud.")
+        import logging
+        logging.getLogger("sim_cards").error(f"Sim-karta tarqatishda kutilmagan xatolik: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Sim-karta tarqatishda xatolik yuz berdi: {err_msg}")
 
     res_data = {
         "success": True,

@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE TABLE IF NOT EXISTS sim_cards (
     id BIGSERIAL PRIMARY KEY,
     company_id BIGINT NOT NULL DEFAULT 1 REFERENCES companies(id) ON DELETE CASCADE,
-    serial_number TEXT UNIQUE NOT NULL,
+    serial_number TEXT NOT NULL,
     operator_type TEXT NOT NULL DEFAULT 'Uzmobile',
     employee_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     distributed_by_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
 -- 11. Sim-kartalar tarqatish partiyalari (sim_distributions)
 CREATE TABLE IF NOT EXISTS sim_distributions (
     id BIGSERIAL PRIMARY KEY,
+    company_id BIGINT NOT NULL DEFAULT 1 REFERENCES companies(id) ON DELETE CASCADE,
     operator_type TEXT NOT NULL DEFAULT 'Uzmobile',
     start_serial TEXT NOT NULL,
     end_serial TEXT NOT NULL,
@@ -256,6 +257,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_otp_codes_created ON otp_codes(created_at);
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
 CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sim_cards_comp_op_serial ON sim_cards(company_id, operator_type, serial_number);
 CREATE INDEX IF NOT EXISTS idx_sim_cards_serial ON sim_cards(serial_number);
 CREATE INDEX IF NOT EXISTS idx_sim_cards_employee ON sim_cards(employee_id);
 CREATE INDEX IF NOT EXISTS idx_sim_cards_operator ON sim_cards(operator_type);

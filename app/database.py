@@ -133,6 +133,54 @@ async def init_db():
                 except Exception as e:
                     logger.warning(f"PostgreSQL daily_reports {col_name} migratsiyasida ogohlantirish: {e}")
 
+            # 6. SaaS Multi-tenancy: Barcha jadvallarga company_id ustunini ta'minlash (PostgreSQL)
+            pg_saas_tables = [
+                "users", "card_topups", "given_amounts", "daily_reports", 
+                "cashier_handovers", "sim_cards", "sim_distributions", 
+                "cashier_history", "audit_logs", "location_events"
+            ]
+            for tbl in pg_saas_tables:
+                try:
+                    await conn.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS company_id BIGINT NOT NULL DEFAULT 1;")
+                except Exception as e:
+                    logger.warning(f"PostgreSQL {tbl} company_id ustuni qo'shishda ogohlantirish: {e}")
+                try:
+                    await conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{tbl}_company_id ON {tbl}(company_id);")
+                except Exception:
+                    pass
+
+            # 7. sim_cards: PostgreSQL da global UNIQUE(serial_number) constraintini olib tashlash va composite UNIQUE index yaratish
+            try:
+                cur_cons = await conn.execute("""
+                    SELECT conname 
+                    FROM pg_constraint c
+                    JOIN pg_class t ON c.conrelid = t.oid
+                    WHERE t.relname = 'sim_cards' AND c.contype = 'u' AND conname != 'uq_sim_cards_comp_op_serial'
+                """)
+                old_constraints = await cur_cons.fetchall()
+                for con_row in old_constraints:
+                    cname = con_row["conname"]
+                    await conn.execute(f"ALTER TABLE sim_cards DROP CONSTRAINT IF EXISTS {cname} CASCADE;")
+                    logger.info(f"PostgreSQL sim_cards jadvalidan eski unikal constraint o'chirildi: {cname}")
+            except Exception as e:
+                logger.warning(f"PostgreSQL sim_cards constraint o'chirishda ogohlantirish: {e}")
+
+            try:
+                await conn.execute("ALTER TABLE sim_cards DROP CONSTRAINT IF EXISTS sim_cards_serial_number_key CASCADE;")
+                await conn.execute("DROP INDEX IF EXISTS sim_cards_serial_number_key CASCADE;")
+            except Exception:
+                pass
+
+            try:
+                await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_sim_cards_comp_op_serial ON sim_cards(company_id, operator_type, serial_number);")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_serial ON sim_cards(serial_number);")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_employee ON sim_cards(employee_id);")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_operator ON sim_cards(operator_type);")
+                await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_sold ON sim_cards(status, sold_at);")
+                logger.info("PostgreSQL uq_sim_cards_comp_op_serial kompozit unikal indeksi kafolatlandi.")
+            except Exception as e:
+                logger.warning(f"PostgreSQL uq_sim_cards_comp_op_serial indeks yaratishda ogohlantirish: {e}")
+
             await conn.commit()
         return
 
