@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=887', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=888', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=887">
+  <link rel="stylesheet" href="/static/css/style.css?v=888">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -1055,16 +1055,16 @@
     <!-- Rahbar 7: Reyting & KPI -->
     <section class="tab-pane admin-pane" id="pane-admin-rating" style="display: none;">
       <div class="card-box">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+        <div class="rating-header-bar flex justify-between items-center flex-wrap gap-2 mb-4">
           <div>
-            <h2 class="card-title" style="margin-bottom: 0.25rem;">🏆 Reyting & KPI</h2>
+            <h2 class="card-title mb-0.5">🏆 Reyting & KPI</h2>
           </div>
-          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <div class="segmented-control" id="admin-rating-segmented">
+          <div class="rating-actions-bar flex items-center gap-2 flex-wrap">
+            <div class="segmented-control rating-segmented-control" id="admin-rating-segmented">
               <button type="button" class="btn-primary" id="btn-admin-rating-monthly" onclick="loadLeaderboard('monthly', 'admin')">Oylik reyting</button>
               <button type="button" class="btn-logout" id="btn-admin-rating-overall" onclick="loadLeaderboard('overall', 'admin')">Umumiy reyting</button>
             </div>
-            <button type="button" class="btn-success-sm" onclick="exportRatingToExcel()" title="Reyting jadvalini Excelga yuklash">
+            <button type="button" class="btn-success-sm rating-excel-btn" onclick="exportRatingToExcel()" title="Reyting jadvalini Excelga yuklash">
               <span>📥</span> Excel (.xlsx)
             </button>
           </div>
@@ -1751,13 +1751,15 @@
     <!-- Xodim 4: Reyting oynasi -->
     <section class="tab-pane employee-pane" id="pane-emp-rating" style="display: none;">
       <div class="card-box">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+        <div class="rating-header-bar flex justify-between items-center flex-wrap gap-2 mb-4">
           <div>
-            <h2 class="card-title" style="margin-bottom: 0.25rem;">🏆 Reyting jadvali</h2>
+            <h2 class="card-title mb-0.5">🏆 Reyting jadvali</h2>
           </div>
-          <div class="segmented-control" id="emp-rating-segmented">
-            <button type="button" class="btn-primary" id="btn-emp-rating-monthly" onclick="loadLeaderboard('monthly', 'emp')">Oylik reyting</button>
-            <button type="button" class="btn-logout" id="btn-emp-rating-overall" onclick="loadLeaderboard('overall', 'emp')">Umumiy reyting</button>
+          <div class="rating-actions-bar flex items-center gap-2 flex-wrap">
+            <div class="segmented-control rating-segmented-control" id="emp-rating-segmented">
+              <button type="button" class="btn-primary" id="btn-emp-rating-monthly" onclick="loadLeaderboard('monthly', 'emp')">Oylik reyting</button>
+              <button type="button" class="btn-logout" id="btn-emp-rating-overall" onclick="loadLeaderboard('overall', 'emp')">Umumiy reyting</button>
+            </div>
           </div>
         </div>
         <div class="table-container table-scroll-10">
@@ -2669,6 +2671,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=887"></script>
+  <script src="/static/js/app.js?v=888"></script>
 </body>
 </html>

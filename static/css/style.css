@@ -3764,24 +3764,85 @@ button:active,
     justify-content: flex-start !important;
   }
 
-  /* Reyting bo'limi filtrlari mobil formatda 50/50 segment */
-  #pane-admin-rating .card-box>div:first-child>div:last-child,
-  #pane-emp-rating .card-box>div:first-child>div:last-child {
+  /* Reyting bo'limi filtrlari mobil formatda */
+  .rating-header-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+  }
+
+  .rating-actions-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+
+  .rating-segmented-control,
+  #admin-rating-segmented,
+  #emp-rating-segmented {
     display: grid !important;
-    grid-template-columns: 1fr 1fr;
-    width: 100%;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    grid-template-columns: 1fr 1fr !important;
+    width: 100% !important;
+    margin-top: 0.25rem !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
   }
 
   #btn-admin-rating-monthly,
   #btn-admin-rating-overall,
   #btn-emp-rating-monthly,
   #btn-emp-rating-overall {
-    width: 100%;
-    text-align: center;
-    justify-content: center;
-    padding: 0.6rem 0.5rem;
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    padding: 0.55rem 0.5rem !important;
+    font-size: 0.82rem !important;
+    white-space: nowrap !important;
+  }
+
+  .rating-excel-btn {
+    width: 100% !important;
+    height: 38px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+  }
+
+  /* Kassir tayinlash bloki mobil formatda */
+  .cashier-appoint-box {
+    padding: 1rem 0.9rem !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .cashier-appoint-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.65rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #appoint-cashier-select {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: none !important;
+    box-sizing: border-box !important;
+    height: 44px !important;
+  }
+
+  .btn-appoint-cashier {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    justify-content: center !important;
   }
 
   /* Sim-karta qidiruv paneli mobil formatda */
@@ -4641,12 +4702,15 @@ body.theme-light input[type="date"]::-webkit-calendar-picker-indicator:hover {
   align-items: center !important;
   gap: 0.75rem !important;
   flex-wrap: wrap !important;
-  max-width: 620px !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 #appoint-cashier-select {
-  flex: 1 1 280px !important;
-  max-width: 360px !important;
+  flex: 1 1 240px !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
   width: auto !important;
   height: 42px !important;
   box-sizing: border-box !important;
