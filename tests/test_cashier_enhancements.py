@@ -129,5 +129,43 @@ class TestCashierEnhancements(unittest.IsolatedAsyncioTestCase):
         # Barcha davr indikatori (bugun + kecha)
         self.assertGreaterEqual(summary["all_total"], summary["today_total"] + 500000)
 
+    async def test_04_duplicate_handover_same_day_blocked(self):
+        """4. 1 kunga 1 marta kassa qabul qilinadi, takroriy qabul qilish bloklanishi shart"""
+        from fastapi import HTTPException
+        today_str = get_tashkent_today_str()
+
+        # 1-marta topshirish: muvaffaqiyatli
+        req1 = CashierHandoverCreate(
+            employee_id=self.emp1_id,
+            handover_date=today_str,
+            amount_uzs=300000,
+            amount_usd=0,
+            idempotency_key="unique-handover-1"
+        )
+        res1 = await record_handover(req1, self.cashier_user)
+        self.assertTrue(res1["success"])
+
+        # 2-marta shu kunga yana topshirishga urinish: HTTPException(400) berishi shart!
+        req2 = CashierHandoverCreate(
+            employee_id=self.emp1_id,
+            handover_date=today_str,
+            amount_uzs=200000,
+            amount_usd=0,
+            idempotency_key="unique-handover-2"
+        )
+        with self.assertRaises(HTTPException) as cm:
+            await record_handover(req2, self.cashier_user)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertIn("allaqachon qabul qilingan", cm.exception.detail)
+        self.assertIn("1 marta", cm.exception.detail)
+
+        # get_active_employees tekshiruvi: emp1 'already_handed_over' ichida bo'lishi kerak
+        emp_res = await get_active_employees(date=today_str, user=self.cashier_user)
+        pending_ids = [e["id"] for e in emp_res["data"]]
+        already_ids = [e["id"] for e in emp_res.get("already_handed_over", [])]
+        self.assertNotIn(self.emp1_id, pending_ids)
+        self.assertIn(self.emp1_id, already_ids)
+
 if __name__ == "__main__":
     unittest.main()

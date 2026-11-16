@@ -2351,17 +2351,56 @@ async function loadCashierEmployees(targetDate) {
     const res = await api(`/api/cashier/employees?date=${encodeURIComponent(dateVal)}`);
     const select = document.getElementById("cashier-employee-select");
     if (!select) return;
+
+    let noticeBox = document.getElementById("cashier-already-handed-notice");
+    if (!noticeBox) {
+      noticeBox = document.createElement("div");
+      noticeBox.id = "cashier-already-handed-notice";
+      noticeBox.style.cssText = "margin-top: 0.5rem; font-size: 0.8rem; border-radius: 8px; padding: 0.55rem 0.75rem; display: none;";
+      select.parentElement.appendChild(noticeBox);
+    }
+
     select.innerHTML = `<option value="">👤 -- Xodimni tanlang --</option>`;
-    const employees = (res.data || []).filter(emp => emp.role !== "ADMIN");
-    if (employees.length === 0) {
-      select.innerHTML += `<option value="" disabled>Ushbu sana (${formatDateOnly(dateVal)}) uchun barcha xodimlar kassani topshirib bo'lgan yoki damda</option>`;
+    const pendingEmployees = (res.data || []).filter(emp => emp.role !== "ADMIN");
+    const alreadyHanded = (res.already_handed_over || []).filter(emp => emp.role !== "ADMIN");
+
+    if (pendingEmployees.length === 0 && alreadyHanded.length === 0) {
+      select.innerHTML += `<option value="" disabled>Ushbu sana (${formatDateOnly(dateVal)}) uchun faol xodimlar topilmadi yoki damda</option>`;
+      noticeBox.style.display = "none";
       return;
     }
-    employees.forEach(emp => {
-      const roleIcon = emp.role === "CASHIER" ? "💵" : "💼";
-      const roleText = emp.role === "CASHIER" ? "Kassir" : "Xodim";
-      select.innerHTML += `<option value="${emp.id}">👤 ${emp.full_name} &nbsp;•&nbsp; (${roleIcon} ${roleText})</option>`;
-    });
+
+    if (pendingEmployees.length === 0 && alreadyHanded.length > 0) {
+      select.innerHTML += `<option value="" disabled selected>✅ Ushbu sana (${formatDateOnly(dateVal)}) uchun barcha xodimlardan kassa to'liq qabul qilingan</option>`;
+    } else {
+      pendingEmployees.forEach(emp => {
+        const roleIcon = emp.role === "CASHIER" ? "💵" : "💼";
+        const roleText = emp.role === "CASHIER" ? "Kassir" : "Xodim";
+        select.innerHTML += `<option value="${emp.id}">👤 ${emp.full_name} &nbsp;•&nbsp; (${roleIcon} ${roleText})</option>`;
+      });
+    }
+
+    // Allaqachon topshirganlarni disabled optgroup sifatida ko'rsatish
+    if (alreadyHanded.length > 0) {
+      const optGroup = document.createElement("optgroup");
+      optGroup.label = `🔒 Ushbu kunga kassa qabul qilingan (${alreadyHanded.length} ta):`;
+      alreadyHanded.forEach(emp => {
+        const opt = document.createElement("option");
+        opt.value = `already_${emp.id}`;
+        opt.disabled = true;
+        opt.textContent = `✔ ${emp.full_name} — ${formatNumberSpaces(emp.amount)} so'm topshirilgan`;
+        optGroup.appendChild(opt);
+      });
+      select.appendChild(optGroup);
+
+      noticeBox.innerHTML = `⚠️ <b>Ogohlantirish:</b> Ushbu sana (<b>${formatDateOnly(dateVal)}</b>) uchun <b>${alreadyHanded.length}</b> nafar xodimdan kassa allaqachon qabul qilingan. Kassir bir kunga faqat 1 marta kassa qabul qila oladi!`;
+      noticeBox.style.background = "rgba(245, 158, 11, 0.12)";
+      noticeBox.style.border = "1px solid rgba(245, 158, 11, 0.35)";
+      noticeBox.style.color = "#fbbf24";
+      noticeBox.style.display = "block";
+    } else {
+      noticeBox.style.display = "none";
+    }
   } catch (e) {}
 }
 
@@ -2415,8 +2454,8 @@ async function handleCashierHandoverSubmit(e) {
   const usd = parseFormattedNumber(document.getElementById("cashier-amount-usd").value) || 0;
   const rate = currentUsdRate || 12000;
 
-  if (!empId) {
-    showToast("Iltimos, xodimni tanlang!", "danger");
+  if (!empId || empId.startsWith("already_")) {
+    showToast("Ushbu sana uchun kassa allaqachon qabul qilingan! Kassir bir kunga faqat 1 marta kassa qabul qila oladi.", "warning");
     return;
   }
   if (!handoverDate) {
