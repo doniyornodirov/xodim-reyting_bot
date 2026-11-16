@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=895', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=896', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=895">
+  <link rel="stylesheet" href="/static/css/style.css?v=896">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -2910,12 +2910,13 @@
       <button type="button" class="cal-nav-btn next-btn" onclick="navigateComparisonCalMonth(1)" title="Keyingi oy">›</button>
     </div>
 
-    <!-- Tezkor Preset Tugmalari -->
+    <!-- Tezkor Preset Tugmalari (Oraliq va Sana Tanlovlari) -->
     <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.65rem;">
       <button type="button" class="time-chip-btn active-preset" id="comp-preset-today" onclick="applyComparisonPreset('today')">✨ Bugun</button>
       <button type="button" class="time-chip-btn" id="comp-preset-yesterday" onclick="applyComparisonPreset('yesterday')">⏪ Kecha</button>
-      <button type="button" class="time-chip-btn" id="comp-preset-prev2" onclick="applyComparisonPreset('prev2')">📅 2 kun oldin</button>
-      <button type="button" class="time-chip-btn" id="comp-preset-monthstart" onclick="applyComparisonPreset('monthstart')">🎯 Oy boshi</button>
+      <button type="button" class="time-chip-btn" id="comp-preset-7d" onclick="applyComparisonPreset('7d')">📅 7 kun</button>
+      <button type="button" class="time-chip-btn" id="comp-preset-30d" onclick="applyComparisonPreset('30d')">📅 30 kun</button>
+      <button type="button" class="time-chip-btn" id="comp-preset-this_month" onclick="applyComparisonPreset('this_month')">🎯 Shu oy</button>
     </div>
 
     <!-- 7 kunlik grid -->
@@ -2934,6 +2935,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=895"></script>
+  <script src="/static/js/app.js?v=896"></script>
 </body>
 </html>

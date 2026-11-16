@@ -343,5 +343,15 @@ class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
             self.assertIn("is_zero_discrepancy", summary)
             self.assertIn("status_text", summary)
 
+            # 3. Oraliq (Date Range) bo'yicha kassa taqqoslash tekshiruvi
+            range_results = await calculate_daily_cashier_comparison(
+                conn, company_id=1, target_date="2026-11-01", end_date="2026-11-16"
+            )
+            self.assertIsInstance(range_results, list)
+            range_summary = summarize_cashier_comparison(range_results)
+            self.assertIn("total_expected_uzs", range_summary)
+            self.assertIn("total_collected_uzs", range_summary)
+            self.assertIn("total_difference_uzs", range_summary)
+
 if __name__ == "__main__":
     unittest.main()

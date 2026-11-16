@@ -550,6 +550,9 @@ function formatStatusBadge(status, extraText = "") {
   if (s === "CANCELLED") return `<span class="status-badge status-rejected" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">Bekor qilindi 🔄${extra}</span>`;
   if (s === "PENDING") return `<span class="status-badge status-pending">Kutilmoqda ⏳</span>`;
   if (s === "TOPSHIRILMAGAN") return `<span class="status-badge status-pending" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3);">Topshirilmagan ⚠️</span>`;
+  if (typeof status === "string" && status.toLowerCase().includes("hisobot")) {
+    return `<span class="status-badge status-approved" style="background: rgba(99, 102, 241, 0.15); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); font-weight: 700;">${status} 📑</span>`;
+  }
   return `<span class="status-badge status-pending">${status}</span>`;
 }
 
@@ -3642,8 +3645,16 @@ let adminComparisonSummary = null;
 async function loadAdminComparison() {
   try {
     const dateInput = document.getElementById("admin-comparison-date");
-    const targetDate = dateInput && dateInput.value ? dateInput.value : "";
-    const endpoint = targetDate ? `/api/cashier/comparison?date=${targetDate}` : "/api/cashier/comparison";
+    const targetDate = dateInput && dateInput.value ? dateInput.value.trim() : "";
+    let endpoint = "/api/cashier/comparison";
+    if (targetDate) {
+      if (targetDate.includes("_")) {
+        const parts = targetDate.split("_");
+        endpoint = `/api/cashier/comparison?start_date=${parts[0]}&end_date=${parts[1]}`;
+      } else {
+        endpoint = `/api/cashier/comparison?date=${targetDate}`;
+      }
+    }
 
     const res = await api(endpoint);
     adminComparisonCache = res.data || [];
@@ -3653,14 +3664,21 @@ async function loadAdminComparison() {
       dateInput.value = res.date;
     }
 
-    if (res.date) {
-      const textSpan = document.getElementById("comparison-selected-date-text");
-      if (textSpan) {
-        const parts = res.date.split("-");
-        const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
-        const todayD = new Date();
-        const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
-        textSpan.innerText = (res.date === todayIso) ? "Bugun" : dFmt;
+    const textSpan = document.getElementById("comparison-selected-date-text");
+    if (textSpan) {
+      if (res.is_range && res.start_date && res.end_date) {
+        const sP = res.start_date.split("-");
+        const eP = res.end_date.split("-");
+        textSpan.innerText = `${sP[2]}.${sP[1]} — ${eP[2]}.${eP[1]}`;
+      } else if (res.date) {
+        const sVal = res.start_date || res.date;
+        if (sVal.includes("-")) {
+          const parts = sVal.split("-");
+          const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
+          const todayD = new Date();
+          const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+          textSpan.innerText = (sVal === todayIso) ? "Bugun" : dFmt;
+        }
       }
     }
 
@@ -7543,40 +7561,55 @@ window.addEventListener("click", (e) => {
 });
 
 // ============================================================
-// KASSA TAQQOSLASH UCHUN CHIROYLI VA IXCHAM POPOVER KALENDAR
+// KASSA TAQQOSLASH UCHUN CHIROYLI VA IXCHAM POPOVER KALENDAR (ORALIQ / RANGE)
 // ============================================================
 let comparisonCalYear = 2026;
 let comparisonCalMonth = 10; // 0-indexed
-let selectedComparisonDateIso = "";
+let comparisonCalStartDate = "";
+let comparisonCalEndDate = "";
+let comparisonCalPickingStep = "start"; // "start" (boshlanish) yoki "end" (tugash)
+let comparisonCalActivePreset = "today";
 
 function openComparisonDatePicker(triggerEl) {
   const popover = document.getElementById("compact-comparison-datepicker-popover");
   if (!popover) return;
 
   const dateInput = document.getElementById("admin-comparison-date");
-  const curVal = (dateInput && dateInput.value) ? dateInput.value : "";
+  const curVal = (dateInput && dateInput.value) ? dateInput.value.trim() : "";
 
-  if (curVal && curVal.includes("-")) {
-    const parts = curVal.split("-");
-    comparisonCalYear = parseInt(parts[0], 10);
-    comparisonCalMonth = parseInt(parts[1], 10) - 1;
-    selectedComparisonDateIso = curVal;
+  const todayD = new Date();
+  const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+
+  if (curVal.includes("_")) {
+    const parts = curVal.split("_");
+    comparisonCalStartDate = parts[0];
+    comparisonCalEndDate = parts[1];
+  } else if (curVal.includes("-")) {
+    comparisonCalStartDate = curVal;
+    comparisonCalEndDate = curVal;
   } else {
-    const d = new Date();
-    comparisonCalYear = d.getFullYear();
-    comparisonCalMonth = d.getMonth();
-    selectedComparisonDateIso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    comparisonCalStartDate = todayIso;
+    comparisonCalEndDate = todayIso;
   }
+
+  // Kalendarni boshlanish sanasi oyiga moslash
+  const baseDate = comparisonCalStartDate || todayIso;
+  const p = baseDate.split("-");
+  if (p.length === 3) {
+    comparisonCalYear = parseInt(p[0], 10);
+    comparisonCalMonth = parseInt(p[1], 10) - 1;
+  }
+  comparisonCalPickingStep = "start";
 
   renderComparisonCalendar();
 
   popover.style.display = "block";
 
   // Popover joylashuvini hisoblash (Desktop va Katta planshetlarda tugma ostiga, Mobilda markazga)
-  if (window.innerWidth >= 640) {
+  if (window.innerWidth >= 640 && triggerEl) {
     const rect = triggerEl.getBoundingClientRect();
-    const popoverWidth = 290;
-    const popoverHeight = 330;
+    const popoverWidth = 310;
+    const popoverHeight = 350;
 
     let left = window.scrollX + rect.left + (rect.width - popoverWidth) / 2;
     if (left + popoverWidth > window.innerWidth - 10) {
@@ -7616,20 +7649,49 @@ function navigateComparisonCalMonth(dir) {
 }
 
 function applyComparisonPreset(preset) {
-  const d = new Date();
-  if (preset === "yesterday") {
-    d.setDate(d.getDate() - 1);
+  const todayD = new Date();
+  const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+
+  comparisonCalActivePreset = preset;
+
+  if (preset === "today") {
+    comparisonCalStartDate = todayIso;
+    comparisonCalEndDate = todayIso;
+  } else if (preset === "yesterday") {
+    const yestD = new Date();
+    yestD.setDate(yestD.getDate() - 1);
+    const yestIso = `${yestD.getFullYear()}-${String(yestD.getMonth() + 1).padStart(2, "0")}-${String(yestD.getDate()).padStart(2, "0")}`;
+    comparisonCalStartDate = yestIso;
+    comparisonCalEndDate = yestIso;
+  } else if (preset === "7d") {
+    const d7 = new Date();
+    d7.setDate(d7.getDate() - 6);
+    comparisonCalStartDate = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, "0")}-${String(d7.getDate()).padStart(2, "0")}`;
+    comparisonCalEndDate = todayIso;
+  } else if (preset === "30d") {
+    const d30 = new Date();
+    d30.setDate(d30.getDate() - 29);
+    comparisonCalStartDate = `${d30.getFullYear()}-${String(d30.getMonth() + 1).padStart(2, "0")}-${String(d30.getDate()).padStart(2, "0")}`;
+    comparisonCalEndDate = todayIso;
+  } else if (preset === "this_month") {
+    comparisonCalStartDate = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-01`;
+    comparisonCalEndDate = todayIso;
   } else if (preset === "prev2") {
-    d.setDate(d.getDate() - 2);
+    const d2 = new Date();
+    d2.setDate(d2.getDate() - 2);
+    const d2Iso = `${d2.getFullYear()}-${String(d2.getMonth() + 1).padStart(2, "0")}-${String(d2.getDate()).padStart(2, "0")}`;
+    comparisonCalStartDate = d2Iso;
+    comparisonCalEndDate = d2Iso;
   } else if (preset === "monthstart") {
-    d.setDate(1);
+    const msIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-01`;
+    comparisonCalStartDate = msIso;
+    comparisonCalEndDate = todayIso;
   }
-  comparisonCalYear = d.getFullYear();
-  comparisonCalMonth = d.getMonth();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  selectedComparisonDateIso = `${y}-${m}-${day}`;
+
+  const p = comparisonCalStartDate.split("-");
+  comparisonCalYear = parseInt(p[0], 10);
+  comparisonCalMonth = parseInt(p[1], 10) - 1;
+  comparisonCalPickingStep = "start";
 
   renderComparisonCalendar();
   confirmComparisonDatePicker();
@@ -7647,6 +7709,12 @@ function renderComparisonCalendar() {
 
   if (monthYearLabel) {
     monthYearLabel.textContent = `${uzbekMonths[comparisonCalMonth]} ${comparisonCalYear}`;
+  }
+
+  let s = comparisonCalStartDate;
+  let e = comparisonCalEndDate;
+  if (s && e && s > e) {
+    const tmp = s; s = e; e = tmp;
   }
 
   if (grid) {
@@ -7682,59 +7750,112 @@ function renderComparisonCalendar() {
       const dStr = String(d).padStart(2, "0");
       const currentIso = `${comparisonCalYear}-${mStr}-${dStr}`;
 
-      let classes = "saas-cal-day-cell";
-      if (currentIso === selectedComparisonDateIso) classes += " is-selected";
-      if (currentIso === todayIso) classes += " is-today";
+      let classes = ["saas-cal-day-cell"];
+      if (currentIso === todayIso) classes.push("is-today");
 
-      cell.className = classes;
+      if (s && currentIso === s) classes.push("is-start", "is-selected");
+      if (e && currentIso === e) classes.push("is-end", "is-selected");
+      if (s && e && currentIso > s && currentIso < e) classes.push("in-range");
+
+      cell.className = classes.join(" ");
       cell.textContent = d;
-      cell.onclick = (e) => {
-        e.stopPropagation();
-        selectedComparisonDateIso = currentIso;
-        renderComparisonCalendar();
-        confirmComparisonDatePicker();
+      cell.onclick = (ev) => {
+        ev.stopPropagation();
+        comparisonCalActivePreset = null;
+
+        if (comparisonCalPickingStep === "start" || (comparisonCalStartDate && comparisonCalEndDate && comparisonCalStartDate !== comparisonCalEndDate)) {
+          // 1-bosqich: Boshlanish sanasi tanlandi
+          comparisonCalStartDate = currentIso;
+          comparisonCalEndDate = null;
+          comparisonCalPickingStep = "end";
+          renderComparisonCalendar();
+        } else {
+          // 2-bosqich: Tugash sanasi tanlandi
+          if (currentIso < comparisonCalStartDate) {
+            comparisonCalEndDate = comparisonCalStartDate;
+            comparisonCalStartDate = currentIso;
+          } else {
+            comparisonCalEndDate = currentIso;
+          }
+          comparisonCalPickingStep = "start";
+          renderComparisonCalendar();
+          confirmComparisonDatePicker();
+        }
       };
       grid.appendChild(cell);
     }
   }
 
-  if (summaryLabel && selectedComparisonDateIso) {
-    const parts = selectedComparisonDateIso.split("-");
-    const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
+  // Xulosa matni
+  if (summaryLabel) {
     const todayD = new Date();
     const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
-    const extraLabel = (selectedComparisonDateIso === todayIso) ? " (Bugun)" : "";
-    summaryLabel.innerHTML = `<span>📅</span> Tanlandi: <b>${dFmt}${extraLabel}</b>`;
+
+    if (s && e) {
+      const sParts = s.split("-");
+      const eParts = e.split("-");
+      const sFmt = `${sParts[2]}.${sParts[1]}.${sParts[0]}`;
+      const eFmt = `${eParts[2]}.${eParts[1]}.${eParts[0]}`;
+      if (s === e) {
+        const extraLabel = (s === todayIso) ? " (Bugun)" : "";
+        summaryLabel.innerHTML = `<span>📅</span> Tanlandi: <b>${sFmt}${extraLabel}</b>`;
+      } else {
+        const msDiff = new Date(e) - new Date(s);
+        const daysCount = Math.round(msDiff / (1000 * 3600 * 24)) + 1;
+        summaryLabel.innerHTML = `<span>📅</span> Tanlandi: <b>${sFmt}</b> — <b>${eFmt}</b> (${daysCount} kun)`;
+      }
+    } else if (s) {
+      const sParts = s.split("-");
+      const sFmt = `${sParts[2]}.${sParts[1]}.${sParts[0]}`;
+      summaryLabel.innerHTML = `<span>📅</span> Boshlanish: <b>${sFmt}</b> (Tugash sanasini bosing)`;
+    } else {
+      summaryLabel.innerHTML = `<span>📅</span> Tanlandi: <b>Bugun</b>`;
+    }
   }
 
   // Preset tugmalarining faol holatini belgilash
-  const todayD = new Date();
-  const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
-  const yestD = new Date(); yestD.setDate(yestD.getDate() - 1);
-  const yestIso = `${yestD.getFullYear()}-${String(yestD.getMonth() + 1).padStart(2, "0")}-${String(yestD.getDate()).padStart(2, "0")}`;
-
-  const btnToday = document.getElementById("comp-preset-today");
-  const btnYest = document.getElementById("comp-preset-yesterday");
-  if (btnToday) btnToday.classList.toggle("active-preset", selectedComparisonDateIso === todayIso);
-  if (btnYest) btnYest.classList.toggle("active-preset", selectedComparisonDateIso === yestIso);
+  document.querySelectorAll(".compact-comparison-datepicker-popover .time-chip-btn").forEach(btn => {
+    btn.classList.toggle("active-preset", Boolean(comparisonCalActivePreset && btn.id === `comp-preset-${comparisonCalActivePreset}`));
+  });
 }
 
 function confirmComparisonDatePicker() {
-  if (selectedComparisonDateIso) {
-    const input = document.getElementById("admin-comparison-date");
-    const textSpan = document.getElementById("comparison-selected-date-text");
-    if (input) input.value = selectedComparisonDateIso;
-
-    if (textSpan) {
-      const parts = selectedComparisonDateIso.split("-");
-      const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
-      const todayD = new Date();
-      const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
-      textSpan.innerText = (selectedComparisonDateIso === todayIso) ? "Bugun" : dFmt;
-    }
-
-    loadAdminComparison();
+  if (!comparisonCalStartDate) {
+    const todayD = new Date();
+    comparisonCalStartDate = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
   }
+  if (!comparisonCalEndDate) {
+    comparisonCalEndDate = comparisonCalStartDate;
+  }
+
+  let s = comparisonCalStartDate;
+  let e = comparisonCalEndDate;
+  if (s > e) {
+    const tmp = s; s = e; e = tmp;
+  }
+
+  const input = document.getElementById("admin-comparison-date");
+  const textSpan = document.getElementById("comparison-selected-date-text");
+
+  const todayD = new Date();
+  const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+
+  if (s === e) {
+    if (input) input.value = s;
+    if (textSpan) {
+      const parts = s.split("-");
+      textSpan.innerText = (s === todayIso) ? "Bugun" : `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+  } else {
+    if (input) input.value = `${s}_${e}`;
+    if (textSpan) {
+      const sP = s.split("-");
+      const eP = e.split("-");
+      textSpan.innerText = `${sP[2]}.${sP[1]} — ${eP[2]}.${eP[1]}`;
+    }
+  }
+
+  loadAdminComparison();
   closeComparisonDatePicker();
 }
 

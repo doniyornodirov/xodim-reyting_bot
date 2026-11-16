@@ -201,30 +201,72 @@ async def get_my_handovers(user: dict = Depends(require_role(["CASHIER", "ADMIN"
         return {"success": True, "data": [dict(r) for r in rows]}
 
 @router.get("/comparison")
-async def get_comparison(date: str = None, user: dict = Depends(require_role(["ADMIN"]))):
+async def get_comparison(
+    date: str = None,
+    start_date: str = None,
+    end_date: str = None,
+    user: dict = Depends(require_role(["ADMIN"]))
+):
     import logging
     logger = logging.getLogger(__name__)
 
     try:
-        clean_date = (date or "").strip()
-        if not clean_date or clean_date.lower() in ("undefined", "null"):
-            target_date = get_tashkent_today_str()
-        else:
-            from datetime import datetime
-            datetime.strptime(clean_date, "%Y-%m-%d")
-            target_date = clean_date
+        from datetime import datetime
+        s_date = None
+        e_date = None
+
+        if start_date and end_date:
+            s_clean = start_date.strip()
+            e_clean = end_date.strip()
+            datetime.strptime(s_clean, "%Y-%m-%d")
+            datetime.strptime(e_clean, "%Y-%m-%d")
+            s_date = s_clean
+            e_date = e_clean
+        elif date and ("_" in date or ":" in date):
+            delimiter = "_" if "_" in date else ":"
+            parts = date.strip().split(delimiter)
+            if len(parts) == 2:
+                datetime.strptime(parts[0].strip(), "%Y-%m-%d")
+                datetime.strptime(parts[1].strip(), "%Y-%m-%d")
+                s_date = parts[0].strip()
+                e_date = parts[1].strip()
+        elif date:
+            clean_date = date.strip()
+            if clean_date.lower() not in ("undefined", "null", ""):
+                datetime.strptime(clean_date, "%Y-%m-%d")
+                s_date = clean_date
+                e_date = clean_date
+
+        if not s_date or not e_date:
+            today_str = get_tashkent_today_str()
+            s_date = today_str
+            e_date = today_str
+
+        if s_date > e_date:
+            s_date, e_date = e_date, s_date
+
     except (ValueError, TypeError):
-        target_date = get_tashkent_today_str()
+        today_str = get_tashkent_today_str()
+        s_date = today_str
+        e_date = today_str
 
     comp_id = user.get("company_id") or 1
 
     try:
         async with get_db_connection() as conn:
-            results = await calculate_daily_cashier_comparison(conn, comp_id, target_date)
+            results = await calculate_daily_cashier_comparison(conn, comp_id, s_date, e_date)
             summary = summarize_cashier_comparison(results)
-            return {"success": True, "date": target_date, "summary": summary, "data": results}
+            return {
+                "success": True,
+                "date": s_date if s_date == e_date else f"{s_date}_{e_date}",
+                "start_date": s_date,
+                "end_date": e_date,
+                "is_range": (s_date != e_date),
+                "summary": summary,
+                "data": results
+            }
     except Exception as e:
-        logger.error(f"Kassa taqqoslashda xatolik ({target_date}, comp_id={comp_id}): {e}", exc_info=True)
+        logger.error(f"Kassa taqqoslashda xatolik ({s_date} -> {e_date}, comp_id={comp_id}): {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Kassa taqqoslash ma'lumotlarini yuklashda xatolik yuz berdi. Iltimos qayta urinib ko'ring."
