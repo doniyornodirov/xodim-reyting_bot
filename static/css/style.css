@@ -3499,7 +3499,11 @@ button:active,
     font-size: 0.8rem !important;
   }
 
-  #nav-user-name {
+  #nav-user-name,
+  #nav-user-role,
+  #nav-user-shift,
+  #nav-user-debt,
+  #nav-user-location {
     display: none !important;
   }
 
@@ -3835,6 +3839,8 @@ button:active,
     flex: none !important;
     box-sizing: border-box !important;
     height: 44px !important;
+    max-height: 44px !important;
+    min-height: 44px !important;
   }
 
   .btn-appoint-cashier {
@@ -4708,11 +4714,13 @@ body.theme-light input[type="date"]::-webkit-calendar-picker-indicator:hover {
 }
 
 #appoint-cashier-select {
-  flex: 1 1 240px !important;
+  flex: 1 1 240px;
   max-width: 100% !important;
   min-width: 0 !important;
   width: auto !important;
   height: 42px !important;
+  max-height: 42px !important;
+  min-height: 42px !important;
   box-sizing: border-box !important;
 }
 
