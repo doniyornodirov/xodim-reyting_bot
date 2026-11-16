@@ -1130,7 +1130,10 @@ function closeSidebarMenu() {
 }
 
 window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeSidebarMenu();
+  if (e.key === "Escape") {
+    closeSidebarMenu();
+    closeCashierDatePicker();
+  }
 });
 
 function updateDebtBadges() {
@@ -2332,20 +2335,8 @@ async function loadLeaderboard(period = "monthly") {
 async function loadCashierPanel() {
   try {
     await loadUsdRate(); // Har safar kassa paneli ochilganda yangi dollar kursini olish
+    initCashierDatePicker();
     const dateInput = document.getElementById("cashier-handover-date");
-    if (dateInput) {
-      const todayIso = getTashkentTodayIso();
-      if (!dateInput.value) {
-        dateInput.value = todayIso;
-      }
-      dateInput.max = todayIso;
-      if (!dateInput.dataset.listenerAttached) {
-        dateInput.dataset.listenerAttached = "true";
-        dateInput.addEventListener("change", () => {
-          loadCashierEmployees(dateInput.value);
-        });
-      }
-    }
     await loadCashierEmployees(dateInput ? dateInput.value : null);
     setupCashierInputs();
     calculateCashierLiveTotal();
@@ -2544,6 +2535,226 @@ const uzbekMonths = [
 function getTashkentTodayIso(offsetDays = 0) {
   const d = new Date(Date.now() + 5 * 3600 * 1000 + offsetDays * 86400 * 1000);
   return d.toISOString().slice(0, 10);
+}
+
+// ==========================================
+// KASSIR SANASINI TANLASH (CUSTOM DARK CALENDAR)
+// ==========================================
+
+let cashierPickerState = {
+  selectedDate: null,
+  viewYear: new Date(Date.now() + 5 * 3600 * 1000).getFullYear(),
+  viewMonth: new Date(Date.now() + 5 * 3600 * 1000).getMonth(),
+  isOpen: false
+};
+
+function formatCashierDateDisplay(dateStr) {
+  if (!dateStr) return "Sana tanlanmagan";
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+  const y = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  const today = getTashkentTodayIso();
+  const yesterday = getTashkentTodayIso(-1);
+  const twoDaysAgo = getTashkentTodayIso(-2);
+
+  let prefix = "";
+  if (dateStr === today) prefix = "Bugun, ";
+  else if (dateStr === yesterday) prefix = "Kecha, ";
+  else if (dateStr === twoDaysAgo) prefix = "2 kun oldin, ";
+
+  const mName = uzbekMonths[m - 1] || "";
+  return `${prefix}${d}-${mName} ${y}`;
+}
+
+function updateCashierDateBadge(dateStr) {
+  const badge = document.getElementById("cashier-date-badge");
+  if (!badge) return;
+  const today = getTashkentTodayIso();
+  const yesterday = getTashkentTodayIso(-1);
+  const twoDaysAgo = getTashkentTodayIso(-2);
+
+  if (dateStr === today) {
+    badge.textContent = "Bugun";
+    badge.style.background = "rgba(99, 102, 241, 0.18)";
+    badge.style.color = "#818cf8";
+  } else if (dateStr === yesterday) {
+    badge.textContent = "Kecha";
+    badge.style.background = "rgba(245, 158, 11, 0.18)";
+    badge.style.color = "#f59e0b";
+  } else if (dateStr === twoDaysAgo) {
+    badge.textContent = "2 kun oldin";
+    badge.style.background = "rgba(239, 68, 68, 0.18)";
+    badge.style.color = "#f87171";
+  } else {
+    badge.textContent = dateStr;
+    badge.style.background = "rgba(148, 163, 184, 0.15)";
+    badge.style.color = "#94a3b8";
+  }
+}
+
+function initCashierDatePicker(initialDate) {
+  const dateInput = document.getElementById("cashier-handover-date");
+  const defaultDate = initialDate || (dateInput && dateInput.value) || getTashkentTodayIso();
+
+  cashierPickerState.selectedDate = defaultDate;
+  const parts = defaultDate.split("-");
+  if (parts.length === 3) {
+    cashierPickerState.viewYear = parseInt(parts[0], 10);
+    cashierPickerState.viewMonth = parseInt(parts[1], 10) - 1;
+  }
+
+  if (dateInput) {
+    dateInput.value = defaultDate;
+  }
+
+  const textEl = document.getElementById("cashier-date-display-text");
+  if (textEl) {
+    textEl.textContent = formatCashierDateDisplay(defaultDate);
+  }
+  updateCashierDateBadge(defaultDate);
+}
+
+function toggleCashierDatePicker(event) {
+  if (event) event.stopPropagation();
+  const dropdown = document.getElementById("cashier-calendar-dropdown");
+  const chevron = document.getElementById("cashier-date-chevron");
+  if (!dropdown) return;
+
+  const isClosed = dropdown.style.display === "none" || !dropdown.style.display;
+  if (isClosed) {
+    if (!cashierPickerState.selectedDate) {
+      cashierPickerState.selectedDate = getTashkentTodayIso();
+    }
+    const parts = cashierPickerState.selectedDate.split("-");
+    if (parts.length === 3) {
+      cashierPickerState.viewYear = parseInt(parts[0], 10);
+      cashierPickerState.viewMonth = parseInt(parts[1], 10) - 1;
+    }
+
+    renderCashierCalendar();
+    dropdown.style.display = "block";
+    if (chevron) chevron.style.transform = "rotate(180deg)";
+    cashierPickerState.isOpen = true;
+  } else {
+    closeCashierDatePicker();
+  }
+}
+
+function closeCashierDatePicker() {
+  const dropdown = document.getElementById("cashier-calendar-dropdown");
+  const chevron = document.getElementById("cashier-date-chevron");
+  if (dropdown) dropdown.style.display = "none";
+  if (chevron) chevron.style.transform = "rotate(0deg)";
+  cashierPickerState.isOpen = false;
+}
+
+function navCashierCalMonth(dir, event) {
+  if (event) event.stopPropagation();
+  cashierPickerState.viewMonth += dir;
+  if (cashierPickerState.viewMonth < 0) {
+    cashierPickerState.viewMonth = 11;
+    cashierPickerState.viewYear -= 1;
+  } else if (cashierPickerState.viewMonth > 11) {
+    cashierPickerState.viewMonth = 0;
+    cashierPickerState.viewYear += 1;
+  }
+  renderCashierCalendar();
+}
+
+function selectCashierQuickDate(offsetDays, event) {
+  if (event) event.stopPropagation();
+  const targetIso = getTashkentTodayIso(offsetDays);
+  selectCashierDate(targetIso);
+}
+
+function selectCashierDate(dateStr) {
+  cashierPickerState.selectedDate = dateStr;
+  const dateInput = document.getElementById("cashier-handover-date");
+  if (dateInput) {
+    dateInput.value = dateStr;
+  }
+
+  const textEl = document.getElementById("cashier-date-display-text");
+  if (textEl) {
+    textEl.textContent = formatCashierDateDisplay(dateStr);
+  }
+  updateCashierDateBadge(dateStr);
+  closeCashierDatePicker();
+
+  // Tanlangan sana bo'yicha xodimlar ro'yxatini yuklash
+  loadCashierEmployees(dateStr);
+}
+
+function renderCashierCalendar() {
+  const grid = document.getElementById("cashier-cal-days-grid");
+  const monthYearLabel = document.getElementById("cashier-cal-month-year");
+  const footerDate = document.getElementById("cashier-cal-footer-date");
+  if (!grid || !monthYearLabel) return;
+
+  const y = cashierPickerState.viewYear;
+  const m = cashierPickerState.viewMonth;
+  monthYearLabel.textContent = `${uzbekMonths[m]} ${y}`;
+
+  const firstDayObj = new Date(y, m, 1);
+  let firstDayIndex = firstDayObj.getDay(); // 0 is Sun, 1 is Mon...
+  if (firstDayIndex === 0) firstDayIndex = 7; // Mon=1, Sun=7
+
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prevMonthDays = new Date(y, m, 0).getDate();
+  const todayIso = getTashkentTodayIso();
+  const selected = cashierPickerState.selectedDate;
+
+  if (footerDate) {
+    footerDate.textContent = selected ? formatCashierDateDisplay(selected) : "--";
+  }
+
+  let html = "";
+
+  // Oldingi oydan to'ldiruvchi bo'sh kunlar
+  for (let i = firstDayIndex - 1; i >= 1; i--) {
+    const dNum = prevMonthDays - i + 1;
+    html += `<div class="cal-day-cell empty-day" style="opacity: 0.25; cursor: default;">${dNum}</div>`;
+  }
+
+  // Joriy oy kunlari
+  for (let day = 1; day <= daysInMonth; day++) {
+    const mm = String(m + 1).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    const dateStr = `${y}-${mm}-${dd}`;
+
+    let classes = ["cal-day-cell"];
+    let extraStyle = "cursor: pointer; user-select: none; transition: all 0.15s ease;";
+    const isFuture = dateStr > todayIso;
+
+    if (isFuture) {
+      classes.push("empty-day");
+      extraStyle = "opacity: 0.25; cursor: not-allowed; pointer-events: none;";
+      html += `<div class="${classes.join(' ')}" style="${extraStyle}" title="Kelgusi sana tanlab bo'lmaydi">${day}</div>`;
+      continue;
+    }
+
+    if (dateStr === todayIso) {
+      classes.push("is-today");
+    }
+
+    if (dateStr === selected) {
+      classes.push("is-start", "is-end");
+      extraStyle += " background: #6366f1 !important; color: #ffffff !important; font-weight: 700; border-radius: 8px !important; box-shadow: 0 2px 10px rgba(99, 102, 241, 0.6);";
+    }
+
+    html += `<div class="${classes.join(' ')}" style="${extraStyle}" onclick="selectCashierDate('${dateStr}')">${day}</div>`;
+  }
+
+  // Keyingi oydan to'ldiruvchi kunlar
+  const totalCells = (firstDayIndex - 1) + daysInMonth;
+  const trailingCount = (7 - (totalCells % 7)) % 7;
+  for (let t = 1; t <= trailingCount; t++) {
+    html += `<div class="cal-day-cell empty-day" style="opacity: 0.25; cursor: default;">${t}</div>`;
+  }
+
+  grid.innerHTML = html;
 }
 
 function updateAdminReportsDateDisplay() {
@@ -7828,6 +8039,13 @@ window.addEventListener("click", (e) => {
   if (compPopover && compPopover.style.display !== "none") {
     if (!compPopover.contains(e.target) && !e.target.closest("#btn-comparison-datepicker")) {
       closeComparisonDatePicker();
+    }
+  }
+
+  const cashierCal = document.getElementById("cashier-calendar-dropdown");
+  if (cashierCal && cashierCal.style.display !== "none") {
+    if (!cashierCal.contains(e.target) && !e.target.closest("#cashier-date-trigger-btn")) {
+      closeCashierDatePicker();
     }
   }
 });

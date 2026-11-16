@@ -1727,6 +1727,38 @@ body.theme-light .cal-day-cell.is-end {
   color: #ffffff !important;
 }
 
+/* Custom Single Date Picker Dropdown */
+.custom-date-trigger {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.custom-date-trigger:hover,
+.custom-date-trigger:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22) !important;
+}
+body.theme-light .custom-date-trigger {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+body.theme-light .custom-date-trigger #cashier-date-display-text {
+  color: #0f172a !important;
+}
+body.theme-light #cashier-calendar-dropdown {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.18), 0 0 20px rgba(99, 102, 241, 0.12) !important;
+}
+body.theme-light #cashier-cal-month-year {
+  color: #0f172a !important;
+}
+body.theme-light #cashier-calendar-dropdown .cashier-cal-divider {
+  border-top-color: #e2e8f0 !important;
+}
+body.theme-light #cashier-calendar-dropdown .cashier-cal-footer-text {
+  color: #64748b !important;
+}
+
 .btn-primary-sm {
   background: var(--accent-primary);
   color: #ffffff;

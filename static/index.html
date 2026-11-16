@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=912', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=915', { scope: '/' })
         .then(function (r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function (e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -27,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=912">
+  <link rel="stylesheet" href="/static/css/style.css?v=915">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -2230,9 +2230,66 @@
 
         <form id="cashier-handover-form">
           <div class="grid-2" style="gap: 1rem; margin-bottom: 1rem;">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label" style="font-weight: 600;">📅 Qaysi sana uchun kassa? *</label>
-              <input type="date" id="cashier-handover-date" class="form-input" style="font-weight: 700;" required>
+            <div class="form-group" style="margin-bottom: 0; position: relative;">
+              <label class="form-label" style="font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
+                <span>📅 Qaysi sana uchun kassa? *</span>
+                <span id="cashier-date-badge" style="font-size: 0.72rem; padding: 2px 8px; border-radius: 9999px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-weight: 700;">Bugun</span>
+              </label>
+
+              <!-- Yashirin input backend va form submit uchun qiymatni saqlaydi -->
+              <input type="hidden" id="cashier-handover-date" name="handover_date" value="" required>
+
+              <!-- Chiroyli qora-mavzudagi sana trigger tugmasi -->
+              <div id="cashier-date-trigger-btn" class="form-input custom-date-trigger"
+                onclick="toggleCashierDatePicker(event)"
+                tabindex="0"
+                style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                  <span style="font-size: 1.15rem;">📅</span>
+                  <span id="cashier-date-display-text" style="font-weight: 700; color: #f8fafc;">Yuklanmoqda...</span>
+                </div>
+                <span id="cashier-date-chevron" style="font-size: 0.8rem; color: var(--text-muted); transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);">▼</span>
+              </div>
+
+              <!-- Chiroyli ochiluvchi kalendar oynasi (Custom Dark Calendar Popup) -->
+              <div id="cashier-calendar-dropdown" style="display: none; position: absolute; top: calc(100% + 8px); left: 0; z-index: 1050; width: 320px; background: #0f172a; border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 14px; box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.85), 0 0 25px rgba(99, 102, 241, 0.2); padding: 0.85rem; backdrop-filter: blur(16px);">
+                
+                <!-- Tezkor tugmalar (Presets) -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-bottom: 0.75rem;">
+                  <button type="button" class="date-preset-btn" onclick="selectCashierQuickDate(0, event)">Bugun</button>
+                  <button type="button" class="date-preset-btn" onclick="selectCashierQuickDate(-1, event)">Kecha</button>
+                  <button type="button" class="date-preset-btn" onclick="selectCashierQuickDate(-2, event)">2 kun oldin</button>
+                </div>
+
+                <!-- Oy navigatsiyasi sarlavhasi -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem; padding: 0 0.25rem;">
+                  <button type="button" class="cal-nav-btn" onclick="navCashierCalMonth(-1, event)" title="Oldingi oy">‹</button>
+                  <div id="cashier-cal-month-year" class="cal-month-year-label" style="font-size: 0.95rem; font-weight: 700; color: #f8fafc;">Noyabr 2026</div>
+                  <button type="button" class="cal-nav-btn" onclick="navCashierCalMonth(1, event)" title="Keyingi oy">›</button>
+                </div>
+
+                <!-- Hafta kunlari sarlavhasi (O'zbekcha) -->
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; margin-bottom: 0.4rem; font-size: 0.72rem; font-weight: 700; color: #94a3b8;">
+                  <div>Dsh</div>
+                  <div>Ssh</div>
+                  <div>Chsh</div>
+                  <div>Psh</div>
+                  <div>Jm</div>
+                  <div style="color: #f59e0b;">Sh</div>
+                  <div style="color: #ef4444;">Ysh</div>
+                </div>
+
+                <!-- Kalendar kunlari katakchalari -->
+                <div id="cashier-cal-days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;">
+                  <!-- Dinamik generatsiya qilinadi -->
+                </div>
+
+                <!-- Quyi qism (Tanlangan sana va yopish tugmasi) -->
+                <div class="cashier-cal-divider" style="margin-top: 0.65rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: #94a3b8;">
+                  <span class="cashier-cal-footer-text">Tanlangan sana: <b id="cashier-cal-footer-date" style="color: #38bdf8;">--</b></span>
+                  <button type="button" style="background: none; border: none; color: #818cf8; font-weight: 600; cursor: pointer; padding: 2px 4px;" onclick="closeCashierDatePicker()">Yopish ✕</button>
+                </div>
+              </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 0;">
@@ -3530,7 +3587,7 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=914"></script>
+  <script src="/static/js/app.js?v=915"></script>
 </body>
 
 </html>
