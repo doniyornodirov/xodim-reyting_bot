@@ -2882,28 +2882,35 @@ async function loadAdminAnalytics(period = currentAnalyticsPeriod, userId = curr
 function updateAnalyticsKpis(s) {
   const isToday = s.period === "today" || s.days_count === 1;
 
-  // 1. Topshirilgan summa
+  // 1. Yalpi tushum
   const revEl = document.getElementById("kpi-revenue-val");
   if (revEl) revEl.innerText = `${formatNumberSpaces(s.total_submitted_amount)} so'm`;
   setTrendBadge("kpi-revenue-trend", s.submitted_growth_pct);
   const revSub = document.getElementById("kpi-revenue-sub");
   if (revSub) revSub.innerText = isToday ? "Kechagi kunga nisbatan" : "O'tgan davrga nisbatan";
 
-  // 2. Sim-kartalar
+  // 2. Paynet tushumi
+  const paynetEl = document.getElementById("kpi-paynet-val");
+  if (paynetEl) paynetEl.innerText = `${formatNumberSpaces(s.total_paynet_amount || 0)} so'm`;
+  setTrendBadge("kpi-paynet-trend", s.paynet_growth_pct);
+  const paynetSub = document.getElementById("kpi-paynet-sub");
+  if (paynetSub) paynetSub.innerText = isToday ? "Bugungi Paynet tushumi" : "O'tgan davrga nisbatan";
+
+  // 3. Sim-kartalar
   const simEl = document.getElementById("kpi-sims-val");
   if (simEl) simEl.innerText = `${s.total_sim_cards} dona`;
   setTrendBadge("kpi-sims-trend", s.sim_growth_pct);
   const simSub = document.getElementById("kpi-sims-sub");
   if (simSub) simSub.innerText = isToday ? "Bugungi sotuvlar soni" : "Faol sotuvlar soni";
 
-  // 3. Karta to'ldirish
+  // 4. Karta to'ldirish
   const cardEl = document.getElementById("kpi-cards-val");
   if (cardEl) cardEl.innerText = `${formatNumberSpaces(s.total_card_topup_amount)} so'm`;
   setTrendBadge("kpi-cards-trend", s.card_growth_pct);
   const cardSub = document.getElementById("kpi-cards-sub");
   if (cardSub) cardSub.innerText = `${s.total_card_topup_count} ta tasdiqlangan to'ldirish`;
 
-  // 4. Sof kassa (Net) & Kunlik o'rtacha
+  // 5. Sof kassa (Net) & Kunlik o'rtacha
   const netEl = document.getElementById("kpi-net-val");
   if (netEl) netEl.innerText = `${formatNumberSpaces(s.total_net_amount)} so'm`;
   setTrendBadge("kpi-net-trend", s.net_growth_pct);

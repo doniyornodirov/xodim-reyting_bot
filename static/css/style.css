@@ -4267,6 +4267,16 @@ body.theme-light .analytics-kpi-card:hover {
   background: linear-gradient(90deg, #6366f1, #818cf8);
 }
 
+.kpi-card-paynet::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
 .kpi-card-sims::before {
   content: '';
   position: absolute;
@@ -4294,7 +4304,7 @@ body.theme-light .analytics-kpi-card:hover {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #10b981, #34d399);
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa);
 }
 
 .kpi-header {

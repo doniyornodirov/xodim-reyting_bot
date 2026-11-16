@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css?v=903">
-  <link rel="stylesheet" href="/static/css/style.css?v=908">
+  <link rel="stylesheet" href="/static/css/style.css?v=909">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -774,8 +774,8 @@
           </div>
         </div>
 
-        <!-- 4 ta Asosiy KPI Kartochkasi (Executive SaaS Metric Cards) -->
-        <div class="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-5">
+        <!-- 5 ta Asosiy KPI Kartochkasi (Executive SaaS Metric Cards) -->
+        <div class="analytics-kpi-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-5">
           <!-- 1. Yalpi tushum -->
           <div
             class="analytics-kpi-card kpi-card-revenue p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
@@ -789,7 +789,20 @@
             <div class="kpi-subtext text-xs mt-1" id="kpi-revenue-sub">O'tgan davrga nisbatan</div>
           </div>
 
-          <!-- 2. Sotilgan sim-kartalar -->
+          <!-- 2. Paynet tushumi -->
+          <div
+            class="analytics-kpi-card kpi-card-paynet p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
+            <div class="kpi-header flex justify-between items-center mb-1.5">
+              <span class="kpi-title text-xs font-medium">⚡ Paynet Tushumi</span>
+              <span
+                class="kpi-badge trend-flat inline-flex items-center gap-1 px-2 h-5 rounded-full text-xs font-semibold"
+                id="kpi-paynet-trend">0%</span>
+            </div>
+            <div class="kpi-value text-2xl font-bold tracking-tight" id="kpi-paynet-val">0 so'm</div>
+            <div class="kpi-subtext text-xs mt-1" id="kpi-paynet-sub">O'tgan davrga nisbatan</div>
+          </div>
+
+          <!-- 3. Sotilgan sim-kartalar -->
           <div
             class="analytics-kpi-card kpi-card-sims p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
             <div class="kpi-header flex justify-between items-center mb-1.5">
@@ -802,7 +815,7 @@
             <div class="kpi-subtext text-xs mt-1" id="kpi-sims-sub">Faol sotuvlar soni</div>
           </div>
 
-          <!-- 3. To'ldirilgan kartalar -->
+          <!-- 4. To'ldirilgan kartalar -->
           <div
             class="analytics-kpi-card kpi-card-cards p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
             <div class="kpi-header flex justify-between items-center mb-1.5">
@@ -815,7 +828,7 @@
             <div class="kpi-subtext text-xs mt-1" id="kpi-cards-sub">0 ta muvaffaqiyatli to'ldirish</div>
           </div>
 
-          <!-- 4. Sof kassa (Net) & Kunlik o'rtacha -->
+          <!-- 5. Sof kassa (Net) & Kunlik o'rtacha -->
           <div class="analytics-kpi-card kpi-card-net p-4 rounded-xl transition-all relative overflow-hidden shadow-sm">
             <div class="kpi-header flex justify-between items-center mb-1.5">
               <span class="kpi-title text-xs font-medium">⚖️ Sof Kassa & Kunlik O'rtacha</span>
@@ -3497,7 +3510,7 @@
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="/static/js/app.js?v=903"></script>
-  <script src="/static/js/app.js?v=908"></script>
+  <script src="/static/js/app.js?v=909"></script>
 </body>
 
 </html>
