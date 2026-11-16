@@ -3054,18 +3054,21 @@ function renderMainAnalyticsChart(timeline) {
       });
     }
 
-    if (currentChartMetric === "all" || currentChartMetric === "sims") {
+    const isSimsOnly = (currentChartMetric === "sims");
+    const maxSim = Math.max(...simData, 0);
+
+    if (currentChartMetric === "all" || isSimsOnly) {
       datasets.push({
         label: "📱 Sotilgan sim-karta (dona)",
         data: simData,
         borderColor: "#f59e0b",
-        backgroundColor: currentChartMetric === "sims" ? "rgba(245, 158, 11, 0.45)" : "rgba(245, 158, 11, 0.8)",
-        type: currentChartMetric === "sims" ? "bar" : "line",
-        borderRadius: 4,
-        tension: 0.3,
+        backgroundColor: isSimsOnly ? "rgba(245, 158, 11, 0.22)" : "rgba(245, 158, 11, 0.8)",
+        fill: isSimsOnly,
+        tension: 0.35,
         yAxisID: currentChartMetric === "all" ? "yRight" : "yLeft",
-        pointRadius: 4,
-        pointHoverRadius: 6
+        pointRadius: isSimsOnly ? 6 : 4,
+        pointHoverRadius: isSimsOnly ? 8 : 6,
+        borderWidth: isSimsOnly ? 3 : 2
       });
     }
 
@@ -3081,7 +3084,22 @@ function renderMainAnalyticsChart(timeline) {
           maxTicksLimit: 7
         }
       },
-      yLeft: {
+      yLeft: isSimsOnly ? {
+        type: "linear",
+        position: "left",
+        beginAtZero: true,
+        min: 0,
+        suggestedMin: 0,
+        suggestedMax: Math.max(maxSim + 2, 5),
+        grid: { color: tc.gridColor },
+        ticks: {
+          color: "#f59e0b",
+          font: { size: 11, weight: 600 },
+          precision: 0,
+          stepSize: maxSim > 20 ? undefined : (maxSim > 10 ? 2 : 1),
+          callback: (v) => `${Math.max(0, Math.round(v))} dona`
+        }
+      } : {
         type: "linear",
         position: "left",
         beginAtZero: true,
@@ -3105,13 +3123,13 @@ function renderMainAnalyticsChart(timeline) {
         beginAtZero: true,
         min: 0,
         suggestedMin: 0,
-        suggestedMax: 5,
+        suggestedMax: Math.max(maxSim + 2, 5),
         grid: { drawOnChartArea: false },
         ticks: {
           color: "#f59e0b",
           font: { size: 11 },
           precision: 0,
-          stepSize: 1,
+          stepSize: maxSim > 20 ? undefined : (maxSim > 10 ? 2 : 1),
           callback: (v) => `${Math.max(0, Math.round(v))} ta`
         }
       };
