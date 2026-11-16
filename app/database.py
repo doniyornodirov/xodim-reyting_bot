@@ -1,7 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 import aiosqlite
-from app.config import DB_PATH
+from app.config import DB_PATH, DATABASE_URL
 from app.security import hash_password
 
 logger = logging.getLogger("database")
@@ -383,13 +383,14 @@ async def init_db():
         await conn.execute("""
         CREATE TABLE IF NOT EXISTS sim_cards (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            serial_number TEXT UNIQUE NOT NULL,
+            serial_number TEXT NOT NULL,
             operator_type TEXT NOT NULL DEFAULT 'Uzmobile',
             employee_id INTEGER NOT NULL REFERENCES users(id),
             distributed_by_id INTEGER NOT NULL REFERENCES users(id),
             status TEXT NOT NULL DEFAULT 'GIVEN',
             distributed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            sold_at TIMESTAMP
+            sold_at TIMESTAMP,
+            company_id INTEGER NOT NULL DEFAULT 1
         );
         """)
 
@@ -433,6 +434,53 @@ async def init_db():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_employee ON sim_cards(employee_id);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_operator ON sim_cards(operator_type);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_sold ON sim_cards(status, sold_at);")
+
+        # Migratsiya: sim_cards dagi global UNIQUE(serial_number) ni operator_type bo'yicha composite UNIQUE ga o'tkazish
+        try:
+            is_postgres = bool(DATABASE_URL and ("postgres" in DATABASE_URL.lower() or "postgresql" in DATABASE_URL.lower()))
+            if not is_postgres:
+                cur_sc = await conn.execute("SELECT sql FROM sqlite_master WHERE name='sim_cards'")
+                sc_row = await cur_sc.fetchone()
+                if sc_row and "serial_number TEXT UNIQUE" in sc_row[0]:
+                    logger.info("sim_cards jadvalini operator_type bo'yicha unikal qilish uchun migratsiya qilinmoqda...")
+                    await conn.execute("PRAGMA foreign_keys = OFF;")
+                    await conn.execute("""
+                        CREATE TABLE sim_cards_v2 (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            serial_number TEXT NOT NULL,
+                            operator_type TEXT NOT NULL DEFAULT 'Uzmobile',
+                            employee_id INTEGER NOT NULL REFERENCES users(id),
+                            distributed_by_id INTEGER NOT NULL REFERENCES users(id),
+                            status TEXT NOT NULL DEFAULT 'GIVEN',
+                            distributed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            sold_at TIMESTAMP,
+                            company_id INTEGER NOT NULL DEFAULT 1
+                        );
+                    """)
+                    await conn.execute("""
+                        INSERT INTO sim_cards_v2 (id, serial_number, operator_type, employee_id, distributed_by_id, status, distributed_at, sold_at, company_id)
+                        SELECT id, serial_number, operator_type, employee_id, distributed_by_id, status, distributed_at, sold_at, company_id FROM sim_cards;
+                    """)
+                    await conn.execute("DROP TABLE sim_cards;")
+                    await conn.execute("ALTER TABLE sim_cards_v2 RENAME TO sim_cards;")
+                    await conn.execute("PRAGMA foreign_keys = ON;")
+            else:
+                try:
+                    await conn.execute("ALTER TABLE sim_cards DROP CONSTRAINT IF EXISTS sim_cards_serial_number_key;")
+                except Exception:
+                    pass
+        except Exception as sc_mig_err:
+            logger.warning(f"sim_cards composite unique migratsiyasida ogohlantirish: {sc_mig_err}")
+
+        # Operator va kompaniya bo'yicha kompozit unikal indeks va qo'shimcha indekslar
+        try:
+            await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_sim_cards_comp_op_serial ON sim_cards(company_id, operator_type, serial_number);")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_serial ON sim_cards(serial_number);")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_employee ON sim_cards(employee_id);")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_operator ON sim_cards(operator_type);")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_sim_cards_sold ON sim_cards(status, sold_at);")
+        except Exception as e:
+            logger.warning(f"sim_cards indekslarini yaratishda ogohlantirish: {e}")
 
         # 10. Tizim sozlamalari (Dollar kursi)
         await conn.execute("""

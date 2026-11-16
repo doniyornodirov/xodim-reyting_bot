@@ -425,5 +425,65 @@ class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValidationError):
             SetDebtRequest(user_id=1, debt_amount=1_000_000_001, reason="Test")
 
+    async def test_14_multi_operator_sim_cards_isolation(self):
+        """Turli operatorlar (Uzmobile, Beeline, ...) bo'yicha bir xil seriya raqamlari mustaqil mavjud bo'lishi testi"""
+        from app.database import get_db_connection
+        from app.routes.sim_cards import distribute_sim_cards, SimDistributeRequest
+
+        async with get_db_connection() as conn:
+            cur = await conn.execute("SELECT id, full_name, shift_status FROM users WHERE role NOT IN ('ADMIN', 'DEVELOPER') AND is_active = 1 LIMIT 1")
+            emp = await cur.fetchone()
+            cur_adm = await conn.execute("SELECT id, full_name, role, company_id FROM users WHERE role = 'ADMIN' LIMIT 1")
+            admin = await cur_adm.fetchone()
+            if not emp or not admin:
+                return
+
+            emp_id = emp["id"]
+            admin_user = dict(admin)
+            test_serial = "999900001111222233"
+
+            # Agar xodim damda bo'lsa, vaqtincha ACTIVE qilamiz
+            orig_shift = emp["shift_status"]
+            if orig_shift == "RESTING":
+                await conn.execute("UPDATE users SET shift_status = 'ACTIVE' WHERE id = ?", (emp_id,))
+                await conn.commit()
+
+            try:
+                # Tozalash
+                await conn.execute("DELETE FROM sim_cards WHERE serial_number = ?", (test_serial,))
+                await conn.commit()
+
+                # 1. Uzmobile operatori uchun seriyani biriktirish
+                req_uz = SimDistributeRequest(
+                    operator_type="Uzmobile",
+                    start_serial=test_serial,
+                    end_serial=test_serial,
+                    employee_id=emp_id
+                )
+                res_uz = await distribute_sim_cards(req_uz, current_user=admin_user, db=conn)
+                self.assertTrue(res_uz["success"])
+
+                # 2. Beeline operatori uchun aynan SHU seriyani biriktirish (mustaqil o'tishi kerak!)
+                req_bee = SimDistributeRequest(
+                    operator_type="Beeline",
+                    start_serial=test_serial,
+                    end_serial=test_serial,
+                    employee_id=emp_id
+                )
+                res_bee = await distribute_sim_cards(req_bee, current_user=admin_user, db=conn)
+                self.assertTrue(res_bee["success"])
+
+                # 3. Aynan Beeline uchun takroran kiritilganda 400 xatolik berishi kerak
+                with self.assertRaises(HTTPException) as ctx:
+                    await distribute_sim_cards(req_bee, current_user=admin_user, db=conn)
+                self.assertEqual(ctx.exception.status_code, 400)
+                self.assertIn("Beeline operatori bo'yicha sim-karta seriyasi bazada allaqachon mavjud", ctx.exception.detail)
+            finally:
+                # Tozalash va xodim holatini qaytarish
+                await conn.execute("DELETE FROM sim_cards WHERE serial_number = ?", (test_serial,))
+                if orig_shift == "RESTING":
+                    await conn.execute("UPDATE users SET shift_status = 'RESTING' WHERE id = ?", (emp_id,))
+                await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()

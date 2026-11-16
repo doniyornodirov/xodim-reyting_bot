@@ -87,15 +87,15 @@ async def distribute_sim_cards(
     # 3. Seriya raqamlari ro'yxatini shakllantirish
     serials_to_insert = [str(n).zfill(18) for n in range(start_num, end_num + 1)]
 
-    # 4. Oldin kiritilgan seriyalarni tekshirish (100% barcha seriyalar bo'yicha indeksli oraliq tekshiruvi)
+    # 4. Oldin kiritilgan seriyalarni tekshirish (Aynan shu operator va kompaniya ichida oraliq tekshiruvi)
     cur = await db.execute("""
         SELECT serial_number FROM sim_cards 
-        WHERE serial_number >= ? AND serial_number <= ? AND company_id = ? 
+        WHERE operator_type = ? AND serial_number >= ? AND serial_number <= ? AND company_id = ? 
         LIMIT 1
-    """, (start_str, end_str, comp_id))
+    """, (op_type, start_str, end_str, comp_id))
     existing = await cur.fetchone()
     if existing:
-        raise HTTPException(status_code=400, detail=f"Sim-karta seriyasi bazada allaqachon mavjud: {existing['serial_number']}")
+        raise HTTPException(status_code=400, detail=f"{op_type} operatori bo'yicha sim-karta seriyasi bazada allaqachon mavjud: {existing['serial_number']}")
 
     # 5. Ommaviy saqlash (Batch insert)
     records = [(comp_id, serial, op_type, payload.employee_id, current_user["id"], "GIVEN") for serial in serials_to_insert]
