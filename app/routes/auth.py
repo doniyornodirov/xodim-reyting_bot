@@ -9,6 +9,7 @@ from app.models import LoginRequest, VerifyOtpRequest, DeviceVerifyOrBindRequest
 from app.security import verify_password, generate_otp, create_access_token
 from app.bot import send_otp_to_telegram
 from app.dependencies import get_current_user
+from app.services.security_service import check_login_lockout, record_failed_login, reset_failed_login
 from fastapi import Depends
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -26,6 +27,9 @@ async def get_user_lock(telegram_id: int) -> asyncio.Lock:
 
 @router.post("/login")
 async def login(req: LoginRequest):
+    # Brute-force lockout tekshiruvi (5 marta xato terilganda 15 daqiqa blok)
+    await check_login_lockout(req.telegram_id)
+
     user_lock = await get_user_lock(req.telegram_id)
     async with user_lock:
         async with get_db_connection() as conn:
@@ -47,10 +51,23 @@ async def login(req: LoginRequest):
                 )
 
             if not verify_password(req.password, user["password_hash"]):
+                remaining = await record_failed_login(req.telegram_id)
+                # Audit log
+                try:
+                    await conn.execute("""
+                        INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+                        VALUES (?, 'AUTH', ?, 'FAILED_LOGIN', ?, ?)
+                    """, (user["company_id"] or 1, user["id"], user["full_name"], f"Noto'g'ri parol. Qolgan urinishlar: {remaining}"))
+                    await conn.commit()
+                except Exception:
+                    pass
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Parol noto'g'ri kiritildi!"
+                    detail=f"Parol noto'g'ri kiritildi! Qolgan urinishlar soni: {remaining} ta."
                 )
+
+            # Muvaffaqiyatli parol kiritilganda hisoblagichni tozalash
+            await reset_failed_login(req.telegram_id)
 
             # Kompaniya holatini tekshirish
             dev_id_val = int(DEVELOPER_ID) if DEVELOPER_ID and DEVELOPER_ID.isdigit() else 8694797293

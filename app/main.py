@@ -2,9 +2,9 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import init_db
@@ -90,6 +90,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Standartlashtirilgan HTTP xatolik formati"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "detail": exc.detail}
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Kutilmagan xatoliklarni xavfsiz boshqarish (server ichki kodlarini mijozga chiqarmaslik)"""
+    logger.error(f"Kutilmagan xatolik ({request.method} {request.url.path}): {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"success": False, "detail": "Serverda ichki xatolik yuz berdi. Iltimos qayta urinib ko'ring."}
+    )
 
 @app.get("/health")
 async def health_check():

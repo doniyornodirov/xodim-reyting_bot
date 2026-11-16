@@ -13,10 +13,12 @@ class CardTopupCreate(BaseModel):
     card_number: str
     card_holder: str
     amount: float = Field(ge=30000, description="Eng kam summa 30 000 so'm bo'lishi shart")
+    idempotency_key: Optional[str] = Field(None, max_length=100, description="Noyob tranzaksiya kaliti (takroriy bosishdan himoya)")
 
 class GivenAmountCreate(BaseModel):
     amount: float = Field(gt=0)
     comment: str
+    idempotency_key: Optional[str] = Field(None, max_length=100, description="Noyob tranzaksiya kaliti (takroriy bosishdan himoya)")
 
 class DailyReportCreate(BaseModel):
     report_date: Optional[str] = Field(None, description="Hisobot topshirilayotgan sana (YYYY-MM-DD)")
@@ -34,6 +36,7 @@ class DailyReportCreate(BaseModel):
     skidka: float = Field(ge=0, default=0)
     xarajat: float = Field(ge=0, default=0)
     comment: str = ""
+    idempotency_key: Optional[str] = Field(None, max_length=100, description="Noyob tranzaksiya kaliti")
 
 class CashierHandoverCreate(BaseModel):
     employee_id: int
@@ -41,6 +44,7 @@ class CashierHandoverCreate(BaseModel):
     amount_usd: float = Field(default=0, ge=0, description="AQSH dollarida qabul qilingan summa")
     usd_rate: float = Field(default=0, ge=0, description="Dollar kursi (0 bo'lsa tizim kursi olinadi)")
     amount: float = Field(default=0, ge=0, description="Eski moslik uchun umumiy summa")
+    idempotency_key: Optional[str] = Field(None, max_length=100, description="Noyob tranzaksiya kaliti")
 
 
 class CreateUserRequest(BaseModel):

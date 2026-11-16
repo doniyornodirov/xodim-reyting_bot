@@ -75,6 +75,12 @@ function applyTheme(theme) {
   if (sideIconEl) sideIconEl.innerText = icon;
   if (sideTextEl) sideTextEl.innerText = fullText;
 
+  // Mobil brauzer va PWA status bar rangini mavzuga moslash
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute("content", isLight ? "#f8fafc" : "#090d16");
+  }
+
   // Agar hozir monitoring ochilgan bo'lsa, diagrammalarni yangi mavzu ranglarida qayta chizish
   if (typeof currentActiveTab !== "undefined" && currentActiveTab && currentActiveTab.name === "analytics" && analyticsDataCache) {
     renderAllAnalyticsCharts();
@@ -107,6 +113,22 @@ async function api(endpoint, method = "GET", data = null) {
   const headers = { "Content-Type": "application/json" };
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
+  }
+
+  // Moliyaviy va kassa amallariga avtomatik Idempotency kaliti biriktirish (takroriy bosishdan 100% himoya)
+  if (data && method === "POST" && typeof data === "object" && !Array.isArray(data)) {
+    const isFinancialMutation = 
+      endpoint.includes("/cards/topup") ||
+      endpoint.includes("/given/submit") ||
+      endpoint.includes("/cashier/handover") ||
+      endpoint.includes("/reports/submit") ||
+      endpoint.includes("/sim-cards/distribute");
+
+    if (isFinancialMutation && !data.idempotency_key) {
+      data.idempotency_key = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : (Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 9));
+    }
   }
 
   const options = { method, headers };
@@ -3615,14 +3637,97 @@ async function updateCardTopupStatus(id, status) {
 
 // Admin 4: Kassir va Xodim summalarini solishtirish
 let adminComparisonCache = [];
+let adminComparisonSummary = null;
 
 async function loadAdminComparison() {
   try {
-    const res = await api("/api/cashier/comparison");
+    const dateInput = document.getElementById("admin-comparison-date");
+    const targetDate = dateInput && dateInput.value ? dateInput.value : "";
+    const endpoint = targetDate ? `/api/cashier/comparison?date=${targetDate}` : "/api/cashier/comparison";
+
+    const res = await api(endpoint);
     adminComparisonCache = res.data || [];
+    adminComparisonSummary = res.summary || null;
+
+    if (dateInput && res.date && !dateInput.value) {
+      dateInput.value = res.date;
+    }
+
+    renderAdminComparisonKPI();
     renderAdminComparisonTable();
   } catch (e) {
     console.warn("loadAdminComparison error:", e);
+  }
+}
+
+function renderAdminComparisonKPI() {
+  const expEl = document.getElementById("comp-kpi-expected");
+  const colEl = document.getElementById("comp-kpi-collected");
+  const colSubEl = document.getElementById("comp-kpi-collected-sub");
+  const diffEl = document.getElementById("comp-kpi-diff");
+  const diffSubEl = document.getElementById("comp-kpi-diff-sub");
+  const statusEl = document.getElementById("comp-kpi-status");
+  const countsEl = document.getElementById("comp-kpi-counts");
+
+  if (!expEl) return;
+
+  const s = adminComparisonSummary || {
+    total_expected_uzs: (adminComparisonCache || []).reduce((acc, r) => acc + (r.report_status !== "TOPSHIRILMAGAN" ? (r.report_amount || 0) : 0), 0),
+    total_collected_uzs: (adminComparisonCache || []).reduce((acc, r) => acc + (r.cashier_amount || 0), 0),
+    total_collected_pure_uzs: (adminComparisonCache || []).reduce((acc, r) => acc + (r.cashier_amount_uzs || 0), 0),
+    total_collected_pure_usd: (adminComparisonCache || []).reduce((acc, r) => acc + (r.cashier_amount_usd || 0), 0),
+    total_difference_uzs: 0,
+    match_count: (adminComparisonCache || []).filter(r => r.is_match).length,
+    diff_count: (adminComparisonCache || []).filter(r => r.has_diff).length,
+    unsubmitted_count: (adminComparisonCache || []).filter(r => r.report_status === "TOPSHIRILMAGAN").length,
+    is_zero_discrepancy: false
+  };
+
+  const diff = s.total_collected_uzs - s.total_expected_uzs;
+  s.total_difference_uzs = diff;
+  s.is_zero_discrepancy = (diff === 0 && s.diff_count === 0 && s.unsubmitted_count === 0 && (adminComparisonCache || []).length > 0);
+
+  expEl.innerText = `${formatNumberSpaces(s.total_expected_uzs)} so'm`;
+  colEl.innerText = `${formatNumberSpaces(s.total_collected_uzs)} so'm`;
+
+  if (colSubEl) {
+    const uzsPart = formatNumberSpaces(s.total_collected_pure_uzs || 0);
+    const usdPart = s.total_collected_pure_usd ? ` | ${formatNumberSpaces(s.total_collected_pure_usd)} $` : "";
+    colSubEl.innerText = `So'mda: ${uzsPart}${usdPart}`;
+  }
+
+  if (diff === 0) {
+    diffEl.innerText = "0 so'm (Aniq)";
+    diffEl.style.color = "#10b981";
+    if (diffSubEl) diffSubEl.innerText = "Balans to'liq mos keldi";
+  } else if (diff < 0) {
+    diffEl.innerText = `${formatNumberSpaces(diff)} so'm (Kamomad)`;
+    diffEl.style.color = "#ef4444";
+    if (diffSubEl) diffSubEl.innerText = `Kutilgandan ${formatNumberSpaces(Math.abs(diff))} so'm kam`;
+  } else {
+    diffEl.innerText = `+${formatNumberSpaces(diff)} so'm (Ortiqcha)`;
+    diffEl.style.color = "#f59e0b";
+    if (diffSubEl) diffSubEl.innerText = `Kutilgandan ${formatNumberSpaces(diff)} so'm ortiq`;
+  }
+
+  if (statusEl) {
+    if (s.is_zero_discrepancy) {
+      statusEl.innerText = "✅ 100% Zero Discrepancy";
+      statusEl.style.color = "#10b981";
+    } else if (s.diff_count > 0) {
+      statusEl.innerText = `⚠️ ${s.diff_count} ta tafovut mavjud`;
+      statusEl.style.color = "#ef4444";
+    } else if (s.unsubmitted_count > 0) {
+      statusEl.innerText = `ℹ️ ${s.unsubmitted_count} ta hisobot kutilmoqda`;
+      statusEl.style.color = "#38bdf8";
+    } else {
+      statusEl.innerText = "✅ To'liq mos";
+      statusEl.style.color = "#10b981";
+    }
+  }
+
+  if (countsEl) {
+    countsEl.innerText = `${s.match_count} ta mos / ${s.diff_count} ta tafovut / ${s.unsubmitted_count} ta topshirmagan`;
   }
 }
 

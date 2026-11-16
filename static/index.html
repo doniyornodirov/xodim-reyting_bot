@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=880', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=885', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=883">
+  <link rel="stylesheet" href="/static/css/style.css?v=885">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -626,6 +626,9 @@
             <span class="card-desc text-xs block mb-0">Xodim topshirgan sof kassa va kassir qabul qilgan mablag'lar solishtirmasi</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
+            <!-- Sana tanlash -->
+            <input type="date" id="admin-comparison-date" class="form-input header-filter-select" style="min-width: 130px; height: 34px; padding: 2px 8px; font-size: 0.82rem;" onchange="loadAdminComparison()" title="Taqqoslash sanasini tanlash">
+            
             <!-- ⚖️ Tafovut filtri (Tafovut bor / Tafovut yo'q) -->
             <div class="inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap">
               <span style="font-size: 0.78rem; font-weight: 600; color: var(--text-muted); padding-left: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap;">
@@ -643,6 +646,30 @@
             <button class="btn-logout inline-flex items-center justify-center h-8 px-2.5 rounded-lg transition" onclick="loadAdminComparison()" title="Yangilash">
               <span>🔄</span>
             </button>
+          </div>
+        </div>
+
+        <!-- FinTech Zero Discrepancy KPI Xulosasi -->
+        <div id="admin-comparison-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">📋 Kutilgan Sof Kassa</div>
+            <div id="comp-kpi-expected" style="font-size: 1.15rem; font-weight: 800; color: #3b82f6; margin-top: 0.2rem;">0 so'm</div>
+            <div style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">Hisobotlar bo'yicha</div>
+          </div>
+          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">💵 Kassirlar Qabul Qilgan</div>
+            <div id="comp-kpi-collected" style="font-size: 1.15rem; font-weight: 800; color: #10b981; margin-top: 0.2rem;">0 so'm</div>
+            <div id="comp-kpi-collected-sub" style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">So'm + USD ekvivalent</div>
+          </div>
+          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">⚖️ Kassa Tafovuti (Farq)</div>
+            <div id="comp-kpi-diff" style="font-size: 1.15rem; font-weight: 800; color: #10b981; margin-top: 0.2rem;">0 so'm</div>
+            <div id="comp-kpi-diff-sub" style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">Balans holati</div>
+          </div>
+          <div style="background: var(--bg-surface-elevated); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">🛡️ Zero Discrepancy</div>
+            <div id="comp-kpi-status" style="font-size: 0.95rem; font-weight: 800; color: #10b981; margin-top: 0.35rem;">✅ To'liq mos</div>
+            <div id="comp-kpi-counts" style="font-size: 0.72rem; color: var(--text-sub); margin-top: 0.15rem;">0 ta mos / 0 ta tafovut</div>
           </div>
         </div>
         <div class="table-container table-scroll-10">
@@ -905,7 +932,7 @@
         </div>
 
         <!-- Qidiruv natijasi konteyneri -->
-        <div id="admin-sim-search-result" style="display: none; padding: 1rem; border-radius: var(--radius-md); background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color);">
+        <div id="admin-sim-search-result" style="display: none; padding: 1rem; border-radius: var(--radius-md); background: var(--bg-surface-elevated); border: 1px solid var(--border-color);">
         </div>
       </div>
 
@@ -2248,8 +2275,8 @@
           <label class="form-label" style="font-size: 0.82rem; font-weight: 600; margin-bottom: 0.45rem;">Rahbar uchun yangi parol *</label>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <input type="password" id="saas-edit-password" class="form-input" style="height: 40px; font-size: 0.9rem; flex: 1;" placeholder="Yangi parol kiriting" onkeydown="if(event.key==='Enter') saveCurrentSaasField()">
-            <button type="button" class="btn" style="padding: 0.4rem 0.65rem; font-size: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 6px; white-space: nowrap;" onclick="generateRandomSaasPassword()" title="Tasodifiy kuchli parol generatsiya qilish">🎲 Generatsiya</button>
-            <button type="button" class="btn" style="padding: 0.4rem 0.65rem; font-size: 0.8rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 6px;" onclick="toggleSaasPasswordVisibility()" id="btn-toggle-saas-pwd" title="Parolni ko'rsatish/yashirish">👁️</button>
+            <button type="button" class="btn" style="padding: 0.4rem 0.65rem; font-size: 0.8rem; background: var(--bg-surface-elevated); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; white-space: nowrap;" onclick="generateRandomSaasPassword()" title="Tasodifiy kuchli parol generatsiya qilish">🎲 Generatsiya</button>
+            <button type="button" class="btn" style="padding: 0.4rem 0.65rem; font-size: 0.8rem; background: var(--bg-surface-elevated); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px;" onclick="toggleSaasPasswordVisibility()" id="btn-toggle-saas-pwd" title="Parolni ko'rsatish/yashirish">👁️</button>
           </div>
           <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.45rem;">
             Yangi parol kiritilsa, Rahbar ushbu parol bilan CRM tizimiga kirishi mumkin bo'ladi.
@@ -2592,6 +2619,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=883"></script>
+  <script src="/static/js/app.js?v=885"></script>
 </body>
 </html>

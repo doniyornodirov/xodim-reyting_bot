@@ -1988,6 +1988,20 @@ select.form-input option {
     grid-template-columns: 1fr !important;
     gap: 0.75rem !important;
   }
+
+  /* Mobil qurilmalarda kursor bosilganda avtomatik zoom bo'lib ketishini oldini olish (iOS Safari & Android) */
+  .form-input,
+  input[type="text"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="email"],
+  input[type="search"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 select,

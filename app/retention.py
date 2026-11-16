@@ -131,13 +131,15 @@ async def run_data_retention_cleanup(retention_days: int = RETENTION_DAYS) -> di
             VALUES ('SYSTEM', 0, 'DATA_RETENTION_CLEANUP', 'Tizim (Avtomatik)', ?)
         """, (log_detail,))
 
-        # Xotirani optimallashtirish (reclaim free pages)
+        await conn.commit()
+
+        # Xotirani optimallashtirish va WAL ni tozalash (faqat commit dan so'ng)
         try:
             await conn.execute("PRAGMA optimize;")
+            from app.database import checkpoint_wal
+            await checkpoint_wal(conn, mode="TRUNCATE")
         except Exception:
             pass
-
-        await conn.commit()
 
     logger.info(f"Retention tozalash yakunlandi: {total_deleted} ta yozuv o'chirildi. {deleted_counts}")
 

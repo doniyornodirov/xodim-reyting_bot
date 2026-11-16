@@ -5,6 +5,9 @@ from app.database import get_db_connection
 from app.models import CashierHandoverCreate
 from app.dependencies import get_current_user, require_role
 from app.security import get_tashkent_today_str
+from app.services.fintech_calc import to_decimal, round_uzs
+from app.services.idempotency import check_idempotency, record_idempotency_result
+from app.services.cashier_service import calculate_daily_cashier_comparison, summarize_cashier_comparison
 
 router = APIRouter(prefix="/api/cashier", tags=["Cashier"])
 
@@ -63,6 +66,11 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
             detail="Siz hozirda dam olish (damda) rejimidasiz! Kassa amallarini bajarish vaqtinchalik cheklangan."
         )
 
+    # Idempotentlik tekshiruvi (takroriy bosishdan himoya)
+    is_new, cached_res = await check_idempotency(req.idempotency_key, user["id"], action="CASHIER_HANDOVER")
+    if not is_new:
+        return cached_res
+
     import asyncio
     from app.bot import send_cashier_receipt_to_telegram
     from app.security import get_tashkent_now
@@ -84,7 +92,9 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
         if amount_uzs == 0 and amount_usd == 0 and req.amount > 0:
             amount_uzs = float(req.amount)
 
-        total_amount = round(amount_uzs + (amount_usd * usd_rate), 2)
+        # Decimal aniqligida ekvivalent summani yaxlitlash (Zero float drift)
+        d_total = to_decimal(amount_uzs) + (to_decimal(amount_usd) * to_decimal(usd_rate))
+        total_amount = float(round_uzs(d_total))
         if total_amount <= 0:
             raise HTTPException(status_code=400, detail="Qabul qilinayotgan summa 0 dan katta bo'lishi shart!")
 
@@ -157,7 +167,7 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
                 }
             ))
 
-    return {
+    response_payload = {
         "success": True,
         "message": f"{emp['full_name']}dan kassa muvaffaqiyatli qabul qilindi va chek Telegram botdan jo'natildi!",
         "data": {
@@ -171,6 +181,8 @@ async def record_handover(req: CashierHandoverCreate, user: dict = Depends(requi
             "handover_date": today_str
         }
     }
+    await record_idempotency_result(req.idempotency_key, user["id"], response_payload, action="CASHIER_HANDOVER")
+    return response_payload
 
 @router.get("/my-handovers")
 async def get_my_handovers(user: dict = Depends(require_role(["CASHIER", "ADMIN"]))):
@@ -194,60 +206,9 @@ async def get_comparison(date: str = None, user: dict = Depends(require_role(["A
     comp_id = user.get("company_id") or 1
 
     async with get_db_connection() as conn:
-        query = """
-        SELECT 
-            u.id as employee_id,
-            u.full_name as employee_name,
-            u.telegram_id,
-            dr.id as report_id,
-            COALESCE(dr.net_amount, 0) as report_amount,
-            dr.status as report_status,
-            COALESCE(ch_agg.total_cashier_amount, 0) as cashier_amount,
-            COALESCE(ch_agg.total_amount_uzs, 0) as cashier_amount_uzs,
-            COALESCE(ch_agg.total_amount_usd, 0) as cashier_amount_usd,
-            ch_agg.cashier_names
-        FROM users u
-        LEFT JOIN daily_reports dr 
-            ON dr.employee_id = u.id AND dr.report_date = ? AND dr.company_id = ?
-        LEFT JOIN (
-            SELECT 
-                employee_id, 
-                SUM(amount) as total_cashier_amount,
-                SUM(amount_uzs) as total_amount_uzs,
-                SUM(amount_usd) as total_amount_usd,
-                GROUP_CONCAT(DISTINCT cashier_user.full_name) as cashier_names
-            FROM cashier_handovers ch
-            JOIN users cashier_user ON ch.cashier_id = cashier_user.id
-            WHERE ch.handover_date = ? AND ch.company_id = ?
-            GROUP BY employee_id
-        ) ch_agg ON ch_agg.employee_id = u.id
-        WHERE u.is_active = 1 AND u.role NOT IN ('ADMIN', 'DEVELOPER') AND u.company_id = ?
-        ORDER BY u.full_name ASC
-        """
-        cursor = await conn.execute(query, (target_date, comp_id, target_date, comp_id, comp_id))
-        rows = await cursor.fetchall()
-
-        results = []
-        for r in rows:
-            rep_amt = r["report_amount"]
-            cash_amt = r["cashier_amount"]
-            diff = cash_amt - rep_amt
-            results.append({
-                "employee_id": r["employee_id"],
-                "employee_name": r["employee_name"],
-                "telegram_id": r["telegram_id"],
-                "report_id": r["report_id"],
-                "report_amount": rep_amt,
-                "report_status": r["report_status"] or "TOPSHIRILMAGAN",
-                "cashier_amount": cash_amt,
-                "cashier_amount_uzs": r["cashier_amount_uzs"],
-                "cashier_amount_usd": r["cashier_amount_usd"],
-                "cashier_names": r["cashier_names"] or "-",
-                "difference": diff,
-                "is_match": (rep_amt == cash_amt and r["report_status"] is not None)
-            })
-
-        return {"success": True, "date": target_date, "data": results}
+        results = await calculate_daily_cashier_comparison(conn, comp_id, target_date)
+        summary = summarize_cashier_comparison(results)
+        return {"success": True, "date": target_date, "summary": summary, "data": results}
 
 @router.get("/all-handovers")
 async def get_all_handovers(user: dict = Depends(require_role(["ADMIN"]))):

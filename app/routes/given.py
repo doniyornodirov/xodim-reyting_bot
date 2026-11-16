@@ -5,6 +5,7 @@ import aiosqlite
 from app.config import DB_PATH
 from app.models import GivenAmountCreate, StatusActionRequest
 from app.dependencies import get_current_user, require_role, require_active_shift
+from app.services.idempotency import check_idempotency, record_idempotency_result
 
 logger = logging.getLogger("given")
 
@@ -30,6 +31,12 @@ async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(requi
             status_code=403,
             detail="Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbarga murojaat qiling."
         )
+
+    # Idempotentlik tekshiruvi (takroriy bosishdan himoya)
+    is_new, cached_res = await check_idempotency(req.idempotency_key, user["id"], action="GIVEN_AMOUNT")
+    if not is_new:
+        return cached_res
+
     amount = float(req.amount)
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Summa musbat bo'lishi shart!")
@@ -52,7 +59,7 @@ async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(requi
         except Exception as e:
             logger.warning(f"Berilgan summa audit log yozishda ogohlantirish: {e}")
 
-    return {
+    response_payload = {
         "success": True,
         "message": "Berilgan summa so'rovi qabul qilindi va tasdiqlashga yuborildi!",
         "data": {
@@ -62,6 +69,8 @@ async def submit_given_amount(req: GivenAmountCreate, user: dict = Depends(requi
             "status": "PENDING"
         }
     }
+    await record_idempotency_result(req.idempotency_key, user["id"], response_payload, action="GIVEN_AMOUNT")
+    return response_payload
 
 @router.get("/my-history")
 async def get_my_given_history(user: dict = Depends(get_current_user)):

@@ -8,6 +8,8 @@ from app.database import get_db_connection, get_next_transaction_number
 from app.models import CardTopupCreate, StatusActionRequest
 from app.dependencies import get_current_user, require_role, require_active_shift
 from app.bot import notify_card_topup_in_group
+from app.services.fintech_calc import calculate_card_surcharge
+from app.services.idempotency import check_idempotency, record_idempotency_result, clear_idempotency_key
 
 logger = logging.getLogger("cards")
 
@@ -42,6 +44,12 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbarga murojaat qiling."
         )
+
+    # Idempotentlik tekshiruvi (takroriy bosishdan himoya)
+    is_new, cached_res = await check_idempotency(req.idempotency_key, user["id"], action="CARD_TOPUP")
+    if not is_new:
+        return cached_res
+
     formatted_card = format_card_number(req.card_number)
     validated_holder = validate_card_holder(req.card_holder)
     amount = float(req.amount)
@@ -52,7 +60,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         )
 
     # 3% ustamani 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)
-    surcharge_amount = float(math.ceil((amount * 1.03) / 1000.0) * 1000)
+    surcharge_amount = float(calculate_card_surcharge(amount))
 
     comp_id = user.get("company_id") or 1
     async with get_db_connection() as conn:
@@ -138,7 +146,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
 
     repeat_msg = " ⚠️ Diqqat: Bu kartaga bugun to'lov qilindi!" if is_repeat_today else ""
     closed_msg = " ⚠️ Diqqat: Siz bugun hisobotni (kassani) yopgansiz!" if has_closed_report_today else ""
-    return {
+    response_payload = {
         "success": True,
         "message": f"Karta to'ldirish so'rovi muvaffaqiyatli yuborildi!{repeat_msg}{closed_msg}",
         "data": {
@@ -154,6 +162,8 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             "has_closed_report_today": has_closed_report_today
         }
     }
+    await record_idempotency_result(req.idempotency_key, user["id"], response_payload, action="CARD_TOPUP")
+    return response_payload
 
 @router.get("/my-history")
 async def get_my_card_history(user: dict = Depends(get_current_user)):

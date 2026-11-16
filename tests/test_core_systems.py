@@ -11,12 +11,15 @@ from app.database import init_db
 from app.dependencies import get_current_user, invalidate_user_cache, _USER_CACHE
 from app.security import create_access_token
 from app.retention import get_retention_stats, run_data_retention_cleanup
+from app.services.analytics_service import invalidate_analytics_cache
 from fastapi.security import HTTPAuthorizationCredentials
 
 class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
 
     async def asyncSetUp(self):
         await init_db()
+        from app.services.analytics_service import invalidate_analytics_cache
+        invalidate_analytics_cache()
 
     async def test_01_db_and_unique_indexes(self):
         """1. Baza initsializatsiyasi va Unique indekslar mavjudligi tekshiruvi"""
@@ -254,6 +257,7 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
         admin_user = {"id": 1, "company_id": 1, "role": "ADMIN", "full_name": "Admin Test"}
 
         async with aiosqlite.connect(DB_PATH) as conn:
+            await conn.execute("DELETE FROM daily_reports WHERE employee_id = 777")
             await conn.execute("INSERT OR REPLACE INTO users (id, company_id, telegram_id, full_name, role, password_hash, debt_amount, is_active) VALUES (777, 1, 777777, 'Operator Test Xodim', 'EMPLOYEE', 'hash', 0, 1)")
             await conn.commit()
 
@@ -293,6 +297,7 @@ class TestCoreSystems(unittest.IsolatedAsyncioTestCase):
 
             await conn.execute("UPDATE daily_reports SET status = 'APPROVED' WHERE id = ?", (rep_id,))
             await conn.commit()
+            invalidate_analytics_cache(1)
 
         # 3. Savdo monitoringi so'rovi tekshiruvi
         mon_res = await get_sales_monitoring(period="today", admin=admin_user)

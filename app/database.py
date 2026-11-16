@@ -10,13 +10,14 @@ logger = logging.getLogger("database")
 async def get_db_connection():
     """
     Standartlashtirilgan yuqori unumdorlikka ega baza ulanishi (High-Load connection context manager).
-    Har bir ulanishda busy_timeout, synchronous va cache sozlamalari kafolatlanadi.
+    Har bir ulanishda busy_timeout, synchronous, cache va wal_autocheckpoint sozlamalari kafolatlanadi.
     """
     conn = await aiosqlite.connect(DB_PATH)
     conn.row_factory = aiosqlite.Row
     await conn.execute("PRAGMA busy_timeout = 15000;")
     await conn.execute("PRAGMA synchronous = NORMAL;")
     await conn.execute("PRAGMA cache_size = -64000;")
+    await conn.execute("PRAGMA wal_autocheckpoint = 1000;")
     try:
         yield conn
     finally:
@@ -25,6 +26,27 @@ async def get_db_connection():
 async def get_db():
     async with get_db_connection() as conn:
         yield conn
+
+async def checkpoint_wal(conn: aiosqlite.Connection, mode: str = "PASSIVE") -> dict:
+    """
+    SQLite WAL (Write-Ahead Log) faylini xavfsiz tozalash / checkpoint qilish.
+    mode: 'PASSIVE', 'FULL', 'RESTART', 'TRUNCATE'
+    Yuqori yuklama ostida WAL hajmi cheksiz o'sib ketishini oldini oladi.
+    """
+    valid_modes = {"PASSIVE", "FULL", "RESTART", "TRUNCATE"}
+    selected_mode = mode.upper() if mode.upper() in valid_modes else "PASSIVE"
+    try:
+        cur = await conn.execute(f"PRAGMA wal_checkpoint({selected_mode});")
+        row = await cur.fetchone()
+        if row:
+            return {
+                "busy": bool(row[0]),
+                "log": int(row[1]),
+                "checkpointed": int(row[2])
+            }
+    except Exception as e:
+        logger.warning(f"WAL checkpoint xatosi: {e}")
+    return {"busy": False, "log": 0, "checkpointed": 0}
 
 async def get_next_transaction_number(conn: aiosqlite.Connection, company_id: int) -> int:
     """
@@ -385,6 +407,12 @@ async def init_db():
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_reports_date ON daily_reports(report_date);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_cashier_handovers_date ON cashier_handovers(handover_date);")
         await conn.execute("CREATE INDEX IF NOT EXISTS idx_cashier_handovers_created ON cashier_handovers(created_at);")
+
+        # High-Load Composite Indekslar (Filtrlash va tezkor hisobotlar uchun)
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_daily_reports_comp_status_date ON daily_reports(company_id, status, report_date);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_card_topups_comp_status_date ON card_topups(company_id, status, created_at);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_given_amounts_comp_status_date ON given_amounts(company_id, status, created_at);")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_cashier_handovers_comp_date ON cashier_handovers(company_id, handover_date);")
 
         # Race Condition va Double-submission himoyasi (Baza darajasidagi Unique indekslar)
         try:

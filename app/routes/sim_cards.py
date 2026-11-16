@@ -5,6 +5,8 @@ import aiosqlite
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.services.sim_service import VALID_OPERATORS, validate_serial_range, get_sim_inventory_summary
+from app.services.idempotency import check_idempotency, record_idempotency_result
 
 router = APIRouter(prefix="/api/sim-cards", tags=["Sim Cards"])
 
@@ -33,6 +35,7 @@ class SimDistributeRequest(BaseModel):
     start_serial: str = Field(..., description="18 xonali boshlang'ich seriya raqami")
     end_serial: Optional[str] = Field(None, description="18 xonali tugash seriya raqami")
     employee_id: int = Field(..., description="Qabul qiluvchi xodim ID si")
+    idempotency_key: Optional[str] = Field(None, description="Noyob tranzaksiya kaliti (takroriy bosishdan himoya)")
 
 @router.post("/distribute")
 async def distribute_sim_cards(
@@ -50,28 +53,22 @@ async def distribute_sim_cards(
     if current_user.get("role") != "ADMIN" and current_user.get("shift_status") == "RESTING":
         raise HTTPException(status_code=403, detail="Siz hozirda dam olish (damda) rejimidasiz! Sim-karta tarqatish amallari vaqtinchalik cheklangan.")
 
+    # Idempotentlik tekshiruvi (takroriy bosishdan himoya)
+    is_new, cached_res = await check_idempotency(payload.idempotency_key, current_user["id"], action="SIM_DISTRIBUTE")
+    if not is_new:
+        return cached_res
+
     op_type = payload.operator_type.strip()
     if op_type not in VALID_OPERATORS:
         raise HTTPException(status_code=400, detail=f"Noto'g'ri operator turi! Faqat {', '.join(VALID_OPERATORS)} tanlanishi mumkin.")
 
+    try:
+        start_num, end_num, total_count = validate_serial_range(payload.start_serial, payload.end_serial or payload.start_serial)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     start_str = payload.start_serial.strip().replace(" ", "")
     end_str = (payload.end_serial.strip().replace(" ", "") if payload.end_serial else start_str)
-
-    # 1. Format va uzunlik tekshiruvi (faqat 18 ta raqam)
-    if not (start_str.isdigit() and len(start_str) == 18):
-        raise HTTPException(status_code=400, detail="Boshlang'ich seriya raqami aynan 18 ta raqamdan iborat bo'lishi shart.")
-    if not (end_str.isdigit() and len(end_str) == 18):
-        raise HTTPException(status_code=400, detail="Tugash seriya raqami aynan 18 ta raqamdan iborat bo'lishi shart.")
-
-    start_num = int(start_str)
-    end_num = int(end_str)
-
-    if start_num > end_num:
-        raise HTTPException(status_code=400, detail="Boshlang'ich seriya raqami tugash seriya raqamidan katta bo'lishi mumkin emas.")
-
-    total_count = end_num - start_num + 1
-    if total_count > 1000:
-        raise HTTPException(status_code=400, detail="Bitta amaliyotda ko'pi bilan 1000 ta sim-karta tarqatish mumkin.")
 
     comp_id = current_user.get("company_id") or 1
 
@@ -146,7 +143,7 @@ async def distribute_sim_cards(
         await db.rollback()
         raise HTTPException(status_code=400, detail="Kiritilgan diapazonda takrorlanuvchi sim-karta seriyalari mavjud.")
 
-    return {
+    res_data = {
         "success": True,
         "message": f"{total_count} dona {op_type} sim-kartasi {employee['full_name']} ga muvaffaqiyatli biriktirildi.",
         "data": {
@@ -158,6 +155,8 @@ async def distribute_sim_cards(
             "employee_name": employee["full_name"]
         }
     }
+    await record_idempotency_result(payload.idempotency_key, current_user["id"], res_data, action="SIM_DISTRIBUTE")
+    return res_data
 
 @router.get("/search")
 async def search_sim_card(
@@ -237,82 +236,9 @@ async def get_sim_cards_summary(
         raise HTTPException(status_code=403, detail="Ruxsat berilmagan.")
 
     comp_id = current_user.get("company_id") or 1
-
-    # Xodimlar bo'yicha qoldiq va sotilganlar (tasdiqlangan hisobotlar va sim-kartalar bo'yicha)
-    cur = await db.execute("""
-        SELECT 
-            u.id, 
-            u.full_name, 
-            COALESCE(sim.total_given, 0) as total_given,
-            MAX(COALESCE(rep.total_sold, 0), COALESCE(sim.sold_sims, 0)) as sold_count,
-            MAX(0, COALESCE(sim.total_given, 0) - MAX(COALESCE(rep.total_sold, 0), COALESCE(sim.sold_sims, 0))) as in_stock
-        FROM users u
-        LEFT JOIN (
-            SELECT 
-                employee_id, 
-                COUNT(id) as total_given,
-                SUM(CASE WHEN status = 'SOLD' THEN 1 ELSE 0 END) as sold_sims
-            FROM sim_cards
-            WHERE company_id = ?
-            GROUP BY employee_id
-        ) sim ON u.id = sim.employee_id
-        LEFT JOIN (
-            SELECT employee_id, SUM(sim_cards_count) as total_sold
-            FROM daily_reports
-            WHERE status = 'APPROVED' AND company_id = ?
-            GROUP BY employee_id
-        ) rep ON u.id = rep.employee_id
-        WHERE u.role NOT IN ('ADMIN', 'DEVELOPER') AND u.is_active = 1 AND u.company_id = ?
-        ORDER BY in_stock DESC, u.full_name ASC
-    """, (comp_id, comp_id, comp_id))
-    balances = [dict(row) for row in await cur.fetchall()]
-
-    # Oxirgi tarqatilgan partiyalar (dan - gacha)
-    cur2 = await db.execute("""
-        SELECT 
-            d.id,
-            d.operator_type,
-            d.start_serial,
-            d.end_serial,
-            d.total_count,
-            d.status,
-            d.created_at as distributed_at,
-            u.full_name as employee_name,
-            b.full_name as distributor_name
-        FROM sim_distributions d
-        JOIN users u ON d.employee_id = u.id
-        JOIN users b ON d.distributed_by_id = b.id
-        WHERE d.company_id = ?
-        ORDER BY d.id DESC
-        LIMIT 20
-    """, (comp_id,))
-    recent = [dict(row) for row in await cur2.fetchall()]
-
-    # Zaxira (fallback): Agar sim_distributions bo'sh bo'lsa, sim_cards dan partiya qilib olish
-    if not recent:
-        cur_fallback = await db.execute("""
-            SELECT 
-                MAX(s.id) as id,
-                s.operator_type,
-                MIN(s.serial_number) as start_serial,
-                MAX(s.serial_number) as end_serial,
-                COUNT(s.id) as total_count,
-                MAX(s.status) as status,
-                s.distributed_at,
-                u.full_name as employee_name,
-                d.full_name as distributor_name
-            FROM sim_cards s
-            JOIN users u ON s.employee_id = u.id
-            JOIN users d ON s.distributed_by_id = d.id
-            WHERE s.company_id = ?
-            GROUP BY s.operator_type, s.employee_id, s.distributed_by_id, s.distributed_at, u.full_name, d.full_name
-            ORDER BY id DESC
-            LIMIT 20
-        """, (comp_id,))
-        recent = [dict(row) for row in await cur_fallback.fetchall()]
-
+    inventory = await get_sim_inventory_summary(db, comp_id)
     return {
         "success": True,
-        "balances": balances,
-        "recent": recent
+        "balances": inventory["balances"],
+        "recent": inventory["recent"]
     }

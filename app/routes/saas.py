@@ -1,4 +1,3 @@
-import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -14,157 +13,27 @@ from app.models import (
 )
 from app.dependencies import get_current_user, require_super_admin, require_role
 from app.security import hash_password, create_access_token
+from app.services.saas_service import (
+    generate_slug,
+    generate_unique_slug,
+    calculate_days_left,
+    calculate_plan_expiration,
+    calculate_subscription_extension,
+    get_companies_overview,
+    format_company_credentials_message,
+)
 
 router = APIRouter(prefix="/api/saas", tags=["SaaS Multi-Tenant Management"])
 
-def generate_slug(name: str) -> str:
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", name.strip().lower()).strip("-")
-    return slug or "firma"
-
-def calculate_days_left(plan: str, exp_val: Optional[str]) -> Optional[int]:
-    if plan == "UNLIMITED" or not exp_val:
-        return None
-    try:
-        clean_exp = str(exp_val).replace("Z", "+00:00")
-        exp_dt = datetime.fromisoformat(clean_exp)
-        if exp_dt.tzinfo is None:
-            exp_dt = exp_dt.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
-        diff = (exp_dt - now).total_seconds()
-        if diff <= 0:
-            return 0
-        return int(diff // 86400) + 1
-    except Exception:
-        return 0
-
 @router.get("/companies")
 async def list_companies(super_admin: dict = Depends(require_super_admin)):
-    """Super Admin uchun barcha ijarachi firmalar (tenants) ro'yxati va statistikasi"""
+    """
+    Super Admin uchun barcha ijarachi firmalar (tenants) ro'yxati va statistikasi.
+    Zero N+1 Query: Batch Aggregation orqali barcha kompaniyalar yagona tezkor so'rovda qaytariladi.
+    """
     async with aiosqlite.connect(DB_PATH) as conn:
         conn.row_factory = aiosqlite.Row
-
-        cur = await conn.execute("""
-            SELECT c.*,
-                   u.full_name as owner_name
-            FROM companies c
-            LEFT JOIN users u ON u.telegram_id = c.owner_telegram_id AND u.company_id = c.id
-            WHERE c.id > 0
-            ORDER BY c.id ASC
-        """)
-        companies_raw = await cur.fetchall()
-
-        result = []
-        for c in companies_raw:
-            c_id = c["id"]
-            owner_tg = c["owner_telegram_id"]
-
-            # Statistika: Faol xodimlar soni (Firma rahbarlari, Adminlar va Dasturchilar bundan qat'iy mustasno)
-            if owner_tg:
-                cur_users = await conn.execute(
-                    """
-                    SELECT COUNT(*) FROM users 
-                    WHERE company_id = ? 
-                      AND is_active = 1 
-                      AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
-                      AND telegram_id != ?
-                    """, (c_id, owner_tg)
-                )
-            else:
-                cur_users = await conn.execute(
-                    """
-                    SELECT COUNT(*) FROM users 
-                    WHERE company_id = ? 
-                      AND is_active = 1 
-                      AND UPPER(COALESCE(role, '')) NOT IN ('ADMIN', 'DEVELOPER', 'SUPERADMIN')
-                    """, (c_id,)
-                )
-            users_count = (await cur_users.fetchone())[0]
-
-            # Kassirlar soni (Firma rahbarlari bundan ham mustasno)
-            if owner_tg:
-                cur_cashiers = await conn.execute(
-                    """
-                    SELECT COUNT(*) FROM users 
-                    WHERE company_id = ? 
-                      AND UPPER(COALESCE(role, '')) = 'CASHIER' 
-                      AND is_active = 1
-                      AND telegram_id != ?
-                    """, (c_id, owner_tg)
-                )
-            else:
-                cur_cashiers = await conn.execute(
-                    """
-                    SELECT COUNT(*) FROM users 
-                    WHERE company_id = ? 
-                      AND UPPER(COALESCE(role, '')) = 'CASHIER' 
-                      AND is_active = 1
-                    """, (c_id,)
-                )
-            cashiers_count = (await cur_cashiers.fetchone())[0]
-
-            # Topshirilgan hisobotlar soni
-            cur_rep = await conn.execute(
-                "SELECT COUNT(*) FROM daily_reports WHERE company_id = ?", (c_id,)
-            )
-            reports_count = (await cur_rep.fetchone())[0]
-
-            # Karta to'ldirish so'rovlari soni
-            cur_topups = await conn.execute(
-                "SELECT COUNT(*) FROM card_topups WHERE company_id = ?", (c_id,)
-            )
-            topups_count = (await cur_topups.fetchone())[0]
-
-            # Oxirgi faollik sanasi (hisobot, karta so'rovi yoki kassa topshirish)
-            cur_last = await conn.execute("""
-                SELECT MAX(ts) FROM (
-                    SELECT MAX(created_at) as ts FROM daily_reports WHERE company_id = ?
-                    UNION ALL
-                    SELECT MAX(created_at) as ts FROM card_topups WHERE company_id = ?
-                    UNION ALL
-                    SELECT MAX(created_at) as ts FROM cashier_handovers WHERE company_id = ?
-                )
-            """, (c_id, c_id, c_id))
-            last_activity = (await cur_last.fetchone())[0]
-
-            # Jami aylanma (savdo tushumlari)
-            cur_sales = await conn.execute(
-                "SELECT COALESCE(SUM(total_inflow), 0) FROM daily_reports WHERE company_id = ?", (c_id,)
-            )
-            total_turnover = (await cur_sales.fetchone())[0]
-
-            # Xodimlar umumiy qarzi
-            cur_debt = await conn.execute(
-                "SELECT COALESCE(SUM(debt_amount), 0) FROM users WHERE company_id = ? AND is_active = 1", (c_id,)
-            )
-            total_debt = (await cur_debt.fetchone())[0]
-
-            days_left = calculate_days_left(c["plan"], c["subscription_expires_at"])
-
-            result.append({
-                "id": c["id"],
-                "name": c["name"],
-                "slug": c["slug"],
-                "telegram_group_id": c["telegram_group_id"],
-                "owner_telegram_id": c["owner_telegram_id"],
-                "owner_name": c["owner_name"] or "Belgilanmagan",
-                "plan": c["plan"],
-                "subscription_expires_at": c["subscription_expires_at"],
-                "days_left": days_left,
-                "is_active": bool(c["is_active"]),
-                "created_at": c["created_at"],
-                "max_employees": c["max_employees"] if ("max_employees" in c.keys() and c["max_employees"]) else 20,
-                "employees_count": users_count,
-                "cashiers_count": cashiers_count,
-                "reports_count": reports_count,
-                "topups_count": topups_count,
-                "owner_phone": c["owner_phone"] if ("owner_phone" in c.keys() and c["owner_phone"]) else None,
-                "owner_extra_contact": c["owner_extra_contact"] if ("owner_extra_contact" in c.keys() and c["owner_extra_contact"]) else None,
-                "company_inn": c["company_inn"] if ("company_inn" in c.keys() and c["company_inn"]) else None,
-                "notes": c["notes"] if ("notes" in c.keys() and c["notes"]) else None,
-                "last_activity": last_activity,
-                "total_turnover": float(total_turnover or 0),
-                "total_debt": float(total_debt or 0)
-            })
+        result = await get_companies_overview(conn)
 
     return {"success": True, "data": result}
 
@@ -186,42 +55,13 @@ async def create_company(
             )
 
         # 2. Slug yaratish va unikal qilish
-        base_slug = generate_slug(req.name)
-        slug = base_slug
-        idx = 1
-        while True:
-            cur_s = await conn.execute("SELECT id FROM companies WHERE slug = ?", (slug,))
-            if not await cur_s.fetchone():
-                break
-            idx += 1
-            slug = f"{base_slug}-{idx}"
+        slug = await generate_unique_slug(conn, req.name)
 
         # 3. Obuna muddati
-        now_utc = datetime.now(timezone.utc)
-        tashkent_tz = timezone(timedelta(hours=5))
-        if req.plan == "UNLIMITED":
-            expires_at = None
-        else:
-            if req.expires_date and req.expires_date.strip():
-                try:
-                    date_obj = datetime.strptime(req.expires_date.strip(), "%Y-%m-%d")
-                    # Belgilangan sananing 23:59:59 gacha amal qiladi (Toshkent vaqti)
-                    exp_dt = datetime(date_obj.year, date_obj.month, date_obj.day, 23, 59, 59, tzinfo=tashkent_tz)
-                    expires_at = exp_dt.astimezone(timezone.utc).isoformat()
-                except ValueError:
-                    raise HTTPException(status_code=400, detail="Sana formati noto'g'ri! YYYY-MM-DD bo'lishi kerak.")
-            elif req.plan == "5_YEARS":
-                # 5 yil keyingi sana (Toshkent vaqti 23:59:59)
-                tashkent_now = datetime.now(tashkent_tz)
-                try:
-                    exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, hour=23, minute=59, second=59, microsecond=0)
-                except ValueError:
-                    exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, month=2, day=28, hour=23, minute=59, second=59, microsecond=0)
-                expires_at = exp_dt.astimezone(timezone.utc).isoformat()
-            else:
-                days = req.subscription_days or 30
-                exp_dt = now_utc + timedelta(days=days)
-                expires_at = exp_dt.isoformat()
+        try:
+            expires_at = calculate_plan_expiration(req.plan, req.expires_date, req.subscription_days)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Sana formati noto'g'ri! YYYY-MM-DD bo'lishi kerak.")
 
         # 4. Kompaniyani yaratish
         max_emp = req.max_employees or 20
@@ -527,21 +367,12 @@ async def update_company_plan(
         if not comp:
             raise HTTPException(status_code=404, detail="Firma topilmadi!")
 
-        tashkent_tz = timezone(timedelta(hours=5))
-        now_utc = datetime.now(timezone.utc)
-        new_expires_at = comp["subscription_expires_at"]
-
         if new_plan == "UNLIMITED":
             new_expires_at = None
         elif new_plan == "5_YEARS":
-            tashkent_now = datetime.now(tashkent_tz)
-            try:
-                exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, hour=23, minute=59, second=59, microsecond=0)
-            except ValueError:
-                exp_dt = tashkent_now.replace(year=tashkent_now.year + 5, month=2, day=28, hour=23, minute=59, second=59, microsecond=0)
-            new_expires_at = exp_dt.astimezone(timezone.utc).isoformat()
+            new_expires_at = calculate_plan_expiration("5_YEARS")
         elif new_plan == "STANDARD" and not new_expires_at:
-            new_expires_at = (now_utc + timedelta(days=30)).isoformat()
+            new_expires_at = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
 
         await conn.execute("""
             UPDATE companies 
@@ -583,32 +414,23 @@ async def extend_company_subscription(
                 "message": f"'{comp['name']}' firmasi Cheksiz (UNLIMITED) tarifida, obunani uzaytirish talab etilmaydi."
             }
 
-        now_utc = datetime.now(timezone.utc)
-        tashkent_tz = timezone(timedelta(hours=5))
-
-        if req.new_expires_date and req.new_expires_date.strip():
-            try:
-                date_obj = datetime.strptime(req.new_expires_date.strip(), "%Y-%m-%d")
-                new_exp_dt = datetime(date_obj.year, date_obj.month, date_obj.day, 23, 59, 59, tzinfo=tashkent_tz)
-                new_exp_iso = new_exp_dt.astimezone(timezone.utc).isoformat()
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Sana formati noto'g'ri! YYYY-MM-DD bo'lishi kerak.")
-        elif req.days:
-            cur_exp = comp["subscription_expires_at"]
-            base_dt = now_utc
-            if cur_exp:
-                try:
-                    parsed_exp = datetime.fromisoformat(str(cur_exp).replace("Z", "+00:00"))
-                    if parsed_exp.tzinfo is None:
-                        parsed_exp = parsed_exp.replace(tzinfo=timezone.utc)
-                    if parsed_exp > now_utc:
-                        base_dt = parsed_exp
-                except Exception:
-                    base_dt = now_utc
-            new_exp_dt = base_dt + timedelta(days=req.days)
-            new_exp_iso = new_exp_dt.isoformat()
-        else:
+        if not (req.new_expires_date and req.new_expires_date.strip()) and not req.days:
             raise HTTPException(status_code=400, detail="Yangi amal qilish sanasi yoki kunlar soni kiritilishi shart!")
+
+        try:
+            new_exp_iso = calculate_subscription_extension(
+                comp["subscription_expires_at"],
+                req.new_expires_date,
+                req.days
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Sana formati noto'g'ri! YYYY-MM-DD bo'lishi kerak.")
+
+        tashkent_tz = timezone(timedelta(hours=5))
+        new_exp_dt = datetime.fromisoformat(new_exp_iso.replace("Z", "+00:00"))
+        if new_exp_dt.tzinfo is None:
+            new_exp_dt = new_exp_dt.replace(tzinfo=timezone.utc)
+        display_date = new_exp_dt.astimezone(tashkent_tz).strftime('%d.%m.%Y')
 
         await conn.execute("""
             UPDATE companies 
@@ -803,30 +625,17 @@ async def send_company_credentials(
             raise HTTPException(status_code=400, detail="Firma Rahbarining Telegram ID si belgilanmagan!")
 
         owner_name = comp["owner_name"] or "Firma Rahbari"
-        tashkent_tz = timezone(timedelta(hours=5))
-        exp_val = comp["subscription_expires_at"]
-        if comp["plan"] == "UNLIMITED":
-            exp_text = "Cheksiz (Unlimited ♾️)"
-        elif exp_val:
-            try:
-                exp_text = datetime.fromisoformat(str(exp_val).replace("Z", "+00:00")).astimezone(tashkent_tz).strftime("%d.%m.%Y")
-            except Exception:
-                exp_text = str(exp_val)
-        else:
-            exp_text = "Belgilanmagan"
+        phone_val = comp["owner_phone"] if ("owner_phone" in comp.keys() and comp["owner_phone"]) else None
 
-        phone_line = f"📞 <b>Aloqa raqami:</b> <code>{comp['owner_phone']}</code>\n" if ("owner_phone" in comp.keys() and comp["owner_phone"]) else ""
-
-        text = (
-            f"🏢 <b>Hurmatli {owner_name}!</b>\n\n"
-            f"Sizning <b>\"{comp['name']}\"</b> tashkilotingiz uchun <b>XodimKPI CRM</b> tizimida Rahbarlik kabineti muvaffaqiyatli faollashtirildi! 🎉\n\n"
-            f"🌐 <b>CRM Havolasi:</b> {FRONTEND_URL}\n"
-            f"👤 <b>Login (Telegram ID):</b> <code>{owner_tg}</code>\n"
-            f"🔑 <b>Boshlang'ich parol:</b> <code>{owner_tg}</code> (yoki o'rnatilgan parolingiz)\n"
-            f"{phone_line}"
-            f"📅 <b>Obuna amal qilish sanasi:</b> {exp_text} gacha\n"
-            f"👥 <b>Xodimlar limiti:</b> {comp['max_employees']} ta\n\n"
-            f"<i>💡 Tizimga kirib, xodimlaringizni qo'shishingiz va hisobotlarni qabul qilishni boshlashingiz mumkin.</i>"
+        text = format_company_credentials_message(
+            company_name=comp["name"],
+            frontend_url=FRONTEND_URL,
+            owner_name=owner_name,
+            owner_telegram_id=int(owner_tg),
+            owner_phone=phone_val,
+            plan=comp["plan"],
+            subscription_expires_at=comp["subscription_expires_at"],
+            max_employees=comp["max_employees"] or 20
         )
 
         try:

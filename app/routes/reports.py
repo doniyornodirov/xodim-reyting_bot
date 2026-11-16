@@ -10,6 +10,10 @@ from app.models import DailyReportCreate, StatusActionRequest, SendExcelTelegram
 from app.dependencies import get_current_user, require_role, require_active_shift
 from app.security import get_tashkent_today_str, get_tashkent_now
 from app.bot import send_report_summary_to_telegram, send_report_status_to_telegram
+from app.services.fintech_calc import to_decimal, round_uzs
+from app.services.idempotency import check_idempotency, record_idempotency_result
+from app.services.report_service import get_employee_report_prefill
+from app.services.analytics_service import invalidate_analytics_cache
 
 logger = logging.getLogger("reports")
 
@@ -31,45 +35,10 @@ async def get_today_prefill(user: dict = Depends(get_current_user)):
             detail="Bosh Rahbar xodim emas! Hisobot prefill faqat xodimlar uchun mavjud."
         )
     today_str = get_tashkent_today_str()
+    comp_id = user.get("company_id") or 1
 
-    async with aiosqlite.connect(DB_PATH) as conn:
-        conn.row_factory = aiosqlite.Row
-
-        # 1. Bugungi tasdiqlangan karta to'ldirish summalari (+3% ustama bilan)
-        cursor = await conn.execute("""
-            SELECT COALESCE(SUM(surcharge_amount), 0) FROM card_topups
-            WHERE employee_id = ? AND status = 'APPROVED' 
-            AND DATE(created_at, '+5 hours') = ?
-        """, (user["id"], today_str))
-        card_amount = (await cursor.fetchone())[0]
-
-        # 2. Bugungi tasdiqlangan "Berilgan summa"
-        cursor = await conn.execute("""
-            SELECT COALESCE(SUM(amount), 0) FROM given_amounts
-            WHERE employee_id = ? AND status = 'APPROVED'
-            AND DATE(created_at, '+5 hours') = ?
-        """, (user["id"], today_str))
-        given_amount = (await cursor.fetchone())[0]
-
-        # 3. Foydalanuvchining hozirgi qarzdorligi (Rahbar belgilagan)
-        cursor = await conn.execute("SELECT debt_amount FROM users WHERE id = ?", (user["id"],))
-        debt_snapshot = (await cursor.fetchone())[0]
-
-        # 4. Bugungi hisobot mavjudmi?
-        cursor = await conn.execute("""
-            SELECT * FROM daily_reports 
-            WHERE employee_id = ? AND report_date = ?
-        """, (user["id"], today_str))
-        existing_report = await cursor.fetchone()
-
-        return {
-            "success": True,
-            "today": today_str,
-            "card_amount": card_amount,
-            "given_amount": given_amount,
-            "debt_snapshot": debt_snapshot,
-            "existing_report": dict(existing_report) if existing_report else None
-        }
+    async with get_db_connection() as conn:
+        return await get_employee_report_prefill(conn, comp_id, user["id"], today_str)
 
 @router.post("/submit")
 async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(require_active_shift)):
@@ -83,6 +52,12 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Siz hozirda dam olish (damda) rejimidasiz! Amallarni bajarish vaqtinchalik cheklangan. Ishga qaytish uchun Rahbarga murojaat qiling."
         )
+
+    # Idempotentlik tekshiruvi (takroriy bosishdan himoya)
+    is_new, cached_res = await check_idempotency(req.idempotency_key, user["id"], action="DAILY_REPORT")
+    if not is_new:
+        return cached_res
+
     # Midnight Rollover himoyasi: agar soat 00:00 dan o'tgan bo'lsa ham xodim formani ochgan sanasini yo'qotmaydi
     target_date = get_tashkent_today_str()
     if req.report_date and req.report_date.strip():
@@ -143,11 +118,13 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
                 detail=f"Qarz uchun to'lov eng kamida {min_allowed:,.0f} so'm bo'lishi kerak!"
             )
 
-        # Hisob-kitoblar:
+        # Hisob-kitoblar (Decimal aniqligida 0 tiyin xatosiz):
         # Qarzdorlik kirimga qo'shilmaydi! Faqat qarz uchun to'lov kiritilsa kirimga qo'shiladi va qarzdorlikdan ayrilib boriladi.
-        total_inflow = round(req.paynet + card_amount + req.leviy + req.debt_paid, 2)
-        total_outflow = round(req.kunlik + req.terminal + given_amount + req.skidka + req.xarajat, 2)
-        net_amount = round(total_inflow - total_outflow, 2)
+        d_inflow = to_decimal(req.paynet) + to_decimal(card_amount) + to_decimal(req.leviy) + to_decimal(req.debt_paid)
+        d_outflow = to_decimal(req.kunlik) + to_decimal(req.terminal) + to_decimal(given_amount) + to_decimal(req.skidka) + to_decimal(req.xarajat)
+        total_inflow = float(round_uzs(d_inflow))
+        total_outflow = float(round_uzs(d_outflow))
+        net_amount = float(round_uzs(d_inflow - d_outflow))
 
         # 5 ta operator bo'yicha sim-karta hisobi
         total_op_sims = int(req.sim_uzmobile) + int(req.sim_beeline) + int(req.sim_ucell) + int(req.sim_mobiuz) + int(req.sim_perfectum)
@@ -225,6 +202,7 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             VALUES (?, 'DAILY_REPORT', ?, 'SUBMIT', ?, ?)
         """, (comp_id, report_id, user["full_name"], f"{action_desc}: Sana {today_str}, Umumiy summa: {net_amount:,} so'm"))
         await conn.commit()
+        invalidate_analytics_cache(comp_id)
 
     # Xodimning shaxsiy Telegramiga (lichkasiga) hisobot tafsilotlarini yuborish
     tg_id = user.get("telegram_id")
@@ -261,7 +239,7 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
         except Exception as e:
             logger.warning(f"Telegramga hisobot yuborishda task xatoligi: {e}")
 
-    return {
+    response_payload = {
         "success": True,
         "message": f"Kunlik hisobot muvaffaqiyatli topshirildi ({action_desc})!",
         "data": {
@@ -273,6 +251,8 @@ async def submit_daily_report(req: DailyReportCreate, user: dict = Depends(requi
             "status": "PENDING"
         }
     }
+    await record_idempotency_result(req.idempotency_key, user["id"], response_payload, action="DAILY_REPORT")
+    return response_payload
 
 @router.get("/my-history")
 async def get_my_reports(user: dict = Depends(get_current_user)):
@@ -422,6 +402,7 @@ async def update_report_status(
         emp_tg_id = emp_user[0] if emp_user else None
 
         await conn.commit()
+        invalidate_analytics_cache(comp_id)
 
     # Xodimning shaxsiy Telegramiga bildirishnoma yuborish
     if emp_tg_id:
@@ -527,6 +508,7 @@ async def cancel_daily_report(
         emp_name = emp_user["full_name"] if emp_user else "Xodim"
 
         await conn.commit()
+        invalidate_analytics_cache(comp_id)
 
     # Xodimning shaxsiy Telegramiga bildirishnoma yuborish
     if emp_tg_id:

@@ -1,0 +1,318 @@
+"""
+XodimKPI CRM - FinTech Moliya Xavfsizligi va Idempotentlik Sinovlari (Test Suite)
+"""
+
+import unittest
+import asyncio
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from fastapi import HTTPException
+from app.services.fintech_calc import (
+    to_decimal,
+    round_uzs,
+    calculate_card_surcharge,
+    calculate_daily_report_totals,
+    calculate_cashier_diff
+)
+from app.services.idempotency import (
+    check_idempotency,
+    record_idempotency_result,
+    clear_idempotency_key,
+    _IDEMPOTENCY_STORE
+)
+
+class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
+
+    def test_01_decimal_conversion_and_rounding(self):
+        """1. Decimal xavfsiz konvertatsiya va butun so'mga yaxlitlash tekshiruvi"""
+        self.assertEqual(to_decimal(100.5), Decimal("100.5"))
+        self.assertEqual(round_uzs(100.49), 100)
+        self.assertEqual(round_uzs(100.50), 101)
+        self.assertEqual(round_uzs("500000"), 500000)
+
+    def test_02_card_surcharge_calculation(self):
+        """2. Karta to'ldirish 3% ustamani 1000 so'mga yaxlitlash qoidasi"""
+        # 50 000 * 1.03 = 51 500 -> 52 000 so'm bo'lishi kerak
+        self.assertEqual(calculate_card_surcharge(50000), 52000)
+        # 100 000 * 1.03 = 103 000 -> 103 000 so'm bo'lishi kerak
+        self.assertEqual(calculate_card_surcharge(100000), 103000)
+        # 30 000 * 1.03 = 30 900 -> 31 000 so'm bo'lishi kerak
+        self.assertEqual(calculate_card_surcharge(30000), 31000)
+
+    def test_03_daily_report_totals_precision(self):
+        """3. Kunlik hisobot kirim, chiqim va sof kassa hisobi aniqligi (0 tiyin tafovut)"""
+        res = calculate_daily_report_totals(
+            paynet=1500000,
+            card_amount=52000,
+            leviy=100000,
+            debt_paid=50000,
+            kunlik=20000,
+            terminal=500000,
+            given_amount=100000,
+            skidka=10000,
+            xarajat=15000
+        )
+        # Kirim = 1 500 000 + 52 000 + 100 000 + 50 000 + 20 000 = 1 722 000
+        self.assertEqual(res["total_inflow"], 1722000)
+        # Chiqim = 500 000 + 100 000 + 10 000 + 15 000 = 625 000
+        self.assertEqual(res["total_outflow"], 625000)
+        # Sof = 1 722 000 - 625 000 = 1 097 000
+        self.assertEqual(res["net_amount"], 1097000)
+
+    def test_04_cashier_diff_calculation(self):
+        """4. Kassa taqqoslash tafovutlari (kamomad yoki ortiqcha) aniqlanishi"""
+        # 1 000 000 kutilgan, kassir 900 000 so'm qabul qilgan -> 100 000 kamomad
+        res1 = calculate_cashier_diff(
+            system_expected_net=1000000,
+            cashier_received_uzs=900000,
+            cashier_received_usd=0,
+            usd_rate=12000
+        )
+        self.assertTrue(res1["has_diff"])
+        self.assertTrue(res1["is_shortage"])
+        self.assertFalse(res1["is_surplus"])
+        self.assertEqual(res1["difference"], -100000)
+
+        # 1 000 000 kutilgan, kassir 50$ (kurs 12 000 = 600 000) + 400 000 so'm qabul qilgan -> Tafovut 0
+        res2 = calculate_cashier_diff(
+            system_expected_net=1000000,
+            cashier_received_uzs=400000,
+            cashier_received_usd=50,
+            usd_rate=12000
+        )
+        self.assertFalse(res2["has_diff"])
+        self.assertEqual(res2["difference"], 0)
+
+        # 3. FinTech Zero Discrepancy Xulosasi (summarize_cashier_comparison)
+        from app.services.cashier_service import summarize_cashier_comparison
+        mock_results = [
+            {"report_amount": 500000, "cashier_amount": 500000, "cashier_amount_uzs": 500000, "cashier_amount_usd": 0, "is_match": True, "has_diff": False, "report_status": "APPROVED"},
+            {"report_amount": 300000, "cashier_amount": 250000, "cashier_amount_uzs": 250000, "cashier_amount_usd": 0, "is_match": False, "has_diff": True, "report_status": "APPROVED"}
+        ]
+        sum1 = summarize_cashier_comparison(mock_results)
+        self.assertEqual(sum1["total_expected_uzs"], 800000)
+        self.assertEqual(sum1["total_collected_uzs"], 750000)
+        self.assertEqual(sum1["total_difference_uzs"], -50000)
+        self.assertFalse(sum1["is_zero_discrepancy"])
+        self.assertEqual(sum1["diff_count"], 1)
+
+        # 4. Zero Discrepancy holati (100% to'liq mos)
+        mock_perfect = [
+            {"report_amount": 500000, "cashier_amount": 500000, "cashier_amount_uzs": 500000, "cashier_amount_usd": 0, "is_match": True, "has_diff": False, "report_status": "APPROVED"}
+        ]
+        sum2 = summarize_cashier_comparison(mock_perfect)
+        self.assertEqual(sum2["total_difference_uzs"], 0)
+        self.assertTrue(sum2["is_zero_discrepancy"])
+
+    async def test_05_idempotency_workflow(self):
+        """5. Idempotentlik: birinchi so'rov o'tishi, takroriy so'rovda kesh qaytishi"""
+        test_key = "unique-tx-12345"
+        user_id = 99
+
+        # Tozalash
+        await clear_idempotency_key(test_key, user_id, action="TEST")
+
+        # 1. Birinchi marta tekshirish (yangi so'rov)
+        is_new, cached = await check_idempotency(test_key, user_id, action="TEST")
+        self.assertTrue(is_new)
+        self.assertIsNone(cached)
+
+        # 2. Xuddi shu kalit bilan hali natija yozilmasdan takroriy so'rov kelsa -> 409 Conflict
+        with self.assertRaises(HTTPException) as cm:
+            await check_idempotency(test_key, user_id, action="TEST")
+        self.assertEqual(cm.exception.status_code, 409)
+
+        # 3. Natija yoziladi
+        expected_result = {"success": True, "transaction_id": 888}
+        await record_idempotency_result(test_key, user_id, expected_result, action="TEST")
+
+        # 4. Endi xuddi shu kalit qayta so'ralsa -> Keshdagi natija qaytadi (is_new = False)
+        is_new_repeat, cached_repeat = await check_idempotency(test_key, user_id, action="TEST")
+        self.assertFalse(is_new_repeat)
+        self.assertEqual(cached_repeat, expected_result)
+
+        # Tozalash
+        await clear_idempotency_key(test_key, user_id, action="TEST")
+
+    async def test_06_services_integration(self):
+        """6. Clean Architecture servislar integratsiyasi (cashier, rating, report prefill)"""
+        from app.database import get_db_connection
+        from app.services.cashier_service import calculate_daily_cashier_comparison
+        from app.services.report_service import get_employee_report_prefill
+        from app.services.rating_service import get_company_leaderboard, calculate_kpi_points
+
+        # KPI ballarini hisoblash
+        pts = calculate_kpi_points(5000000, 10)
+        self.assertEqual(pts["money_points"], 5.0)
+        self.assertEqual(pts["sim_points"], 10.0)
+        self.assertEqual(pts["total_score"], 15.0)
+
+        async with get_db_connection() as conn:
+            # 1. Leaderboard
+            board = await get_company_leaderboard(conn, company_id=1, period="monthly")
+            self.assertIsInstance(board, list)
+
+            # 2. Cashier comparison
+            comp = await calculate_daily_cashier_comparison(conn, company_id=1, target_date="2026-11-16")
+            self.assertIsInstance(comp, list)
+
+            # 3. Report prefill
+            prefill = await get_employee_report_prefill(conn, company_id=1, user_id=1, today_str="2026-11-16")
+            self.assertTrue(prefill["success"])
+            self.assertIn("card_amount", prefill)
+
+    def test_07_sim_service_validation(self):
+        """7. Sim-karta seriyalari validatsiyasi va limitlari tekshiruvi"""
+        from app.services.sim_service import validate_serial_range
+
+        # To'g'ri oraliq
+        s, e, count = validate_serial_range("899980000000000001", "899980000000000010")
+        self.assertEqual(count, 10)
+
+        # 1 ta sim karta (start == end)
+        s, e, count1 = validate_serial_range("899980000000000001", "899980000000000001")
+        self.assertEqual(count1, 1)
+
+        # 18 tadan kam raqam kiritilsa -> ValueError
+        with self.assertRaises(ValueError):
+            validate_serial_range("123", "456")
+
+        # start > end -> ValueError
+        with self.assertRaises(ValueError):
+            validate_serial_range("899980000000000010", "899980000000000001")
+
+        # 1000 tadan ortiq sim karta -> ValueError
+        with self.assertRaises(ValueError):
+            validate_serial_range("899980000000000001", "899980000000002000")
+
+    def test_08_geo_service_calculations(self):
+        """8. Geolokatsiya Haversine masofasi va smena vaqtlari tekshiruvi"""
+        from app.services.geo_service import calculate_haversine_meters, is_time_within_interval, is_desktop_user_agent
+
+        # 1. Haversine masofa: bir xil nuqta = 0 metr
+        d = calculate_haversine_meters(41.311081, 69.240562, 41.311081, 69.240562)
+        self.assertEqual(d, 0.0)
+
+        # Toshkent markazi va yaqin nuqta (~111 metr)
+        d2 = calculate_haversine_meters(41.311081, 69.240562, 41.312081, 69.240562)
+        self.assertGreater(d2, 100)
+        self.assertLess(d2, 120)
+
+        # 2. Smena vaqtlari (kunduzgi va tungi)
+        self.assertTrue(is_time_within_interval("12:00", "09:00", "18:00"))
+        self.assertFalse(is_time_within_interval("19:30", "09:00", "18:00"))
+        # Tungi smena: 21:00 - 06:00
+        self.assertTrue(is_time_within_interval("23:30", "21:00", "06:00"))
+        self.assertTrue(is_time_within_interval("03:15", "21:00", "06:00"))
+        self.assertFalse(is_time_within_interval("12:00", "21:00", "06:00"))
+
+        # 3. Desktop vs Mobile User Agent tekshiruvi
+        self.assertTrue(is_desktop_user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0"))
+        self.assertFalse(is_desktop_user_agent("Mozilla/5.0 (Linux; Android 14; SM-S928B) Mobile Safari/537.36"))
+
+    async def test_09_brute_force_lockout(self):
+        """9. Brute-force himoyasi: 5 marta xato terilganda 429 Lockout berilishi"""
+        from app.services.security_service import check_login_lockout, record_failed_login, reset_failed_login
+        test_tg = 999888777
+
+        # 1. Tozalash
+        await reset_failed_login(test_tg)
+        await check_login_lockout(test_tg)
+
+        # 2. 4 marta xato kiritish
+        for i in range(4):
+            rem = await record_failed_login(test_tg)
+            self.assertEqual(rem, 4 - i)
+
+        # 3. 5-marta xato kiritilganda HTTP 429 tashlanadi
+        with self.assertRaises(HTTPException) as cm:
+            await record_failed_login(test_tg)
+        self.assertEqual(cm.exception.status_code, 429)
+
+        # 4. Endi check_login_lockout ham 429 beradi
+        with self.assertRaises(HTTPException) as cm2:
+            await check_login_lockout(test_tg)
+        self.assertEqual(cm2.exception.status_code, 429)
+
+        # 5. Muvaffaqiyatli kirish tozalaydi
+        await reset_failed_login(test_tg)
+        await check_login_lockout(test_tg)
+
+    def test_10_saas_service_calculations(self):
+        """10. SaaS xizmatlari: slug yaratish, kunlar hisobi, tarif muddati va xabarlar"""
+        from app.services.saas_service import (
+            generate_slug,
+            calculate_days_left,
+            calculate_plan_expiration,
+            calculate_subscription_extension,
+            format_company_credentials_message
+        )
+
+        # 1. Slug yaratish
+        self.assertEqual(generate_slug("O'zbekiston Paynet Savdo"), "ozbekiston-paynet-savdo")
+        self.assertEqual(generate_slug("Бизнес Авто Центр"), "biznes-avto-tsentr")
+        self.assertEqual(generate_slug("   "), "firma")
+
+        # 2. Qolgan kunlar hisobi
+        self.assertIsNone(calculate_days_left("UNLIMITED", None))
+        self.assertIsNone(calculate_days_left("UNLIMITED", "2030-01-01T00:00:00Z"))
+        self.assertEqual(calculate_days_left("STANDARD", "2020-01-01T00:00:00Z"), 0)
+        
+        future_iso = (datetime.now(timezone.utc) + timedelta(days=15)).isoformat()
+        days_left = calculate_days_left("STANDARD", future_iso)
+        self.assertTrue(14 <= days_left <= 16)
+
+        # 3. Tarif muddati hisobi
+        self.assertIsNone(calculate_plan_expiration("UNLIMITED"))
+        exp_5y = calculate_plan_expiration("5_YEARS")
+        self.assertIsNotNone(exp_5y)
+        exp_custom = calculate_plan_expiration("STANDARD", expires_date_str="2030-05-20")
+        self.assertIn("2030-05-20", exp_custom)
+
+        # 4. Obuna uzaytirish
+        ext_days = calculate_subscription_extension(future_iso, days=10)
+        self.assertIsNotNone(ext_days)
+
+        # 5. Rekvizitlar formati
+        msg = format_company_credentials_message(
+            company_name="Test Firma",
+            frontend_url="https://crm.xodimkpi.uz",
+            owner_name="Alisher",
+            owner_telegram_id=1234567,
+            owner_phone="+998901234567",
+            plan="STANDARD",
+            subscription_expires_at="2030-01-01T00:00:00Z",
+            max_employees=25
+        )
+        self.assertIn("Test Firma", msg)
+        self.assertIn("https://crm.xodimkpi.uz", msg)
+        self.assertIn("1234567", msg)
+        self.assertIn("+998901234567", msg)
+
+    async def test_11_saas_batch_overview_and_wal_checkpoint(self):
+        """11. SaaS Batch Overview (Zero N+1) va SQLite WAL checkpoint tekshiruvi"""
+        from app.database import get_db_connection, checkpoint_wal
+        from app.services.saas_service import get_companies_overview
+
+        async with get_db_connection() as conn:
+            # 1. Zero N+1 batch overview
+            overview = await get_companies_overview(conn)
+            self.assertIsInstance(overview, list)
+            self.assertGreater(len(overview), 0)
+            first = overview[0]
+            self.assertIn("id", first)
+            self.assertIn("name", first)
+            self.assertIn("employees_count", first)
+            self.assertIn("reports_count", first)
+            self.assertIn("topups_count", first)
+            self.assertIn("total_turnover", first)
+
+            # 2. WAL checkpoint
+            cp_result = await checkpoint_wal(conn, mode="PASSIVE")
+            self.assertIn("busy", cp_result)
+            self.assertIn("log", cp_result)
+            self.assertIn("checkpointed", cp_result)
+            self.assertIsInstance(cp_result["busy"], bool)
+
+if __name__ == "__main__":
+    unittest.main()
