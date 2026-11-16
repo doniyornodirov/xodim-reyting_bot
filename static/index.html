@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=901', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=902', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=901">
+  <link rel="stylesheet" href="/static/css/style.css?v=902">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -221,6 +221,24 @@
       <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="11.25" cy="11.25" r="3.75" stroke="currentColor" stroke-width="2"/>
       <path d="M14 14L16.75 16.75" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- 18. Tasdiqlash Kodi / Qulf (icon-lock-closed) -->
+    <symbol id="icon-lock-closed" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="7.5" y="11" width="9" height="7" rx="1.75" stroke="currentColor" stroke-width="2"/>
+      <path d="M9.5 11V8.25C9.5 6.87 10.62 5.75 12 5.75C13.38 5.75 14.5 6.87 14.5 8.25V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="13.75" r="0.9" fill="currentColor"/>
+      <path d="M12 14.5V16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- 19. Tasdiqlash va Kirish / Ochiq Qulf (icon-lock-open) -->
+    <symbol id="icon-lock-open" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="7.5" y="11" width="9" height="7" rx="1.75" stroke="currentColor" stroke-width="2"/>
+      <path d="M9.5 11V7.5C9.5 6.12 10.62 5 12 5C13.38 5 14.5 6.12 14.5 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="13.75" r="0.9" fill="currentColor"/>
+      <path d="M12 14.5V16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
     </symbol>
   </svg>
 
@@ -2105,7 +2123,9 @@
       <!-- 2-Qadam: 6 xonali OTP Kod -->
       <div id="login-step-2" style="display: none;">
         <div style="text-align: center; margin-bottom: 1.5rem;">
-          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔐</div>
+          <div class="otp-header-icon-wrap">
+            <svg class="otp-header-icon" viewBox="0 0 24 24"><use href="#icon-lock-closed"></use></svg>
+          </div>
           <h2 style="font-size: 1.35rem; font-weight: 800;">Tasdiqlash Kodi</h2>
           <p style="font-size: 0.85rem; color: #94a3b8; margin: 0 0 0.4rem 0;">
             Tasdiqlash kodi Telegram hisobingizga (<b id="otp-tg-id-display" style="color: #cbd5e1;"></b>) yuborildi
@@ -2131,8 +2151,9 @@
 
           <div id="otp-error-alert" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 0.75rem; text-align: center;"></div>
 
-          <button type="submit" id="btn-verify-submit" class="btn-primary" style="width: 100%; margin-top: 0.25rem;">
-            Tasdiqlash va Kirish 🔓
+          <button type="submit" id="btn-verify-submit" class="btn-primary" style="width: 100%; margin-top: 0.25rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <span>Tasdiqlash va Kirish</span>
+            <svg class="btn-verify-icon" viewBox="0 0 24 24"><use href="#icon-lock-open"></use></svg>
           </button>
           <button type="button" id="btn-retry-login" class="btn-logout" style="width: 100%; margin-top: 0.5rem;" onclick="handleRetryLogin()">
             ⏳ Qaytadan urinish (60s)
@@ -2958,6 +2979,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=901"></script>
+  <script src="/static/js/app.js?v=902"></script>
 </body>
 </html>

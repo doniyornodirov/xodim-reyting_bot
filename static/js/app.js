@@ -920,6 +920,12 @@ async function handleLoginStep1(e) {
 
     startOtpCountdown(res.expires_in || 60);
 
+    const verifyBtn = document.getElementById("btn-verify-submit");
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.innerHTML = `<span>Tasdiqlash va Kirish</span> <svg class="btn-verify-icon" viewBox="0 0 24 24"><use href="#icon-lock-open"></use></svg>`;
+    }
+
     const otpInput = document.getElementById("otp-code-input");
     if (otpInput) {
       otpInput.value = "";
@@ -940,6 +946,11 @@ async function handleLoginStep1(e) {
       document.getElementById("login-step-2").style.display = "block";
       const tgDisplay = document.getElementById("otp-tg-id-display");
       if (tgDisplay) tgDisplay.innerText = tgIdClean;
+      const verifyBtn = document.getElementById("btn-verify-submit");
+      if (verifyBtn) {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = `<span>Tasdiqlash va Kirish</span> <svg class="btn-verify-icon" viewBox="0 0 24 24"><use href="#icon-lock-open"></use></svg>`;
+      }
       startOtpCountdown(getCooldownSecondsLeft() || 60);
     }
     if (errText.includes("Obunangizni uzaytiring")) {
@@ -1049,7 +1060,7 @@ async function handleVerifyOtp(e) {
     isVerifyOtpInProgress = false;
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.innerText = "Tasdiqlash va Kirish 🔓";
+      submitBtn.innerHTML = `<span>Tasdiqlash va Kirish</span> <svg class="btn-verify-icon" viewBox="0 0 24 24"><use href="#icon-lock-open"></use></svg>`;
     }
   }
 }

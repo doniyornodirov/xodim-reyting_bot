@@ -2484,6 +2484,63 @@ button[onclick="handleAppointCashierSubmit()"] {
   }
 }
 
+/* OTP Tasdiqlash Kodi Squircle Qulf ikonasi */
+.otp-header-icon-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.otp-header-icon {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  stroke: #818cf8;
+  fill: none;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+  filter: drop-shadow(0 4px 14px rgba(129, 140, 248, 0.35));
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.28s ease;
+}
+
+.otp-header-icon:hover {
+  transform: scale(1.08) translateY(-2px);
+  filter: drop-shadow(0 6px 20px rgba(129, 140, 248, 0.55));
+}
+
+body.theme-light .otp-header-icon {
+  stroke: #4f46e5;
+  filter: drop-shadow(0 3px 10px rgba(79, 70, 229, 0.22));
+}
+
+body.theme-light .otp-header-icon:hover {
+  filter: drop-shadow(0 5px 16px rgba(79, 70, 229, 0.35));
+}
+
+/* Tasdiqlash va Kirish Squircle Ochiq Qulf ikonasi */
+.btn-verify-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: inline-block;
+  vertical-align: middle;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#btn-verify-submit:hover .btn-verify-icon {
+  transform: scale(1.2) rotate(-8deg);
+}
+
 /* Hover holatida yaqqol ko'tarilib, nur sochib ajralib chiqishi (Pop-Out & Glow) */
 .btn-primary:hover,
 button[type="submit"]:hover,
