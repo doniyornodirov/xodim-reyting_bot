@@ -473,10 +473,14 @@ async def get_audit_logs(
 async def get_sales_monitoring(
     period: str = "7d",
     user_id: Optional[int] = None,
+    refresh: bool = False,
     admin: dict = Depends(require_role(["ADMIN"]))
 ):
     """Faqat Rahbar uchun: Savdo monitoringi, vaqt bo'yicha dinamika (o'sish/pasayish) va xodim bo'yicha filtr"""
     comp_id = admin.get("company_id") or 1
+    if refresh:
+        from app.services.analytics_service import invalidate_analytics_cache
+        invalidate_analytics_cache(comp_id)
     data = await get_sales_monitoring_data(company_id=comp_id, period=period, user_id=user_id)
     return {"success": True, "data": data}
 

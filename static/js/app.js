@@ -2837,13 +2837,16 @@ function setChartMetric(metric) {
   }
 }
 
-async function loadAdminAnalytics(period = currentAnalyticsPeriod, userId = currentAnalyticsEmployeeId) {
+async function loadAdminAnalytics(period = currentAnalyticsPeriod, userId = currentAnalyticsEmployeeId, refresh = false) {
   currentAnalyticsPeriod = period;
   currentAnalyticsEmployeeId = userId || "";
   try {
     let url = `/api/admin/analytics/monitoring?period=${period}`;
     if (currentAnalyticsEmployeeId) {
       url += `&user_id=${currentAnalyticsEmployeeId}`;
+    }
+    if (refresh) {
+      url += `&refresh=1&_t=${Date.now()}`;
     }
     const res = await api(url);
     if (!res || !res.data) return;
@@ -2883,42 +2886,62 @@ function updateAnalyticsKpis(s) {
   const isToday = s.period === "today" || s.days_count === 1;
 
   // 1. Yalpi tushum
+  let revVal = Number(s.total_submitted_amount) || 0;
+  if (revVal === 0 && analyticsDataCache && Array.isArray(analyticsDataCache.timeline)) {
+    revVal = analyticsDataCache.timeline.reduce((acc, t) => acc + (Number(t.submitted_amount) || 0), 0);
+  }
   const revEl = document.getElementById("kpi-revenue-val");
-  if (revEl) revEl.innerText = `${formatNumberSpaces(s.total_submitted_amount)} so'm`;
+  if (revEl) revEl.innerText = `${formatNumberSpaces(revVal)} so'm`;
   setTrendBadge("kpi-revenue-trend", s.submitted_growth_pct);
   const revSub = document.getElementById("kpi-revenue-sub");
   if (revSub) revSub.innerText = isToday ? "Kechagi kunga nisbatan" : "O'tgan davrga nisbatan";
 
-  // 2. Paynet tushumi
+  // 2. Paynet tushumi (To'g'ridan-to'g'ri summary yoki timelinedan avtomatik hisoblash)
+  let paynetVal = Number(s.total_paynet_amount) || 0;
+  if (paynetVal === 0 && analyticsDataCache && Array.isArray(analyticsDataCache.timeline)) {
+    paynetVal = analyticsDataCache.timeline.reduce((acc, t) => acc + (Number(t.paynet_amount) || 0), 0);
+  }
   const paynetEl = document.getElementById("kpi-paynet-val");
-  if (paynetEl) paynetEl.innerText = `${formatNumberSpaces(s.total_paynet_amount || 0)} so'm`;
-  setTrendBadge("kpi-paynet-trend", s.paynet_growth_pct);
+  if (paynetEl) paynetEl.innerText = `${formatNumberSpaces(paynetVal)} so'm`;
+  setTrendBadge("kpi-paynet-trend", s.paynet_growth_pct || (paynetVal > 0 ? 100 : 0));
   const paynetSub = document.getElementById("kpi-paynet-sub");
   if (paynetSub) paynetSub.innerText = isToday ? "Bugungi Paynet tushumi" : "O'tgan davrga nisbatan";
 
   // 3. Sim-kartalar
+  let simVal = (typeof s.total_sim_cards === "number") ? s.total_sim_cards : 0;
+  if (simVal === 0 && analyticsDataCache && Array.isArray(analyticsDataCache.timeline)) {
+    simVal = analyticsDataCache.timeline.reduce((acc, t) => acc + (Number(t.sim_cards_sold) || 0), 0);
+  }
   const simEl = document.getElementById("kpi-sims-val");
-  if (simEl) simEl.innerText = `${s.total_sim_cards} dona`;
+  if (simEl) simEl.innerText = `${simVal} dona`;
   setTrendBadge("kpi-sims-trend", s.sim_growth_pct);
   const simSub = document.getElementById("kpi-sims-sub");
   if (simSub) simSub.innerText = isToday ? "Bugungi sotuvlar soni" : "Faol sotuvlar soni";
 
   // 4. Karta to'ldirish
+  let cardVal = Number(s.total_card_topup_amount) || 0;
+  if (cardVal === 0 && analyticsDataCache && Array.isArray(analyticsDataCache.timeline)) {
+    cardVal = analyticsDataCache.timeline.reduce((acc, t) => acc + (Number(t.card_topup_amount) || 0), 0);
+  }
   const cardEl = document.getElementById("kpi-cards-val");
-  if (cardEl) cardEl.innerText = `${formatNumberSpaces(s.total_card_topup_amount)} so'm`;
+  if (cardEl) cardEl.innerText = `${formatNumberSpaces(cardVal)} so'm`;
   setTrendBadge("kpi-cards-trend", s.card_growth_pct);
   const cardSub = document.getElementById("kpi-cards-sub");
-  if (cardSub) cardSub.innerText = `${s.total_card_topup_count} ta tasdiqlangan to'ldirish`;
+  if (cardSub) cardSub.innerText = `${s.total_card_topup_count || 0} ta tasdiqlangan to'ldirish`;
 
   // 5. Sof kassa (Net) & Kunlik o'rtacha
+  let netVal = Number(s.total_net_amount) || 0;
+  if (netVal === 0 && analyticsDataCache && Array.isArray(analyticsDataCache.timeline)) {
+    netVal = analyticsDataCache.timeline.reduce((acc, t) => acc + (Number(t.net_amount) || 0), 0);
+  }
   const netEl = document.getElementById("kpi-net-val");
-  if (netEl) netEl.innerText = `${formatNumberSpaces(s.total_net_amount)} so'm`;
+  if (netEl) netEl.innerText = `${formatNumberSpaces(netVal)} so'm`;
   setTrendBadge("kpi-net-trend", s.net_growth_pct);
   const netSub = document.getElementById("kpi-net-sub");
   if (netSub) {
     netSub.innerText = isToday
       ? "Bugungi sof kassa qoldig'i"
-      : `O'rtacha kunlik: ~${formatNumberSpaces(s.avg_daily_submitted)} so'm`;
+      : `O'rtacha kunlik: ~${formatNumberSpaces(s.avg_daily_submitted || Math.round(revVal / Math.max(1, s.days_count || 1)))} so'm`;
   }
 }
 

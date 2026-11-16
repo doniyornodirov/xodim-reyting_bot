@@ -18,8 +18,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=903', { scope: '/' })
-      navigator.serviceWorker.register('/sw.js?v=904', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=910', { scope: '/' })
         .then(function (r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function (e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -28,8 +27,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=903">
-  <link rel="stylesheet" href="/static/css/style.css?v=909">
+  <link rel="stylesheet" href="/static/css/style.css?v=910">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -757,7 +755,7 @@
               <button class="analytics-period-btn px-3 py-1.5 rounded-md text-xs font-medium transition"
                 data-period="all" onclick="changeAnalyticsPeriod('all')">Barcha davr</button>
             </div>
-            <button type="button" class="refresh-btn" onclick="loadAdminAnalytics()" title="Analitikani yangilash">
+            <button type="button" class="refresh-btn" onclick="loadAdminAnalytics(currentAnalyticsPeriod, currentAnalyticsEmployeeId, true)" title="Analitikani yangilash">
               <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="100" cy="100" r="96" fill="#06A9F4" />
                 <g clip-path="url(#circle-clip)">
@@ -3515,8 +3513,7 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=903"></script>
-  <script src="/static/js/app.js?v=909"></script>
+  <script src="/static/js/app.js?v=910"></script>
 </body>
 
 </html>
