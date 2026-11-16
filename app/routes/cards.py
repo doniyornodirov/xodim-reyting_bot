@@ -11,6 +11,7 @@ from app.dependencies import get_current_user, require_role, require_active_shif
 from app.bot import notify_card_topup_in_group
 from app.services.fintech_calc import calculate_card_surcharge
 from app.services.idempotency import check_idempotency, record_idempotency_result, clear_idempotency_key
+from app.security import get_tashkent_today_str
 
 logger = logging.getLogger("cards")
 
@@ -121,6 +122,9 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         # Tanlangan foiz (1, 2, 3, 4, 5%) bo'yicha ustamani 1000 so'mda yaxlitlash (masalan, 50 000 * 1.03 = 51 500 -> 52 000)
         surcharge_amount = float(calculate_card_surcharge(amount, company_percent))
 
+        # Toshkent sanasi (UTC+5) bo'yicha aniq bugungi kun
+        today_str = get_tashkent_today_str()
+
         # 1 kunda 2 va undan ortiq marta yuborilganini tekshirish (Toshkent vaqti +5 bo'yicha)
         clean_card = re.sub(r"\D", "", req.card_number)
         cursor = await conn.execute("""
@@ -131,27 +135,23 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             WHERE REPLACE(card_number, ' ', '') = ? 
               AND company_id = ?
               AND (
-                  DATE(created_at, '+5 hours') = DATE('now', '+5 hours')
-                  OR DATE(created_at) = DATE('now', '+5 hours')
-                  OR DATE(created_at) = DATE('now')
+                  DATE(created_at, '+5 hours') = ?
+                  OR SUBSTR(created_at, 1, 10) = ?
               )
-        """, (clean_card, comp_id))
+        """, (clean_card, comp_id, today_str, today_str))
         row = await cursor.fetchone()
         repeat_count = row[0]
         approved_count = row[1]
         is_repeat_today = (repeat_count >= 1)
         has_approved_today = (approved_count >= 1)
 
-        # Xodim bugun kunlik hisobotini topshirganmi (kassani yopganmi)?
+        # Xodim aynan BUGUN (Toshkent sanasi bo'yicha) kunlik hisobotini topshirganmi (kassani yopganmi)?
         cursor = await conn.execute("""
             SELECT status FROM daily_reports
             WHERE employee_id = ? AND company_id = ?
-              AND (
-                  report_date = DATE('now', '+5 hours')
-                  OR report_date = DATE('now')
-              )
+              AND report_date = ?
               AND status IN ('APPROVED', 'PENDING')
-        """, (user["id"], comp_id))
+        """, (user["id"], comp_id, today_str))
         report_row = await cursor.fetchone()
         has_closed_report_today = bool(report_row)
 

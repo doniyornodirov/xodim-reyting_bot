@@ -563,5 +563,78 @@ class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
                 await conn.execute("DELETE FROM card_topups WHERE card_holder = 'TEST FOIZ'")
                 await conn.commit()
 
+    async def test_18_yesterday_closed_report_does_not_flag_today_topup(self):
+        """18. Kechagi topshirilgan hisobot bugungi yangi kunda karta so'roviga xato ogohlantirish bermasligi tekshiruvi"""
+        from app.database import get_db_connection
+        from app.routes.cards import create_card_topup
+        from app.models import CardTopupCreate
+        from app.security import get_tashkent_now, get_tashkent_today_str
+
+        today_str = get_tashkent_today_str()
+        yesterday_str = (get_tashkent_now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+        async with get_db_connection() as conn:
+            cur = await conn.execute("SELECT * FROM users WHERE role != 'ADMIN' AND is_active = 1 LIMIT 1")
+            emp = await cur.fetchone()
+            if not emp:
+                return
+
+            emp_user = dict(emp)
+            emp_id = emp_user["id"]
+            comp_id = emp_user.get("company_id") or 1
+
+            # Xodimni ACTIVE qilish
+            orig_shift = emp_user.get("shift_status")
+            emp_user["shift_status"] = "ACTIVE"
+            await conn.execute("UPDATE users SET shift_status = 'ACTIVE' WHERE id = ?", (emp_id,))
+
+            # Bugungi va kechagi test hisobotlarini tozalash
+            await conn.execute("DELETE FROM daily_reports WHERE employee_id = ? AND report_date IN (?, ?)", (emp_id, today_str, yesterday_str))
+            
+            # Faqat KECHAGI kun uchun tasdiqlangan hisobot kiritamiz (masalan, kecha soat 23:50 da yopilgan)
+            await conn.execute("""
+                INSERT INTO daily_reports (
+                    company_id, employee_id, report_date, paynet, card_amount, total_inflow, total_outflow, net_amount, status
+                ) VALUES (?, ?, ?, 500000, 100000, 600000, 100000, 500000, 'APPROVED')
+            """, (comp_id, emp_id, yesterday_str))
+            await conn.commit()
+
+            try:
+                # Bugun yangi kunda (00:00 dan keyin) karta so'rovi yuborilganda has_closed_report_today = FALSE bo'lishi shart!
+                topup_req = CardTopupCreate(
+                    card_number="9860123456781234",
+                    card_holder="TEST YESTERDAY CHECK",
+                    amount=50000
+                )
+                res = await create_card_topup(topup_req, user=emp_user)
+                self.assertTrue(res["success"])
+                self.assertFalse(res["data"]["has_closed_report_today"], "Kechagi hisobot bugungi so'rovda 'kassani yopdi' deb chiqmasligi shart!")
+
+                # Endi bugungi kun uchun hisobot kiritilsa:
+                await conn.execute("""
+                    INSERT INTO daily_reports (
+                        company_id, employee_id, report_date, paynet, card_amount, total_inflow, total_outflow, net_amount, status
+                    ) VALUES (?, ?, ?, 100000, 50000, 150000, 50000, 100000, 'APPROVED')
+                """, (comp_id, emp_id, today_str))
+                await conn.commit()
+
+                # Endi so'rov yuborilsa, has_closed_report_today = TRUE bo'lishi kerak
+                topup_req2 = CardTopupCreate(
+                    card_number="9860123456781235",
+                    card_holder="TEST TODAY CHECK",
+                    amount=50000
+                )
+                res2 = await create_card_topup(topup_req2, user=emp_user)
+                self.assertTrue(res2["success"])
+                self.assertTrue(res2["data"]["has_closed_report_today"], "Aynan bugungi hisobot topshirilgandan keyin ogohlantirish TRUE bo'lishi shart!")
+
+            finally:
+                # Qaytarish va tozalash
+                if orig_shift:
+                    await conn.execute("UPDATE users SET shift_status = ? WHERE id = ?", (orig_shift, emp_id))
+                await conn.execute("DELETE FROM daily_reports WHERE employee_id = ? AND report_date IN (?, ?)", (emp_id, today_str, yesterday_str))
+                await conn.execute("DELETE FROM card_topups WHERE card_holder IN ('TEST YESTERDAY CHECK', 'TEST TODAY CHECK')")
+                await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()
