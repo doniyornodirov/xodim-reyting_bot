@@ -1436,7 +1436,8 @@
         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem;">
           <input type="text" id="admin-sim-search-input" class="form-input"
             style="max-width: 400px; font-size: 1.1rem; letter-spacing: 1px; font-weight: 600;" maxlength="18"
-            placeholder="18 xonali seriya raqami..." oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            placeholder="18 xonali seriya raqami..." oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+            onkeydown="if (event.key === 'Enter') searchSimCard()">
           <button type="button" class="btn-primary" onclick="searchSimCard()">
             🔍 Qidirish
           </button>
@@ -3496,7 +3497,7 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=912"></script>
+  <script src="/static/js/app.js?v=913"></script>
 </body>
 
 </html>

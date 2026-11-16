@@ -231,5 +231,94 @@ class TestSimMonitoringSync(unittest.IsolatedAsyncioTestCase):
             await conn.execute("DELETE FROM users WHERE id = 997")
             await conn.commit()
 
+    async def test_operator_specific_sim_deduction_and_rollback(self):
+        """
+        Operatorlar bo'yicha sim-kartalarni to'g'ri FIFO chegirish va rad etilganda qaytarish testi
+        """
+        from app.routes.reports import update_report_status
+        from app.models import StatusActionRequest
+
+        admin_user = {"id": 1, "company_id": 1, "full_name": "Bosh Rahbar", "role": "ADMIN"}
+        emp_id = 996
+
+        async with get_db_connection() as conn:
+            # 1. Test xodim va sim-kartalarni tayyorlash
+            await conn.execute("INSERT OR REPLACE INTO users (id, company_id, telegram_id, full_name, role, password_hash, debt_amount) VALUES (?, 1, 888777996, 'Operator Test Emp', 'EMPLOYEE', 'pwd', 0)", (emp_id,))
+            await conn.execute("DELETE FROM sim_cards WHERE employee_id = ?", (emp_id,))
+            await conn.execute("DELETE FROM daily_reports WHERE employee_id = ?", (emp_id,))
+
+            # 5 ta Uzmobile va 5 ta Beeline karta tarqatish
+            for i in range(1, 6):
+                await conn.execute("""
+                    INSERT INTO sim_cards (company_id, serial_number, operator_type, employee_id, distributed_by_id, status, distributed_at)
+                    VALUES (1, ?, 'Uzmobile', ?, 1, 'GIVEN', CURRENT_TIMESTAMP)
+                """, (f"9999900000000000{i:02d}", emp_id))
+            for i in range(1, 6):
+                await conn.execute("""
+                    INSERT INTO sim_cards (company_id, serial_number, operator_type, employee_id, distributed_by_id, status, distributed_at)
+                    VALUES (1, ?, 'Beeline', ?, 1, 'GIVEN', CURRENT_TIMESTAMP)
+                """, (f"8888800000000000{i:02d}", emp_id))
+
+            # Hisobot topshirish: 3 ta Uzmobile, 2 ta Beeline sotilgan (jami 5 ta)
+            cur = await conn.execute("""
+                INSERT INTO daily_reports (
+                    company_id, employee_id, report_date, paynet, card_amount, leviy, debt_snapshot, debt_paid,
+                    sim_cards_count, sim_uzmobile, sim_beeline, sim_ucell, sim_mobiuz, sim_perfectum,
+                    kunlik, terminal, given_amount, skidka, xarajat, total_inflow, total_outflow, net_amount, status
+                ) VALUES (
+                    1, ?, '2026-11-17', 500000, 0, 0, 0, 0,
+                    5, 3, 2, 0, 0, 0,
+                    0, 0, 0, 0, 0, 500000, 0, 500000, 'PENDING'
+                )
+            """, (emp_id,))
+            report_id = cur.lastrowid
+            await conn.commit()
+
+        # 2. Hisobotni Bosh Rahbar tasdiqlaydi (APPROVED)
+        req_approve = StatusActionRequest(status="APPROVED")
+        res_app = await update_report_status(report_id, req_approve, admin_user)
+        self.assertIn("Tasdiqlandi", res_app["message"])
+
+        async with get_db_connection() as conn:
+            # Uzmobile: 3 ta SOLD, 2 ta GIVEN bo'lishi kerak
+            cur_uz_sold = await conn.execute("SELECT COUNT(*) FROM sim_cards WHERE employee_id = ? AND operator_type = 'Uzmobile' AND status = 'SOLD'", (emp_id,))
+            uz_sold_cnt = (await cur_uz_sold.fetchone())[0]
+            self.assertEqual(uz_sold_cnt, 3, "Uzmobile kartalaridan roppa-rosa 3 tasi 'SOLD' bo'lishi kerak!")
+
+            cur_uz_given = await conn.execute("SELECT COUNT(*) FROM sim_cards WHERE employee_id = ? AND operator_type = 'Uzmobile' AND status = 'GIVEN'", (emp_id,))
+            uz_given_cnt = (await cur_uz_given.fetchone())[0]
+            self.assertEqual(uz_given_cnt, 2, "Uzmobile kartalaridan roppa-rosa 2 tasi 'GIVEN' qolishi kerak!")
+
+            # Beeline: 2 ta SOLD, 3 ta GIVEN bo'lishi kerak
+            cur_bee_sold = await conn.execute("SELECT COUNT(*) FROM sim_cards WHERE employee_id = ? AND operator_type = 'Beeline' AND status = 'SOLD'", (emp_id,))
+            bee_sold_cnt = (await cur_bee_sold.fetchone())[0]
+            self.assertEqual(bee_sold_cnt, 2, "Beeline kartalaridan roppa-rosa 2 tasi 'SOLD' bo'lishi kerak!")
+
+            cur_bee_given = await conn.execute("SELECT COUNT(*) FROM sim_cards WHERE employee_id = ? AND operator_type = 'Beeline' AND status = 'GIVEN'", (emp_id,))
+            bee_given_cnt = (await cur_bee_given.fetchone())[0]
+            self.assertEqual(bee_given_cnt, 3, "Beeline kartalaridan roppa-rosa 3 tasi 'GIVEN' qolishi kerak!")
+
+            # sold_at to'ldirilgan bo'lishi shart
+            cur_sold_at = await conn.execute("SELECT COUNT(*) FROM sim_cards WHERE employee_id = ? AND status = 'SOLD' AND sold_at IS NOT NULL", (emp_id,))
+            sold_at_cnt = (await cur_sold_at.fetchone())[0]
+            self.assertEqual(sold_at_cnt, 5, "Barcha sotilgan sim-kartalarda sold_at vaqti yozilgan bo'lishi kerak!")
+
+        # 3. Hisobotni qayta ko'rib chiqib rad etish (REJECTED rollback)
+        req_reject = StatusActionRequest(status="REJECTED")
+        res_rej = await update_report_status(report_id, req_reject, admin_user)
+        self.assertIn("Rad etildi", res_rej["message"])
+
+        async with get_db_connection() as conn:
+            # Hammasi yana GIVEN holatiga qaytishi va sold_at NULL bo'lishi kerak
+            cur_all_given = await conn.execute("SELECT COUNT(*) FROM sim_cards WHERE employee_id = ? AND status = 'GIVEN' AND sold_at IS NULL", (emp_id,))
+            all_given_cnt = (await cur_all_given.fetchone())[0]
+            self.assertEqual(all_given_cnt, 10, "Hisobot rad etilganda barcha 10 ta sim-karta qaytadan 'GIVEN' va sold_at=NULL bo'lishi kerak!")
+
+            # Tozalash
+            await conn.execute("DELETE FROM sim_cards WHERE employee_id = ?", (emp_id,))
+            await conn.execute("DELETE FROM daily_reports WHERE employee_id = ?", (emp_id,))
+            await conn.execute("DELETE FROM users WHERE id = ?", (emp_id,))
+            await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()

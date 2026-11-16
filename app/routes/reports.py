@@ -362,7 +362,29 @@ async def update_report_status(
                 """, (debt_paid, emp_id, comp_id))
 
             # 2. Xodimning qo'lidagi sim-kartalaridan sim_sold donasini 'SOLD' (Sotilgan) holatiga o'tkazish
-            if sim_sold > 0:
+            op_sold_map = {
+                "Uzmobile": int(report["sim_uzmobile"] or 0),
+                "Beeline": int(report["sim_beeline"] or 0),
+                "Ucell": int(report["sim_ucell"] or 0),
+                "Mobiuz": int(report["sim_mobiuz"] or 0),
+                "Perfectum": int(report["sim_perfectum"] or 0),
+            }
+            has_op_breakdown = any(c > 0 for c in op_sold_map.values())
+
+            if has_op_breakdown:
+                for op_name, count in op_sold_map.items():
+                    if count > 0:
+                        await conn.execute("""
+                            UPDATE sim_cards 
+                            SET status = 'SOLD', sold_at = CURRENT_TIMESTAMP
+                            WHERE id IN (
+                                SELECT id FROM sim_cards 
+                                WHERE employee_id = ? AND status = 'GIVEN' AND company_id = ? AND operator_type = ?
+                                ORDER BY id ASC
+                                LIMIT ?
+                            )
+                        """, (emp_id, comp_id, op_name, count))
+            elif sim_sold > 0:
                 await conn.execute("""
                     UPDATE sim_cards 
                     SET status = 'SOLD', sold_at = CURRENT_TIMESTAMP
@@ -384,8 +406,30 @@ async def update_report_status(
                     WHERE id = ? AND company_id = ?
                 """, (debt_paid, emp_id, comp_id))
 
-            # 2. Sotilgan deb belgilangan sim-kartalarni yana 'GIVEN' holatiga qaytarish
-            if sim_sold > 0:
+            # 2. Sotilgan deb belgilangan sim-kartalarni yana 'GIVEN' holatiga qaytarish (Rollback)
+            op_sold_map = {
+                "Uzmobile": int(report["sim_uzmobile"] or 0),
+                "Beeline": int(report["sim_beeline"] or 0),
+                "Ucell": int(report["sim_ucell"] or 0),
+                "Mobiuz": int(report["sim_mobiuz"] or 0),
+                "Perfectum": int(report["sim_perfectum"] or 0),
+            }
+            has_op_breakdown = any(c > 0 for c in op_sold_map.values())
+
+            if has_op_breakdown:
+                for op_name, count in op_sold_map.items():
+                    if count > 0:
+                        await conn.execute("""
+                            UPDATE sim_cards 
+                            SET status = 'GIVEN', sold_at = NULL
+                            WHERE id IN (
+                                SELECT id FROM sim_cards 
+                                WHERE employee_id = ? AND status = 'SOLD' AND company_id = ? AND operator_type = ?
+                                ORDER BY id DESC
+                                LIMIT ?
+                            )
+                        """, (emp_id, comp_id, op_name, count))
+            elif sim_sold > 0:
                 await conn.execute("""
                     UPDATE sim_cards 
                     SET status = 'GIVEN', sold_at = NULL
@@ -466,7 +510,29 @@ async def cancel_daily_report(
                     WHERE id = ? AND company_id = ?
                 """, (debt_paid, emp_id, comp_id))
 
-            if sim_sold > 0:
+            op_sold_map = {
+                "Uzmobile": int(report["sim_uzmobile"] or 0),
+                "Beeline": int(report["sim_beeline"] or 0),
+                "Ucell": int(report["sim_ucell"] or 0),
+                "Mobiuz": int(report["sim_mobiuz"] or 0),
+                "Perfectum": int(report["sim_perfectum"] or 0),
+            }
+            has_op_breakdown = any(c > 0 for c in op_sold_map.values())
+
+            if has_op_breakdown:
+                for op_name, count in op_sold_map.items():
+                    if count > 0:
+                        await conn.execute("""
+                            UPDATE sim_cards 
+                            SET status = 'GIVEN', sold_at = NULL
+                            WHERE id IN (
+                                SELECT id FROM sim_cards 
+                                WHERE employee_id = ? AND status = 'SOLD' AND company_id = ? AND operator_type = ?
+                                ORDER BY id DESC
+                                LIMIT ?
+                            )
+                        """, (emp_id, comp_id, op_name, count))
+            elif sim_sold > 0:
                 await conn.execute("""
                     UPDATE sim_cards 
                     SET status = 'GIVEN', sold_at = NULL

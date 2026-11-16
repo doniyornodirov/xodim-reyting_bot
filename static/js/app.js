@@ -4656,6 +4656,7 @@ async function searchSimCard() {
               <th>Xodim (Qabul qiluvchi)</th>
               <th>Tarqatuvchi</th>
               <th>Berilgan vaqti</th>
+              <th>Sotilgan vaqti</th>
               <th>Holati</th>
             </tr>
           </thead>
@@ -4663,9 +4664,14 @@ async function searchSimCard() {
     `;
 
     res.data.forEach(item => {
-      const statusBadge = item.status === "GIVEN"
-        ? `<span class="badge badge-primary">Xodimda (Sotilmagan)</span>`
-        : `<span class="badge badge-success">Sotilgan ✅</span>`;
+      const isSold = item.status === "SOLD";
+      const statusBadge = isSold
+        ? `<span class="badge badge-success">Sotilgan ✅</span>`
+        : `<span class="badge badge-primary">Xodimda (Sotilmagan)</span>`;
+      const soldAtFormatted = isSold && item.sold_at
+        ? `<span style="color: #34d399; font-weight: 600;">${formatTashkentDateTime(item.sold_at)}</span>`
+        : `<span style="color: var(--text-sub);">—</span>`;
+
       html += `
         <tr>
           <td><code style="font-size: 1.05rem; font-weight: 700; color: #60a5fa;">${item.serial_number}</code></td>
@@ -4673,12 +4679,17 @@ async function searchSimCard() {
           <td><b>${item.employee_name}</b> (TG: ${item.employee_tg})</td>
           <td>${item.distributor_name}</td>
           <td style="font-size: 0.85rem; color: var(--text-sub);">${formatTashkentDateTime(item.distributed_at)}</td>
+          <td style="font-size: 0.85rem;">${soldAtFormatted}</td>
           <td>${statusBadge}</td>
         </tr>
       `;
     });
 
-    html += `</tbody></table></div>`;
+    html += `</tbody></table></div>
+      <div style="margin-top: 0.6rem; font-size: 0.82rem; color: var(--text-sub); display: flex; align-items: center; gap: 0.4rem;">
+        <span>ℹ️</span> <span>Sim-kartalar xodimning kunlik tasdiqlangan hisobotidagi sotuv soniga qarab navbat (FIFO — ketma-ketlik) tartibida avtomatik sotilgan deb belgilanadi.</span>
+      </div>
+    `;
     resultContainer.innerHTML = html;
   } catch (err) {
     resultContainer.innerHTML = `<div style="color: #f87171; padding: 0.5rem;">Xatolik: ${err.message}</div>`;
