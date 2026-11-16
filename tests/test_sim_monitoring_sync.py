@@ -160,5 +160,25 @@ class TestSimMonitoringSync(unittest.IsolatedAsyncioTestCase):
             await conn.execute("DELETE FROM users WHERE id = 999 OR telegram_id = 888777999")
             await conn.commit()
 
+    async def test_today_with_no_sales_returns_zero(self):
+        # sim_cards jadvalida SOLD sim-kartalar bo'lsa ham, bugun hisobot bo'lmasa 0 bo'lishi kerak
+        async with get_db_connection() as conn:
+            await conn.execute("INSERT OR REPLACE INTO users (id, company_id, telegram_id, full_name, role, password_hash) VALUES (998, 1, 777666555, 'Test User', 'EMPLOYEE', 'pwd')")
+            await conn.execute("INSERT OR REPLACE INTO sim_cards (company_id, operator_type, serial_number, status, employee_id, distributed_by_id) VALUES (1, 'Uzmobile', '8888888888', 'SOLD', 998, 998)")
+            await conn.commit()
+
+        invalidate_analytics_cache(1)
+        res = await get_sales_monitoring_data(company_id=1, period="today", user_id=998)
+        
+        self.assertEqual(res["summary"]["total_sim_cards"], 0, "Bugun hisobot tasdiqlanmagan bo'lsa, jami sim-kartalar 0 bo'lishi kerak!")
+        for op in res["operators"]:
+            self.assertEqual(op["count"], 0, f"{op['operator_type']} 0 ta bo'lishi kerak, lekin {op['count']} ta chiqdi!")
+
+        # Tozalash
+        async with get_db_connection() as conn:
+            await conn.execute("DELETE FROM sim_cards WHERE serial_number = '8888888888'")
+            await conn.execute("DELETE FROM users WHERE id = 998")
+            await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()

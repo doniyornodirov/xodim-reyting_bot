@@ -166,20 +166,6 @@ async def get_sales_monitoring_data(
         except Exception:
             op_counts = {"Uzmobile": 0, "Beeline": 0, "Ucell": 0, "Mobiuz": 0, "Perfectum": 0}
 
-        if sum(op_counts.values()) == 0:
-            cur = await conn.execute(f"""
-                SELECT operator_type, COUNT(*) as count
-                FROM sim_cards
-                WHERE status = 'SOLD' AND company_id = ? {emp_filter}
-                GROUP BY operator_type
-                ORDER BY count DESC
-            """, (company_id,) + emp_param)
-            op_rows = await cur.fetchall()
-            for r in op_rows:
-                op_name = r["operator_type"]
-                if op_name in op_counts:
-                    op_counts[op_name] = r["count"]
-
         # 5. Faol xodimlar ro'yxati
         cur = await conn.execute("""
             SELECT id, full_name, role 
@@ -268,11 +254,14 @@ async def get_sales_monitoring_data(
         })
 
     # Operatorlar taqsimoti va umumiy sim-kartalar sonining 100% mutanosibligini kafolatlash (Zero Discrepancy)
-    op_total = sum(op_counts.values())
-    if total_sims > op_total:
-        op_counts["Uzmobile"] += (total_sims - op_total)
-    elif op_total > total_sims:
-        total_sims = op_total
+    if total_sims == 0:
+        op_counts = {k: 0 for k in op_counts}
+    else:
+        op_total = sum(op_counts.values())
+        if total_sims > op_total:
+            op_counts["Uzmobile"] += (total_sims - op_total)
+        elif op_total > total_sims:
+            total_sims = op_total
 
     operators = [
         {
