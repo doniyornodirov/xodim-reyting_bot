@@ -134,11 +134,8 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             FROM card_topups 
             WHERE REPLACE(card_number, ' ', '') = ? 
               AND company_id = ?
-              AND (
-                  DATE(created_at, '+5 hours') = ?
-                  OR SUBSTR(created_at, 1, 10) = ?
-              )
-        """, (clean_card, comp_id, today_str, today_str))
+              AND DATE(created_at, '+5 hours') = ?
+        """, (clean_card, comp_id, today_str))
         row = await cursor.fetchone()
         repeat_count = row[0]
         approved_count = row[1]
