@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=885', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=886', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=885">
+  <link rel="stylesheet" href="/static/css/style.css?v=886">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -626,8 +626,17 @@
             <span class="card-desc text-xs block mb-0">Xodim topshirgan sof kassa va kassir qabul qilgan mablag'lar solishtirmasi</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
-            <!-- Sana tanlash -->
-            <input type="date" id="admin-comparison-date" class="form-input header-filter-select" style="min-width: 130px; height: 34px; padding: 2px 8px; font-size: 0.82rem;" onchange="loadAdminComparison()" title="Taqqoslash sanasini tanlash">
+            <!-- 📅 Chiroyli Popover Sana Tanlagich -->
+            <div class="relative inline-flex items-center" style="position: relative;">
+              <button type="button" id="btn-comparison-datepicker" class="form-input header-filter-select" onclick="openComparisonDatePicker(this)" style="min-width: 145px; height: 34px; padding: 0.25rem 0.65rem; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: space-between; gap: 0.4rem; cursor: pointer; border-radius: 8px;">
+                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                  <span style="color: #818cf8; font-size: 0.9rem;">📅</span>
+                  <span id="comparison-selected-date-text">Bugun</span>
+                </span>
+                <span style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.8;">▾</span>
+              </button>
+              <input type="hidden" id="admin-comparison-date" value="">
+            </div>
             
             <!-- ⚖️ Tafovut filtri (Tafovut bor / Tafovut yo'q) -->
             <div class="inline-flex items-center gap-1.5 p-1 rounded-lg header-filter-wrap">
@@ -2617,8 +2626,47 @@
     </div>
   </div>
 
+  <!-- ⚖️ Kassa Taqqoslash uchun Chiroyli Popover Kalendar -->
+  <div id="compact-comparison-datepicker-popover" class="compact-comparison-datepicker-popover" style="display: none;" onclick="event.stopPropagation()">
+    <div class="picker-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--border-color);">
+      <div class="picker-title" style="display: flex; align-items: center; gap: 0.4rem; font-size: 0.86rem; font-weight: 700; color: var(--text-main);">
+        <span style="font-size: 1rem;">⚖️</span>
+        <span>Taqqoslash Sanasi</span>
+      </div>
+      <button type="button" class="picker-close-btn" onclick="closeComparisonDatePicker()" title="Yopish" style="background: none; border: none; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; padding: 2px 6px; border-radius: 4px;">✕</button>
+    </div>
+
+    <!-- Oy va Yil navigatsiyasi -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; padding: 0 4px;">
+      <button type="button" class="cal-nav-btn prev-btn" onclick="navigateComparisonCalMonth(-1)" title="Oldingi oy">‹</button>
+      <span class="cal-month-year-label" style="font-size: 0.88rem; font-weight: 700; color: var(--text-main);" id="comp-cal-month-year-text">Noyabr 2026</span>
+      <button type="button" class="cal-nav-btn next-btn" onclick="navigateComparisonCalMonth(1)" title="Keyingi oy">›</button>
+    </div>
+
+    <!-- Tezkor Preset Tugmalari -->
+    <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.65rem;">
+      <button type="button" class="time-chip-btn active-preset" id="comp-preset-today" onclick="applyComparisonPreset('today')">✨ Bugun</button>
+      <button type="button" class="time-chip-btn" id="comp-preset-yesterday" onclick="applyComparisonPreset('yesterday')">⏪ Kecha</button>
+      <button type="button" class="time-chip-btn" id="comp-preset-prev2" onclick="applyComparisonPreset('prev2')">📅 2 kun oldin</button>
+      <button type="button" class="time-chip-btn" id="comp-preset-monthstart" onclick="applyComparisonPreset('monthstart')">🎯 Oy boshi</button>
+    </div>
+
+    <!-- 7 kunlik grid -->
+    <div class="saas-cal-days-grid" id="comp-cal-days-grid"></div>
+
+    <!-- Xulosa va tasdiqlash -->
+    <div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between;" id="comp-cal-summary-text">
+      <span id="comp-cal-selected-label">📅 Tanlandi: <b>Bugun</b></span>
+    </div>
+
+    <div class="picker-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+      <button type="button" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;" onclick="closeComparisonDatePicker()">Bekor qilish</button>
+      <button type="button" class="btn btn-primary" style="font-size: 0.78rem; padding: 0.35rem 0.95rem; font-weight: 700; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;" onclick="confirmComparisonDatePicker()">✅ Tanlash</button>
+    </div>
+  </div>
+
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=885"></script>
+  <script src="/static/js/app.js?v=886"></script>
 </body>
 </html>

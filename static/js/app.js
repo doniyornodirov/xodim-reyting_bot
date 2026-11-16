@@ -3653,6 +3653,17 @@ async function loadAdminComparison() {
       dateInput.value = res.date;
     }
 
+    if (res.date) {
+      const textSpan = document.getElementById("comparison-selected-date-text");
+      if (textSpan) {
+        const parts = res.date.split("-");
+        const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
+        const todayD = new Date();
+        const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+        textSpan.innerText = (res.date === todayIso) ? "Bugun" : dFmt;
+      }
+    }
+
     renderAdminComparisonKPI();
     renderAdminComparisonTable();
   } catch (e) {
@@ -7517,7 +7528,204 @@ window.addEventListener("click", (e) => {
       closeCompactSaasDatePicker();
     }
   }
+
+  const compPopover = document.getElementById("compact-comparison-datepicker-popover");
+  if (compPopover && compPopover.style.display !== "none") {
+    if (!compPopover.contains(e.target) && !e.target.closest("#btn-comparison-datepicker")) {
+      closeComparisonDatePicker();
+    }
+  }
 });
+
+// ============================================================
+// KASSA TAQQOSLASH UCHUN CHIROYLI VA IXCHAM POPOVER KALENDAR
+// ============================================================
+let comparisonCalYear = 2026;
+let comparisonCalMonth = 10; // 0-indexed
+let selectedComparisonDateIso = "";
+
+function openComparisonDatePicker(triggerEl) {
+  const popover = document.getElementById("compact-comparison-datepicker-popover");
+  if (!popover) return;
+
+  const dateInput = document.getElementById("admin-comparison-date");
+  const curVal = (dateInput && dateInput.value) ? dateInput.value : "";
+
+  if (curVal && curVal.includes("-")) {
+    const parts = curVal.split("-");
+    comparisonCalYear = parseInt(parts[0], 10);
+    comparisonCalMonth = parseInt(parts[1], 10) - 1;
+    selectedComparisonDateIso = curVal;
+  } else {
+    const d = new Date();
+    comparisonCalYear = d.getFullYear();
+    comparisonCalMonth = d.getMonth();
+    selectedComparisonDateIso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  renderComparisonCalendar();
+
+  popover.style.display = "block";
+
+  // Popover joylashuvini hisoblash (triggerEl tagiga qulay joylash)
+  const rect = triggerEl.getBoundingClientRect();
+  const popoverWidth = 290;
+  const popoverHeight = 330;
+
+  let left = window.scrollX + rect.left + (rect.width - popoverWidth) / 2;
+  if (left + popoverWidth > window.innerWidth - 10) {
+    left = window.innerWidth - popoverWidth - 12;
+  }
+  if (left < 10) left = 10;
+
+  let top = window.scrollY + rect.bottom + 6;
+  if (rect.bottom + popoverHeight + 15 > window.innerHeight && rect.top > popoverHeight + 20) {
+    top = window.scrollY + rect.top - popoverHeight - 6;
+  }
+
+  popover.style.top = `${top}px`;
+  popover.style.left = `${left}px`;
+}
+
+function closeComparisonDatePicker() {
+  const popover = document.getElementById("compact-comparison-datepicker-popover");
+  if (popover) popover.style.display = "none";
+}
+
+function navigateComparisonCalMonth(dir) {
+  comparisonCalMonth += dir;
+  if (comparisonCalMonth < 0) {
+    comparisonCalMonth = 11;
+    comparisonCalYear -= 1;
+  } else if (comparisonCalMonth > 11) {
+    comparisonCalMonth = 0;
+    comparisonCalYear += 1;
+  }
+  renderComparisonCalendar();
+}
+
+function applyComparisonPreset(preset) {
+  const d = new Date();
+  if (preset === "yesterday") {
+    d.setDate(d.getDate() - 1);
+  } else if (preset === "prev2") {
+    d.setDate(d.getDate() - 2);
+  } else if (preset === "monthstart") {
+    d.setDate(1);
+  }
+  comparisonCalYear = d.getFullYear();
+  comparisonCalMonth = d.getMonth();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  selectedComparisonDateIso = `${y}-${m}-${day}`;
+
+  renderComparisonCalendar();
+  confirmComparisonDatePicker();
+}
+
+function renderComparisonCalendar() {
+  const monthYearLabel = document.getElementById("comp-cal-month-year-text");
+  const grid = document.getElementById("comp-cal-days-grid");
+  const summaryLabel = document.getElementById("comp-cal-selected-label");
+
+  const uzbekMonths = [
+    "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+    "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"
+  ];
+
+  if (monthYearLabel) {
+    monthYearLabel.textContent = `${uzbekMonths[comparisonCalMonth]} ${comparisonCalYear}`;
+  }
+
+  if (grid) {
+    grid.innerHTML = "";
+    const dayNames = ["Du", "Se", "Ch", "Pa", "Ju", "Sh", "Ya"];
+    dayNames.forEach(dn => {
+      const el = document.createElement("div");
+      el.className = "saas-cal-day-name";
+      el.textContent = dn;
+      grid.appendChild(el);
+    });
+
+    const firstDayObj = new Date(comparisonCalYear, comparisonCalMonth, 1);
+    let firstDayIndex = firstDayObj.getDay();
+    if (firstDayIndex === 0) firstDayIndex = 7;
+
+    const daysInMonth = new Date(comparisonCalYear, comparisonCalMonth + 1, 0).getDate();
+    const prevMonthDays = new Date(comparisonCalYear, comparisonCalMonth, 0).getDate();
+
+    const todayD = new Date();
+    const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+
+    for (let i = firstDayIndex - 1; i >= 1; i--) {
+      const cell = document.createElement("div");
+      cell.className = "saas-cal-day-cell empty-day";
+      cell.textContent = prevMonthDays - i + 1;
+      grid.appendChild(cell);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement("div");
+      const mStr = String(comparisonCalMonth + 1).padStart(2, "0");
+      const dStr = String(d).padStart(2, "0");
+      const currentIso = `${comparisonCalYear}-${mStr}-${dStr}`;
+
+      let classes = "saas-cal-day-cell";
+      if (currentIso === selectedComparisonDateIso) classes += " is-selected";
+      if (currentIso === todayIso) classes += " is-today";
+
+      cell.className = classes;
+      cell.textContent = d;
+      cell.onclick = (e) => {
+        e.stopPropagation();
+        selectedComparisonDateIso = currentIso;
+        renderComparisonCalendar();
+        confirmComparisonDatePicker();
+      };
+      grid.appendChild(cell);
+    }
+  }
+
+  if (summaryLabel && selectedComparisonDateIso) {
+    const parts = selectedComparisonDateIso.split("-");
+    const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
+    const todayD = new Date();
+    const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+    const extraLabel = (selectedComparisonDateIso === todayIso) ? " (Bugun)" : "";
+    summaryLabel.innerHTML = `<span>📅</span> Tanlandi: <b>${dFmt}${extraLabel}</b>`;
+  }
+
+  // Preset tugmalarining faol holatini belgilash
+  const todayD = new Date();
+  const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+  const yestD = new Date(); yestD.setDate(yestD.getDate() - 1);
+  const yestIso = `${yestD.getFullYear()}-${String(yestD.getMonth() + 1).padStart(2, "0")}-${String(yestD.getDate()).padStart(2, "0")}`;
+
+  const btnToday = document.getElementById("comp-preset-today");
+  const btnYest = document.getElementById("comp-preset-yesterday");
+  if (btnToday) btnToday.classList.toggle("active-preset", selectedComparisonDateIso === todayIso);
+  if (btnYest) btnYest.classList.toggle("active-preset", selectedComparisonDateIso === yestIso);
+}
+
+function confirmComparisonDatePicker() {
+  if (selectedComparisonDateIso) {
+    const input = document.getElementById("admin-comparison-date");
+    const textSpan = document.getElementById("comparison-selected-date-text");
+    if (input) input.value = selectedComparisonDateIso;
+
+    if (textSpan) {
+      const parts = selectedComparisonDateIso.split("-");
+      const dFmt = `${parts[2]}.${parts[1]}.${parts[0]}`;
+      const todayD = new Date();
+      const todayIso = `${todayD.getFullYear()}-${String(todayD.getMonth() + 1).padStart(2, "0")}-${String(todayD.getDate()).padStart(2, "0")}`;
+      textSpan.innerText = (selectedComparisonDateIso === todayIso) ? "Bugun" : dFmt;
+    }
+
+    loadAdminComparison();
+  }
+  closeComparisonDatePicker();
+}
 
 // ==========================================
 // SMART ANTI-FRAUD: PWA & BRAUZER TELEMETRIYASI

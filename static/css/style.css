@@ -5078,6 +5078,68 @@ body.theme-light .saas-cal-day-cell:hover:not(.empty-day) {
   font-weight: 700;
 }
 
+/* ============================================================ */
+/* 11. KASSA TAQQOSLASH UCHUN MAXSUS POP OVER KALENDAR           */
+/* ============================================================ */
+.compact-comparison-datepicker-popover {
+  position: absolute;
+  z-index: 1060;
+  width: 290px;
+  background: var(--bg-surface-elevated, #111827);
+  border: 1px solid var(--border-subtle, #374151);
+  border-radius: 14px;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.75), 0 0 16px rgba(99, 102, 241, 0.25);
+  padding: 0.75rem 0.85rem;
+  animation: pickerPopIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.theme-light .compact-comparison-datepicker-popover {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.14), 0 0 12px rgba(99, 102, 241, 0.1) !important;
+}
+
+.compact-comparison-datepicker-popover .saas-cal-day-cell:hover:not(.empty-day) {
+  background: rgba(99, 102, 241, 0.22) !important;
+  color: #a5b4fc !important;
+}
+
+body.theme-light .compact-comparison-datepicker-popover .saas-cal-day-cell:hover:not(.empty-day) {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+}
+
+.compact-comparison-datepicker-popover .saas-cal-day-cell.is-selected {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  color: #ffffff !important;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.5) !important;
+}
+
+.compact-comparison-datepicker-popover .saas-cal-day-cell.is-today:not(.is-selected) {
+  border: 1.5px solid #38bdf8 !important;
+  color: #38bdf8 !important;
+  font-weight: 700;
+}
+
+body.theme-light .compact-comparison-datepicker-popover .saas-cal-day-cell.is-today:not(.is-selected) {
+  border: 1.5px solid #0284c7 !important;
+  color: #0284c7 !important;
+}
+
+.compact-comparison-datepicker-popover .time-chip-btn.active-preset {
+  background: rgba(99, 102, 241, 0.25) !important;
+  color: #818cf8 !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+  font-weight: 700;
+}
+
+body.theme-light .compact-comparison-datepicker-popover .time-chip-btn.active-preset {
+  background: #eef2ff !important;
+  color: #4f46e5 !important;
+  border-color: #6366f1 !important;
+}
+
 
 /* ========================================================================== */
 /* CUSTOM APP DIALOG SYSTEM (MODERN REPLACEMENT FOR ALERT, CONFIRM, PROMPT)   */
