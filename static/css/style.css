@@ -3373,6 +3373,12 @@ button:active,
     display: none !important;
   }
 
+  /* Menyu chapdan ochilganda navbarda tugmalar yashirilib, faqat kurs saqlanadi */
+  body.sidebar-open #btn-theme-toggle,
+  body.sidebar-open #btn-navbar-logout {
+    display: none !important;
+  }
+
   .grid-2 {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 0.65rem !important;
@@ -3491,14 +3497,23 @@ button:active,
   }
 
   #nav-usd-rate-container {
+    display: flex !important;
     margin-right: 0 !important;
   }
 
   #usd-rate-badge {
+    display: inline-flex !important;
     padding: 0.28rem 0.55rem !important;
     font-size: 0.8rem !important;
+    white-space: nowrap !important;
   }
 
+  /* Kichik displeyli qurilmalarda menyu chapdan ochiladigan bo'lgani sababli,
+     navbarda faqat dollar kursi ko'rinib tursin (Mavzu, Chiqish va boshqa barcha tugmalar [☰ Menyu] ichida mavjud) */
+  #btn-theme-toggle,
+  #btn-navbar-logout,
+  #btn-rahbar-cashier-toggle,
+  #nav-company-badge,
   #nav-user-name,
   #nav-user-role,
   #nav-user-shift,
@@ -3507,9 +3522,8 @@ button:active,
     display: none !important;
   }
 
-  /* Xodimlarning ilovani telefonda ochganda dollar kursi yoki belgilar ko'rinmasin (faqat [Menyu] ochilganda ko'rinsa bo'laveradi) */
-  body.role-employee #nav-user-area,
-  body.role-cashier #nav-user-area {
+  /* Oddiy xodimlar telefonda ochganda dollar kursi ham ko'rinmasin (faqat [Menyu] ochilganda ko'rinsa bo'laveradi) */
+  body.role-employee #nav-user-area {
     display: none !important;
   }
 

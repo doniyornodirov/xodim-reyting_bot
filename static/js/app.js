@@ -1077,6 +1077,7 @@ function openSidebarMenu() {
     updateSidebarContent();
     drawer.classList.add("open");
     overlay.classList.add("open");
+    document.body.classList.add("sidebar-open");
     document.body.style.overflow = "hidden";
   }
 }
@@ -1087,6 +1088,7 @@ function closeSidebarMenu() {
   if (drawer && overlay) {
     drawer.classList.remove("open");
     overlay.classList.remove("open");
+    document.body.classList.remove("sidebar-open");
     document.body.style.overflow = "";
   }
 }
