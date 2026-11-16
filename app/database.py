@@ -181,6 +181,17 @@ async def init_db():
             except Exception as e:
                 logger.warning(f"PostgreSQL uq_sim_cards_comp_op_serial indeks yaratishda ogohlantirish: {e}")
 
+            # 8. Karta to'ldirish ustamasi (card_surcharge_percent) va card_topups.surcharge_percent (PostgreSQL)
+            try:
+                await conn.execute("ALTER TABLE companies ADD COLUMN IF NOT EXISTS card_surcharge_percent INTEGER NOT NULL DEFAULT 3;")
+            except Exception as e:
+                logger.warning(f"PostgreSQL companies card_surcharge_percent qo'shishda ogohlantirish: {e}")
+
+            try:
+                await conn.execute("ALTER TABLE card_topups ADD COLUMN IF NOT EXISTS surcharge_percent INTEGER NOT NULL DEFAULT 3;")
+            except Exception as e:
+                logger.warning(f"PostgreSQL card_topups surcharge_percent qo'shishda ogohlantirish: {e}")
+
             await conn.commit()
         return
 
@@ -210,6 +221,7 @@ async def init_db():
             plan TEXT DEFAULT 'STANDARD',
             subscription_expires_at TIMESTAMP,
             max_employees INTEGER NOT NULL DEFAULT 20,
+            card_surcharge_percent INTEGER NOT NULL DEFAULT 3,
             is_active INTEGER NOT NULL DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -249,6 +261,7 @@ async def init_db():
             card_holder TEXT NOT NULL,
             amount REAL NOT NULL,
             surcharge_amount REAL NOT NULL,
+            surcharge_percent INTEGER NOT NULL DEFAULT 3,
             status TEXT NOT NULL DEFAULT 'PENDING',
             telegram_message_id INTEGER,
             approved_by_name TEXT,
@@ -684,7 +697,9 @@ async def init_db():
             "ALTER TABLE companies ADD COLUMN owner_phone TEXT;",
             "ALTER TABLE companies ADD COLUMN owner_extra_contact TEXT;",
             "ALTER TABLE companies ADD COLUMN company_inn TEXT;",
-            "ALTER TABLE companies ADD COLUMN notes TEXT;"
+            "ALTER TABLE companies ADD COLUMN notes TEXT;",
+            "ALTER TABLE companies ADD COLUMN card_surcharge_percent INTEGER NOT NULL DEFAULT 3;",
+            "ALTER TABLE card_topups ADD COLUMN surcharge_percent INTEGER NOT NULL DEFAULT 3;"
         ]:
             try:
                 await conn.execute(col_sql)

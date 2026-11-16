@@ -21,16 +21,21 @@ def round_uzs(val: Number) -> int:
     d = to_decimal(val)
     return int(d.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
-def calculate_card_surcharge(base_amount: Number) -> int:
+def calculate_card_surcharge(base_amount: Number, percent: Number = 3) -> int:
     """
-    Karta to'ldirish uchun 3% ustama hisoblash.
-    Qoida: (summa * 1.03) hisoblanib, eng yaqin yuqori 1000 so'mga yaxlitlanadi (math.ceil).
-    Masalan: 50 000 * 1.03 = 51 500 -> 52 000 so'm
+    Karta to'ldirish uchun ustama hisoblash (standart 3%, firma bo'yicha 1, 2, 3, 4, 5%).
+    Qoida: (summa * (1 + percent / 100)) hisoblanib, eng yaqin yuqori 1000 so'mga yaxlitlanadi (math.ceil).
+    Masalan:
+      percent=3, 50 000 * 1.03 = 51 500 -> 52 000 so'm
+      percent=1, 50 000 * 1.01 = 50 500 -> 51 000 so'm
+      percent=2, 50 000 * 1.02 = 51 000 -> 51 000 so'm
     """
     amt = to_decimal(base_amount)
     if amt <= 0:
         return 0
-    raw_surcharge = float(amt) * 1.03
+    p = float(percent) if percent is not None else 3.0
+    multiplier = 1.0 + (p / 100.0)
+    raw_surcharge = float(amt) * multiplier
     return int(math.ceil(raw_surcharge / 1000.0) * 1000)
 
 def calculate_daily_report_totals(

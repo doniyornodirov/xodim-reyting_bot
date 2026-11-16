@@ -1038,13 +1038,14 @@ if dp:
         emp_name = html.escape(str(topup['employee_name'] or "Xodim"))
         emp_mention = f'<a href="tg://user?id={emp_tg_id}">{emp_name}</a>' if emp_tg_id else emp_name
 
+        percent = topup.get('surcharge_percent') or 3
         new_text = (
             f"💳 <b>Karta to'ldirish so'rovi #{topup['transaction_number']}</b>\n\n"
             f"👤 {emp_mention}\n"
             f"🔢 {card_display}\n"
             f"🏷️ {topup['card_holder']}\n"
             f"💰 {amount_formatted} so'm\n"
-            f"📈 {surcharge_formatted} so'm (+3%)\n"
+            f"📈 {surcharge_formatted} so'm (+{percent}%)\n"
             f"⏰ {tashkent_str}\n\n"
             f"{status_line}"
         )
@@ -1123,13 +1124,14 @@ async def notify_card_topup_in_group(topup_data: dict, group_id: str | None = No
     if topup_data.get("has_closed_report_today"):
         closed_report_warning = f"\n\n🚨 <b>DIQQAT: Bugun bu {emp_name} kassani yopdi!</b> 🔒"
 
+    percent = topup_data.get('percent', 3)
     text = (
         f"💳 <b>Karta to'ldirish so'rovi #{topup_data['transaction_number']}</b>\n\n"
         f"👤 {emp_mention}\n"
         f"🔢 <code>{topup_data['card_number']}</code>\n"
         f"🏷️ {topup_data['card_holder']}\n"
         f"💰 {topup_data['amount_formatted']} so'm\n"
-        f"📈 {topup_data['surcharge_formatted']} so'm (+3%)\n"
+        f"📈 {topup_data['surcharge_formatted']} so'm (+{percent}%)\n"
         f"⏰ {tashkent_now}\n"
         f"⏳ Kutilmoqda ⏳{repeat_warning}{closed_report_warning}"
     )
@@ -1240,13 +1242,14 @@ async def update_group_card_topup_status(message_id: int, topup_id: int, new_sta
     emp_name = html.escape(str(topup['employee_name'] or "Xodim"))
     emp_mention = f'<a href="tg://user?id={emp_tg_id}">{emp_name}</a>' if emp_tg_id else emp_name
 
+    percent = topup.get('surcharge_percent') or 3
     text = (
         f"💳 <b>Karta to'ldirish so'rovi #{topup['transaction_number']}</b>\n\n"
         f"👤 {emp_mention}\n"
         f"🔢 {card_display}\n"
         f"🏷️ {topup['card_holder']}\n"
         f"💰 {amount_formatted} so'm\n"
-        f"📈 {surcharge_formatted} so'm (+3%)\n"
+        f"📈 {surcharge_formatted} so'm (+{percent}%)\n"
         f"⏰ {tashkent_str}\n\n"
         f"{status_line}"
     )

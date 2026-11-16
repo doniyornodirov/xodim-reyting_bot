@@ -1,6 +1,7 @@
 import re
 import math
 import logging
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, status
 import aiosqlite
 from app.config import DB_PATH
@@ -14,6 +15,57 @@ from app.services.idempotency import check_idempotency, record_idempotency_resul
 logger = logging.getLogger("cards")
 
 router = APIRouter(prefix="/api/cards", tags=["Cards"])
+
+class CardSurchargeUpdateRequest(BaseModel):
+    percent: int = Field(..., ge=1, le=5, description="Karta to'ldirish ustamasi foizi (1, 2, 3, 4, 5)")
+
+@router.get("/surcharge-rate")
+async def get_card_surcharge_rate(user: dict = Depends(get_current_user)):
+    """Foydalanuvchi firmasining karta to'ldirish ustamasi foizini olish (1, 2, 3, 4, 5%)"""
+    comp_id = user.get("company_id") or 1
+    async with get_db_connection() as conn:
+        cursor = await conn.execute("SELECT card_surcharge_percent FROM companies WHERE id = ?", (comp_id,))
+        row = await cursor.fetchone()
+        percent = int(row["card_surcharge_percent"]) if row and row["card_surcharge_percent"] else 3
+        return {"success": True, "percent": percent}
+
+@router.post("/surcharge-rate")
+async def update_card_surcharge_rate(
+    req: CardSurchargeUpdateRequest,
+    user: dict = Depends(require_role(["ADMIN"]))
+):
+    """
+    Har bir firmaning rahbari karta to'ldirish ustamasini belgilashi (1, 2, 3, 4, 5%).
+    Faqat Bosh Rahbar (ADMIN) uchun ochiq.
+    """
+    if req.percent not in [1, 2, 3, 4, 5]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ustama foizi faqat 1%, 2%, 3%, 4% yoki 5% bo'lishi mumkin!"
+        )
+
+    comp_id = user.get("company_id") or 1
+    async with get_db_connection() as conn:
+        cur = await conn.execute("SELECT card_surcharge_percent FROM companies WHERE id = ?", (comp_id,))
+        crow = await cur.fetchone()
+        old_percent = int(crow["card_surcharge_percent"]) if crow and crow["card_surcharge_percent"] else 3
+
+        await conn.execute("UPDATE companies SET card_surcharge_percent = ? WHERE id = ?", (req.percent, comp_id))
+
+        # Audit log yozish
+        audit_details = f"Karta to'ldirish ustamasi {old_percent}% dan {req.percent}% ga o'zgartirildi."
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'SETTINGS', ?, 'UPDATE_SURCHARGE', ?, ?)
+        """, (comp_id, comp_id, user["full_name"], audit_details))
+
+        await conn.commit()
+
+    return {
+        "success": True,
+        "percent": req.percent,
+        "message": f"Karta to'ldirish ustamasi muvaffaqiyatli {req.percent}% ga o'zgartirildi!"
+    }
 
 def format_card_number(raw: str) -> str:
     cleaned = re.sub(r"\D", "", raw)
@@ -59,11 +111,16 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             detail="Karta to'ldirish summasi 0 dan 1 000 000 000 so'mgacha bo'lishi shart!"
         )
 
-    # 3% ustamani 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)
-    surcharge_amount = float(calculate_card_surcharge(amount))
-
     comp_id = user.get("company_id") or 1
     async with get_db_connection() as conn:
+        # Firmaning karta ustamasi foizini olish (standart 3%)
+        cur_p = await conn.execute("SELECT card_surcharge_percent FROM companies WHERE id = ?", (comp_id,))
+        p_row = await cur_p.fetchone()
+        company_percent = int(p_row["card_surcharge_percent"]) if p_row and p_row["card_surcharge_percent"] else 3
+
+        # Tanlangan foiz (1, 2, 3, 4, 5%) bo'yicha ustamani 1000 so'mda yaxlitlash (masalan, 50 000 * 1.03 = 51 500 -> 52 000)
+        surcharge_amount = float(calculate_card_surcharge(amount, company_percent))
+
         # 1 kunda 2 va undan ortiq marta yuborilganini tekshirish (Toshkent vaqti +5 bo'yicha)
         clean_card = re.sub(r"\D", "", req.card_number)
         cursor = await conn.execute("""
@@ -105,9 +162,9 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         cursor = await conn.execute("""
             INSERT INTO card_topups (
                 company_id, transaction_number, employee_id, card_number, card_holder, 
-                amount, surcharge_amount, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')
-        """, (comp_id, new_tx_number, user["id"], formatted_card, validated_holder, amount, surcharge_amount))
+                amount, surcharge_amount, surcharge_percent, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')
+        """, (comp_id, new_tx_number, user["id"], formatted_card, validated_holder, amount, surcharge_amount, company_percent))
         topup_id = cursor.lastrowid or 0
         await conn.commit()
 
@@ -116,7 +173,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             await conn.execute("""
                 INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
                 VALUES (?, 'CARD_TOPUP', ?, 'CREATE', ?, ?)
-            """, (comp_id, topup_id, user["full_name"], f"Karta: {formatted_card}, Summa: {amount:,} so'm"))
+            """, (comp_id, topup_id, user["full_name"], f"Karta: {formatted_card}, Summa: {amount:,} so'm (+{company_percent}%)"))
             await conn.commit()
         except Exception as e:
             logger.warning(f"Karta to'ldirish audit log yozishda ogohlantirish: {e}")
@@ -131,6 +188,8 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
         "card_holder": validated_holder,
         "amount_formatted": f"{int(amount):,}".replace(",", " "),
         "surcharge_formatted": f"{int(surcharge_amount):,}".replace(",", " "),
+        "percent": company_percent,
+        "surcharge_percent": company_percent,
         "is_repeat_today": is_repeat_today,
         "has_approved_today": has_approved_today,
         "has_closed_report_today": has_closed_report_today
@@ -156,6 +215,7 @@ async def create_card_topup(req: CardTopupCreate, user: dict = Depends(require_a
             "card_holder": validated_holder,
             "amount": amount,
             "surcharge_amount": surcharge_amount,
+            "surcharge_percent": company_percent,
             "status": "PENDING",
             "is_repeat_today": is_repeat_today,
             "has_approved_today": has_approved_today,

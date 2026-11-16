@@ -705,9 +705,10 @@ async function resyncStaleClientState() {
   // 1. Harakatsizlik vaqtini tekshirish
   if (checkInactivityTimeout()) return;
 
-  // 2. Yangi dollar kursini olish (Kassir va hisobotlar uchun)
+  // 2. Yangi dollar kursini olish va karta ustamasi foizini olish
   if (currentUser.role !== "DEVELOPER") {
     loadUsdRate();
+    loadCompanyCardSurcharge();
   }
 
   // 3. Xodim uchun ish joyi va shift statusini yangilash (Rahbar va Dasturchidan so'ralmaydi)
@@ -1429,9 +1430,10 @@ function renderApp() {
 
   const isDev = (currentUser.role === "DEVELOPER");
 
-  // Dollar kursini faqat oddiy foydalanuvchilar va rahbar uchun yuklash
+  // Dollar kursi va karta to'ldirish ustamasini yuklash
   if (!isDev) {
     loadUsdRate();
+    loadCompanyCardSurcharge();
   }
 
   // Dasturchi Admin xodim ham, rahbar ham emas — alohida SaaS Platforma boshqaruvchisi!
@@ -1717,6 +1719,67 @@ function switchEmployeeTab(tabName) {
 // 1. KARTA TO'LDIRISH OYNASI
 // ==========================================
 
+// ==========================================
+// KARTA TO'LDIRISH USTAMASI (1, 2, 3, 4, 5%)
+// ==========================================
+let currentCompanyCardSurchargePercent = 3;
+
+async function loadCompanyCardSurcharge() {
+  try {
+    const res = await api("/api/cards/surcharge-rate");
+    if (res && res.success && res.percent) {
+      currentCompanyCardSurchargePercent = parseInt(res.percent) || 3;
+      updateCardSurchargeUI();
+    }
+  } catch (e) {
+    console.warn("loadCompanyCardSurcharge xatosi:", e);
+  }
+}
+
+function updateCardSurchargeUI() {
+  const p = currentCompanyCardSurchargePercent || 3;
+  const adminSel = document.getElementById("admin-card-surcharge-select");
+  if (adminSel) {
+    adminSel.value = String(p);
+  }
+  const thAdmin = document.getElementById("th-admin-topups-surcharge");
+  if (thAdmin) {
+    thAdmin.innerText = `+${p}% Ustama`;
+  }
+  const thEmp = document.getElementById("th-employee-card-surcharge");
+  if (thEmp) {
+    thEmp.innerText = `+${p}% Ustama`;
+  }
+  const readout = document.getElementById("topup-surcharge-readout");
+  const amountInput = document.getElementById("topup-amount");
+  const currentAmount = amountInput ? parseFormattedNumber(amountInput.value) : 0;
+  if (readout) {
+    if (currentAmount > 0) {
+      const surcharge = Math.ceil((currentAmount * (1 + p / 100)) / 1000) * 1000;
+      readout.innerText = `+${p}% Ustama bilan: ${formatNumberSpaces(surcharge)} so'm`;
+    } else {
+      readout.innerText = `+${p}% Ustama bilan: 0 so'm`;
+    }
+  }
+}
+
+async function changeCompanyCardSurcharge(newVal) {
+  const val = parseInt(newVal);
+  if (![1, 2, 3, 4, 5].includes(val)) return;
+  try {
+    const res = await api("/api/cards/surcharge-rate", "POST", { percent: val });
+    if (res && res.success) {
+      currentCompanyCardSurchargePercent = res.percent;
+      updateCardSurchargeUI();
+      showToast(res.message || `Karta to'ldirish ustamasi ${val}% ga muvaffaqiyatli o'zgartirildi!`, "success");
+      await loadAdminTopups();
+    }
+  } catch (err) {
+    console.error("changeCompanyCardSurcharge xatosi:", err);
+    updateCardSurchargeUI();
+  }
+}
+
 function setupCardTopupInputs() {
   const cardInput = document.getElementById("topup-card-number");
   const holderInput = document.getElementById("topup-card-holder");
@@ -1744,16 +1807,18 @@ function setupCardTopupInputs() {
 
       if (amount > 0) {
         if (wordsEl) wordsEl.innerText = numberToUzbekWords(amount);
-        // 3% ustamani 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)
-        const surcharge = Math.ceil((amount * 1.03) / 1000) * 1000;
-        if (surchargeEl) surchargeEl.innerText = `+3% Ustama bilan: ${formatNumberSpaces(surcharge)} so'm`;
+        // Firmaning tanlangan ustamasi (1, 2, 3, 4, 5%) bo'yicha 1000 so'mda yaxlitlash (masalan, 50 000 -> 52 000)
+        const p = currentCompanyCardSurchargePercent || 3;
+        const surcharge = Math.ceil((amount * (1 + p / 100)) / 1000) * 1000;
+        if (surchargeEl) surchargeEl.innerText = `+${p}% Ustama bilan: ${formatNumberSpaces(surcharge)} so'm`;
 
         const emojiData = getAmountEmoji(amount);
         if (emojiEl) emojiEl.innerText = emojiData.emoji;
         if (emojiLabel) emojiLabel.innerText = emojiData.label;
       } else {
         if (wordsEl) wordsEl.innerText = "";
-        if (surchargeEl) surchargeEl.innerText = "+3% Ustama bilan: 0 so'm";
+        const p = currentCompanyCardSurchargePercent || 3;
+        if (surchargeEl) surchargeEl.innerText = `+${p}% Ustama bilan: 0 so'm`;
         if (emojiEl) emojiEl.innerText = "🙂";
         if (emojiLabel) emojiLabel.innerText = "";
       }
@@ -1795,13 +1860,14 @@ async function handleCardTopupSubmit(e) {
     showToast(res.message, toastType);
     document.getElementById("card-topup-form").reset();
     document.getElementById("topup-words-readout").innerText = "";
-    document.getElementById("topup-surcharge-readout").innerText = "+3% Ustama bilan: 0 so'm";
+    document.getElementById("topup-surcharge-readout").innerText = `+${currentCompanyCardSurchargePercent || 3}% Ustama bilan: 0 so'm`;
     document.getElementById("topup-emoji-readout").innerText = "🙂";
     loadCardHistory();
   } catch (err) {}
 }
 
 async function loadCardHistory() {
+  await loadCompanyCardSurcharge();
   try {
     const res = await api("/api/cards/my-history");
     const tbody = document.getElementById("card-history-tbody");
@@ -3661,6 +3727,7 @@ async function updateGivenStatus(id, status) {
 
 // Admin 3: Karta so'rovlarini tasdiqlash
 async function loadAdminTopups() {
+  await loadCompanyCardSurcharge();
   try {
     const res = await api("/api/cards/all");
     const tbody = document.getElementById("admin-topups-tbody");

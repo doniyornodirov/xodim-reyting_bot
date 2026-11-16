@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS companies (
     plan TEXT DEFAULT 'STANDARD',
     subscription_expires_at TIMESTAMPTZ,
     max_employees INTEGER NOT NULL DEFAULT 20,
+    card_surcharge_percent INTEGER NOT NULL DEFAULT 3,
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -83,6 +84,7 @@ CREATE TABLE IF NOT EXISTS card_topups (
     card_holder TEXT NOT NULL,
     amount DOUBLE PRECISION NOT NULL,
     surcharge_amount DOUBLE PRECISION NOT NULL,
+    surcharge_percent INTEGER NOT NULL DEFAULT 3,
     status TEXT NOT NULL DEFAULT 'PENDING',
     telegram_message_id BIGINT,
     approved_by_name TEXT,

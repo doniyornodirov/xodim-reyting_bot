@@ -485,5 +485,83 @@ class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
                     await conn.execute("UPDATE users SET shift_status = 'RESTING' WHERE id = ?", (emp_id,))
                 await conn.commit()
 
+    async def test_15_card_surcharge_dynamic_percentage(self):
+        """Karta to'ldirish ustamasini firma bo'yicha 1, 2, 3, 4, 5% ga dinamik o'zgartirish va hisoblash testi"""
+        from app.database import get_db_connection
+        from app.services.fintech_calc import calculate_card_surcharge
+        from app.routes.cards import (
+            get_card_surcharge_rate,
+            update_card_surcharge_rate,
+            CardSurchargeUpdateRequest,
+            create_card_topup,
+            CardTopupCreate
+        )
+
+        # 1. Formula tekshiruvi: 1%, 2%, 3%, 4%, 5%
+        self.assertEqual(calculate_card_surcharge(50000, percent=1), 51000)
+        self.assertEqual(calculate_card_surcharge(50000, percent=2), 51000)
+        self.assertEqual(calculate_card_surcharge(50000, percent=3), 52000)
+        self.assertEqual(calculate_card_surcharge(50000, percent=4), 52000)
+        self.assertEqual(calculate_card_surcharge(50000, percent=5), 53000)
+
+        self.assertEqual(calculate_card_surcharge(100000, percent=1), 101000)
+        self.assertEqual(calculate_card_surcharge(100000, percent=2), 102000)
+        self.assertEqual(calculate_card_surcharge(100000, percent=3), 103000)
+        self.assertEqual(calculate_card_surcharge(100000, percent=4), 104000)
+        self.assertEqual(calculate_card_surcharge(100000, percent=5), 105000)
+
+        # 2. Endpointlar tekshiruvi
+        async with get_db_connection() as conn:
+            cur_adm = await conn.execute("SELECT id, full_name, role, company_id FROM users WHERE role = 'ADMIN' LIMIT 1")
+            admin = await cur_adm.fetchone()
+            cur_emp = await conn.execute("SELECT id, full_name, role, company_id, shift_status FROM users WHERE role NOT IN ('ADMIN', 'DEVELOPER') AND is_active = 1 LIMIT 1")
+            emp = await cur_emp.fetchone()
+            if not admin or not emp:
+                return
+
+            admin_user = dict(admin)
+            emp_user = dict(emp)
+
+            # Agar xodim damda bo'lsa, test uchun ACTIVE qilamiz
+            orig_shift = emp_user.get("shift_status")
+            if orig_shift == "RESTING":
+                emp_user["shift_status"] = "ACTIVE"
+                await conn.execute("UPDATE users SET shift_status = 'ACTIVE' WHERE id = ?", (emp_user["id"],))
+                await conn.commit()
+
+            try:
+                # 2.1 Admin 4% qilib o'zgartiradi
+                update_res = await update_card_surcharge_rate(CardSurchargeUpdateRequest(percent=4), user=admin_user)
+                self.assertTrue(update_res["success"])
+                self.assertEqual(update_res["percent"], 4)
+
+                # 2.2 GET orqali foizni tekshirish
+                rate_res = await get_card_surcharge_rate(user=emp_user)
+                self.assertEqual(rate_res["percent"], 4)
+
+                # 2.3 Xodim 100 000 so'm karta so'rovi yuboradi (4% bilan 104 000 bo'lishi kerak)
+                topup_req = CardTopupCreate(
+                    card_number="8600123412341234",
+                    card_holder="TEST FOIZ",
+                    amount=100000
+                )
+                topup_res = await create_card_topup(topup_req, user=emp_user)
+                self.assertTrue(topup_res["success"])
+                self.assertEqual(topup_res["data"]["surcharge_amount"], 104000)
+                self.assertEqual(topup_res["data"]["surcharge_percent"], 4)
+
+                # 2.4 Noto'g'ri foiz kiritilganda (masalan, 0 yoki 6) 400 xatolik berishi kerak
+                with self.assertRaises(Exception):
+                    await update_card_surcharge_rate(CardSurchargeUpdateRequest(percent=6), user=admin_user)
+
+            finally:
+                # Qaytarish (Standart 3% ga qaytaramiz)
+                await update_card_surcharge_rate(CardSurchargeUpdateRequest(percent=3), user=admin_user)
+                if orig_shift == "RESTING":
+                    await conn.execute("UPDATE users SET shift_status = 'RESTING' WHERE id = ?", (emp_user["id"],))
+                # Test yozuvlarini tozalash
+                await conn.execute("DELETE FROM card_topups WHERE card_holder = 'TEST FOIZ'")
+                await conn.commit()
+
 if __name__ == "__main__":
     unittest.main()
