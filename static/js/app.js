@@ -3838,30 +3838,30 @@ async function loadAdminUsers() {
     res.data.forEach(u => {
       // Bosh Rahbar daxlsiz - uni hech kim bo'shata olmaydi va tizimdan chiqara olmaydi!
       const activeBtn = u.role === "ADMIN"
-        ? `<span class="emp-action-btn emp-btn-immune" title="Bosh rahbar daxlsiz"><span style="font-size: 0.8rem;">🛡️</span><span>Daxlsiz</span></span>`
+        ? `<span class="emp-action-btn emp-btn-immune" title="Bosh rahbar (Daxlsiz)" aria-label="Daxlsiz"><span style="font-size: 0.95rem;">🛡️</span></span>`
         : (u.is_active 
-            ? `<button type="button" class="emp-action-btn emp-btn-fire" onclick="toggleUserActive(${u.id})" title="Xodimni ishdan bo'shatish"><svg class="emp-btn-icon"><use href="#icon-fire"></use></svg><span>Bo'shatish</span></button>`
-            : `<button type="button" class="emp-action-btn emp-btn-hire" onclick="toggleUserActive(${u.id})" title="Xodimni qayta ishga olish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Faollashtirish</span></button>`);
+            ? `<button type="button" class="emp-action-btn emp-btn-fire" onclick="toggleUserActive(${u.id})" title="Bo'shatish" aria-label="Bo'shatish"><svg class="emp-btn-icon"><use href="#icon-fire"></use></svg></button>`
+            : `<button type="button" class="emp-action-btn emp-btn-hire" onclick="toggleUserActive(${u.id})" title="Faollashtirish (Ishga olish)" aria-label="Faollashtirish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg></button>`);
 
       const appointCashierBtn = u.role !== "ADMIN" && u.is_active
         ? (u.role === "CASHIER"
-            ? `<button type="button" class="emp-action-btn emp-btn-role-emp" onclick="dismissCashier(${u.id})" title="Kassirlikdan oddiy xodimga tushirish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Xodim qilish</span></button>`
-            : `<button type="button" class="emp-action-btn emp-btn-role-cashier" onclick="appointCashier(${u.id})" title="Xodimni kassir etib tayinlash"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Kassir qilish</span></button>`)
+            ? `<button type="button" class="emp-action-btn emp-btn-role-emp" onclick="dismissCashier(${u.id})" title="Xodim qilish (Kassirlikdan olish)" aria-label="Xodim qilish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg></button>`
+            : `<button type="button" class="emp-action-btn emp-btn-role-cashier" onclick="appointCashier(${u.id})" title="Kassir qilish" aria-label="Kassir qilish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg></button>`)
         : "";
 
       const debtBtn = u.role !== "ADMIN" && u.is_active
-        ? `<button type="button" class="emp-action-btn emp-btn-debt" onclick="selectUserForDebt(${u.id})" title="Xodimga qarz belgilash"><svg class="emp-btn-icon"><use href="#icon-debt"></use></svg><span>+ Qarz</span></button>`
+        ? `<button type="button" class="emp-action-btn emp-btn-debt" onclick="selectUserForDebt(${u.id})" title="+ Qarz belgilash" aria-label="+ Qarz"><svg class="emp-btn-icon"><use href="#icon-debt"></use></svg></button>`
         : "";
 
       const isResting = (u.shift_status === "RESTING");
       const shiftToggleBtn = (u.role !== "ADMIN" && u.is_active)
         ? (isResting
-            ? `<button type="button" class="emp-action-btn emp-btn-work" onclick="toggleEmployeeShift(${u.id}, 'WORKING')" title="Xodimni damdan ishga qaytarish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Ishga chiqarish</span></button>`
-            : `<button type="button" class="emp-action-btn emp-btn-rest" onclick="toggleEmployeeShift(${u.id}, 'RESTING')" title="Xodimni dam olishga chiqarish"><svg class="emp-btn-icon"><use href="#icon-rest"></use></svg><span>Damga chiqarish</span></button>`)
+            ? `<button type="button" class="emp-action-btn emp-btn-work" onclick="toggleEmployeeShift(${u.id}, 'WORKING')" title="Ishga chiqarish (Damdan qaytarish)" aria-label="Ishga chiqarish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg></button>`
+            : `<button type="button" class="emp-action-btn emp-btn-rest" onclick="toggleEmployeeShift(${u.id}, 'RESTING')" title="Damga chiqarish" aria-label="Damga chiqarish"><svg class="emp-btn-icon"><use href="#icon-rest"></use></svg></button>`)
         : "";
 
       const safeJsName = (u.full_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      const passwordBtn = `<button type="button" class="emp-action-btn emp-btn-password" onclick="promptUpdatePassword(${u.id}, '${safeJsName}')" title="Xodim parolini yangilash"><svg class="emp-btn-icon"><use href="#icon-password"></use></svg><span>Parol</span></button>`;
+      const passwordBtn = `<button type="button" class="emp-action-btn emp-btn-password" onclick="promptUpdatePassword(${u.id}, '${safeJsName}')" title="Parol o'rnatish" aria-label="Parol"><svg class="emp-btn-icon"><use href="#icon-password"></use></svg></button>`;
 
       let statusHtml = '<span style="color: #f87171;">Bo\'shatilgan</span>';
       if (u.is_active) {

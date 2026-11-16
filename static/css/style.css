@@ -6478,31 +6478,29 @@ body.theme-light .comparison-kpi-sub {
 }
 
 /* ========================================================
-   XODIMLAR JADVALI — IXCHAM VA INTERAKTIV SVG TUGMALAR (V890)
+   XODIMLAR JADVALI — IXCHAM VA INTERAKTIV SVG TUGMALAR (V891 - ICON ONLY)
    ======================================================== */
 .emp-action-cell {
   display: flex !important;
-  gap: 0.35rem !important;
-  flex-wrap: wrap !important;
+  gap: 0.38rem !important;
+  flex-wrap: nowrap !important;
   align-items: center !important;
   white-space: nowrap !important;
-  min-width: 270px;
+  min-width: 185px;
 }
 
 .emp-action-btn {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 0.32rem !important;
-  height: 28px !important;
-  padding: 0 0.58rem !important;
-  font-size: 0.74rem !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.01em !important;
-  border-radius: 6px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
   border: 1px solid transparent !important;
   cursor: pointer !important;
-  white-space: nowrap !important;
   user-select: none !important;
   text-decoration: none !important;
   outline: none !important;
@@ -6510,6 +6508,7 @@ body.theme-light .comparison-kpi-sub {
   transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
+  position: relative;
 }
 
 .emp-action-btn:focus-visible {
@@ -6518,18 +6517,19 @@ body.theme-light .comparison-kpi-sub {
 }
 
 .emp-action-btn:active {
-  transform: translateY(1px) scale(0.96) !important;
+  transform: translateY(1px) scale(0.95) !important;
 }
 
 .emp-btn-icon {
-  width: 14px !important;
-  height: 14px !important;
-  min-width: 14px !important;
-  display: inline-block !important;
-  vertical-align: middle !important;
+  width: 17px !important;
+  height: 17px !important;
+  min-width: 17px !important;
+  max-width: 17px !important;
+  display: block !important;
+  margin: auto !important;
   stroke: currentColor !important;
   fill: none !important;
-  stroke-width: 2.2 !important;
+  stroke-width: 2.1 !important;
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
