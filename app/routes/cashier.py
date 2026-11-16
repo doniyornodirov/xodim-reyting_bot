@@ -239,7 +239,7 @@ async def get_my_handovers(
                 LEFT JOIN users u ON ch.employee_id = u.id
                 LEFT JOIN users cash ON ch.cashier_id = cash.id
                 WHERE ch.company_id = ?
-                ORDER BY ch.handover_date DESC, ch.id DESC LIMIT 500
+                ORDER BY ch.created_at DESC, ch.id DESC LIMIT 500
             """, (comp_id,))
         rows = await cursor.fetchall()
         rows_list = [dict(r) for r in rows]
@@ -368,7 +368,7 @@ async def get_all_handovers(user: dict = Depends(require_role(["ADMIN"]))):
             JOIN users u ON ch.employee_id = u.id
             JOIN users cash ON ch.cashier_id = cash.id
             WHERE ch.company_id = ?
-            ORDER BY ch.handover_date DESC, ch.id DESC LIMIT 100
+            ORDER BY ch.created_at DESC, ch.id DESC LIMIT 500
         """, (comp_id,))
         rows = await cursor.fetchall()
         return {"success": True, "data": [dict(r) for r in rows]}
