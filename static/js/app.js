@@ -3838,27 +3838,30 @@ async function loadAdminUsers() {
     res.data.forEach(u => {
       // Bosh Rahbar daxlsiz - uni hech kim bo'shata olmaydi va tizimdan chiqara olmaydi!
       const activeBtn = u.role === "ADMIN"
-        ? `<span class="badge" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.35); color: #c7d2fe; font-size: 0.78rem; padding: 0.35rem 0.65rem; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">🛡️ Daxlsiz</span>`
+        ? `<span class="emp-action-btn emp-btn-immune" title="Bosh rahbar daxlsiz"><span style="font-size: 0.8rem;">🛡️</span><span>Daxlsiz</span></span>`
         : (u.is_active 
-            ? `<button class="btn-danger" onclick="toggleUserActive(${u.id})">Bo'shatish</button>`
-            : `<button class="btn-success" onclick="toggleUserActive(${u.id})">Faollashtirish</button>`);
+            ? `<button type="button" class="emp-action-btn emp-btn-fire" onclick="toggleUserActive(${u.id})" title="Xodimni ishdan bo'shatish"><svg class="emp-btn-icon"><use href="#icon-fire"></use></svg><span>Bo'shatish</span></button>`
+            : `<button type="button" class="emp-action-btn emp-btn-hire" onclick="toggleUserActive(${u.id})" title="Xodimni qayta ishga olish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Faollashtirish</span></button>`);
 
       const appointCashierBtn = u.role !== "ADMIN" && u.is_active
         ? (u.role === "CASHIER"
-            ? `<button class="btn-logout" style="border-color: #3b82f6; color: #93c5fd;" onclick="dismissCashier(${u.id})">👤 Xodim qilish</button>`
-            : `<button class="btn-logout" style="border-color: var(--accent-warning); color: #fbbf24;" onclick="appointCashier(${u.id})">💼 Kassir qilish</button>`)
+            ? `<button type="button" class="emp-action-btn emp-btn-role-emp" onclick="dismissCashier(${u.id})" title="Kassirlikdan oddiy xodimga tushirish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Xodim qilish</span></button>`
+            : `<button type="button" class="emp-action-btn emp-btn-role-cashier" onclick="appointCashier(${u.id})" title="Xodimni kassir etib tayinlash"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Kassir qilish</span></button>`)
         : "";
 
       const debtBtn = u.role !== "ADMIN" && u.is_active
-        ? `<button class="btn-logout" style="border-color: #f59e0b; color: #fbbf24;" onclick="selectUserForDebt(${u.id})">+ Qarz</button>`
+        ? `<button type="button" class="emp-action-btn emp-btn-debt" onclick="selectUserForDebt(${u.id})" title="Xodimga qarz belgilash"><svg class="emp-btn-icon"><use href="#icon-debt"></use></svg><span>+ Qarz</span></button>`
         : "";
 
       const isResting = (u.shift_status === "RESTING");
       const shiftToggleBtn = (u.role !== "ADMIN" && u.is_active)
         ? (isResting
-            ? `<button class="btn-success" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="toggleEmployeeShift(${u.id}, 'WORKING')">🟢 Ishga chiqarish</button>`
-            : `<button class="btn-logout" style="border-color: #fbbf24; color: #fbbf24; font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="toggleEmployeeShift(${u.id}, 'RESTING')">🌙 Damga chiqarish</button>`)
+            ? `<button type="button" class="emp-action-btn emp-btn-work" onclick="toggleEmployeeShift(${u.id}, 'WORKING')" title="Xodimni damdan ishga qaytarish"><svg class="emp-btn-icon"><use href="#icon-hire"></use></svg><span>Ishga chiqarish</span></button>`
+            : `<button type="button" class="emp-action-btn emp-btn-rest" onclick="toggleEmployeeShift(${u.id}, 'RESTING')" title="Xodimni dam olishga chiqarish"><svg class="emp-btn-icon"><use href="#icon-rest"></use></svg><span>Damga chiqarish</span></button>`)
         : "";
+
+      const safeJsName = (u.full_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const passwordBtn = `<button type="button" class="emp-action-btn emp-btn-password" onclick="promptUpdatePassword(${u.id}, '${safeJsName}')" title="Xodim parolini yangilash"><svg class="emp-btn-icon"><use href="#icon-password"></use></svg><span>Parol</span></button>`;
 
       let statusHtml = '<span style="color: #f87171;">Bo\'shatilgan</span>';
       if (u.is_active) {
@@ -3905,10 +3908,10 @@ async function loadAdminUsers() {
           <td><b>${formatNumberSpaces(u.debt_amount ?? 0)} so'm</b></td>
           <td>${statusHtml}</td>
           <td>${deviceHtml}</td>
-          <td style="display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center;">
+          <td class="emp-action-cell">
             ${activeBtn}
             ${debtBtn}
-            <button class="btn-logout" onclick="promptUpdatePassword(${u.id}, '${u.full_name}')">Parol</button>
+            ${passwordBtn}
             ${appointCashierBtn}
             ${shiftToggleBtn}
           </td>

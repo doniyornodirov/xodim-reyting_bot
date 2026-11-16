@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=889', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=890', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=889">
+  <link rel="stylesheet" href="/static/css/style.css?v=890">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -89,6 +89,50 @@
       } catch(e) {}
     })();
   </script>
+
+  <!-- ========================================== -->
+  <!-- BARCHA IKONKALAR OMBORI (SVG SPRITE)       -->
+  <!-- ========================================== -->
+  <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <!-- 1. Parol / Kalit (icon-password) -->
+    <symbol id="icon-password" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="8.75" cy="12" r="2.25" stroke="currentColor" stroke-width="2"/>
+      <path d="M11 12H16.5C17.0523 12 17.5 12.4477 17.5 13V14.5M14.25 12V14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- 2. Xodimni ishga olish / faollashtirish (icon-hire) -->
+    <symbol id="icon-hire" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="10" cy="9.25" r="2.25" stroke="currentColor" stroke-width="2"/>
+      <path d="M6.25 16.5C6.25 14.7 7.9 13.5 10 13.5C11.1 13.5 12.1 13.8 12.8 14.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M16.25 13.25V17.25M14.25 15.25H18.25" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- 3. Damga chiqarish (icon-rest) -->
+    <symbol id="icon-rest" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M7 11.25H14.5V14.25C14.5 15.9069 13.1569 17.25 11.5 17.25H10C8.34315 17.25 7 15.9069 7 14.25V11.25Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M14.5 12H15.75C16.5784 12 17.25 12.6716 17.25 13.5C17.25 14.3284 16.5784 15 15.75 15H14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M9.25 7.25V8.75M12.25 7.25V8.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- 4. Qarz belgilash (icon-debt) -->
+    <symbol id="icon-debt" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M7.5 9.5C7.5 8.39543 8.39543 7.5 9.5 7.5H14.5C15.6046 7.5 16.5 8.39543 16.5 9.5V11.5M12 16.5H9.5C8.39543 16.5 7.5 15.6046 7.5 14.5V9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="13.5" cy="11.5" r="0.85" fill="currentColor"/>
+      <path d="M14.25 15H17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- 5. Ishdan bo'shatish (icon-fire) -->
+    <symbol id="icon-fire" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="10" cy="9.25" r="2.25" stroke="currentColor" stroke-width="2"/>
+      <path d="M6.25 16.5C6.25 14.7 7.9 13.5 10 13.5C11.1 13.5 12.1 13.8 12.8 14.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M14.75 13.75L17.75 16.75M17.75 13.75L14.75 16.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+  </svg>
 
   <!-- ========================================== -->
   <!-- ILOVA OCHILISH EKRANI (EXECUTIVE SPLASH SCREEN) -->
@@ -2671,6 +2715,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=889"></script>
+  <script src="/static/js/app.js?v=890"></script>
 </body>
 </html>
