@@ -2428,6 +2428,26 @@ button[onclick="handleAppointCashierSubmit()"] {
   box-shadow: 0 2px 4px rgba(79, 70, 229, 0.25);
 }
 
+/* Login tugmasi ichidagi Squircle Kirish ikonasi */
+.btn-login-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: inline-block;
+  vertical-align: middle;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#btn-login-submit:hover .btn-login-icon {
+  transform: translateX(4px) scale(1.15);
+}
+
 /* Hover holatida yaqqol ko'tarilib, nur sochib ajralib chiqishi (Pop-Out & Glow) */
 .btn-primary:hover,
 button[type="submit"]:hover,

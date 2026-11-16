@@ -949,7 +949,7 @@ async function handleLoginStep1(e) {
     isLoginStep1InProgress = false;
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.innerText = "Kirish ➡️";
+      submitBtn.innerHTML = `<span>Kirish</span> <svg class="btn-login-icon" viewBox="0 0 24 24"><use href="#icon-login"></use></svg>`;
     }
   }
 }
