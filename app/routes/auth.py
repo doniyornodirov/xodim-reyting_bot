@@ -317,7 +317,9 @@ async def verify_or_bind_device(
         if not bound_token or allow_reset or is_bound_to_windows:
             import secrets
             new_device_token = secrets.token_hex(32) # 64-belgili apparat maxfiy kaliti
-            mobile_dev_name = (req.device_name or "Mobil telefon").strip()[:100]
+            mobile_dev_name = (req.device_name or "").strip()[:100]
+            if not mobile_dev_name or mobile_dev_name.upper() == "K" or len(mobile_dev_name) <= 1:
+                mobile_dev_name = "Android telefon"
 
             await conn.execute("""
                 UPDATE users 

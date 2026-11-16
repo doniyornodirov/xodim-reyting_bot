@@ -341,6 +341,7 @@ async def init_db():
             except Exception:
                 pass
         await conn.execute("UPDATE users SET shift_status = 'WORKING' WHERE shift_status IS NULL OR shift_status = ''")
+        await conn.execute("UPDATE users SET bound_device_name = 'Android telefon' WHERE bound_device_name = 'K' OR bound_device_name = 'k' OR LENGTH(TRIM(bound_device_name)) <= 1")
 
         # 6. Kassirlik tarixi
         await conn.execute("""

@@ -837,7 +837,9 @@ async def location_device_checkin(payload: VerifiedCheckinRequest):
     """
     tg_id = payload.telegram_id
     incoming_token = (payload.device_token or "").strip()
-    incoming_dev_name = (payload.device_name or "Mobil telefon").strip()[:100]
+    incoming_dev_name = (payload.device_name or "").strip()[:100]
+    if not incoming_dev_name or incoming_dev_name.upper() == "K" or len(incoming_dev_name) <= 1:
+        incoming_dev_name = "Android telefon"
 
     async with get_db_connection() as conn:
         cur = await conn.execute("""

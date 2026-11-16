@@ -30,7 +30,14 @@ async def get_all_users(admin: dict = Depends(require_role(["ADMIN"]))):
             ORDER BY is_active DESC, role ASC, full_name ASC
         """, (comp_id,))
         rows = await cursor.fetchall()
-        return {"success": True, "data": [dict(r) for r in rows]}
+        users_data = []
+        for r in rows:
+            u_dict = dict(r)
+            bname = (u_dict.get("bound_device_name") or "").strip()
+            if bname and (bname.upper() == "K" or len(bname) <= 1):
+                u_dict["bound_device_name"] = "Android telefon"
+            users_data.append(u_dict)
+        return {"success": True, "data": users_data}
 
 @router.get("/employees")
 async def get_admin_employees(admin: dict = Depends(require_role(["ADMIN"]))):

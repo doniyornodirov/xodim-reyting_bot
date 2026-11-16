@@ -3896,15 +3896,19 @@ async function loadAdminUsers() {
       if (u.role === "ADMIN" || u.role === "DEVELOPER") {
         deviceHtml = '<span style="color: var(--text-muted); font-size: 0.78rem;">🛡️ Cheklovsiz</span>';
       } else if (u.bound_device_name) {
-        const safeName = escapeHtml(u.bound_device_name);
+        let displayDeviceName = (u.bound_device_name || "").trim();
+        if (!displayDeviceName || displayDeviceName.toUpperCase() === "K" || displayDeviceName.length <= 1) {
+          displayDeviceName = "Android telefon";
+        }
+        const safeName = escapeHtml(displayDeviceName);
         const safeUser = escapeHtml(u.full_name);
         deviceHtml = `
-          <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+          <div style="display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;">
             <span style="font-weight: 600; font-size: 0.82rem; color: #38bdf8; display: inline-flex; align-items: center; gap: 4px;" title="Biriktirilgan sana: ${u.device_bound_at || '-'}">
               📱 ${safeName}
             </span>
-            <button type="button" class="btn-logout" style="font-size: 0.72rem; padding: 2px 7px; border-color: #64748b; color: #94a3b8; border-radius: 4px;" onclick="handleResetUserDevice(${u.id}, '${safeUser}')" title="Xodim telefonini yangilaganda yangi apparat ulashga ruxsat berish">
-              🔄 Almashtirish
+            <button type="button" class="emp-action-btn emp-btn-device-swap" onclick="handleResetUserDevice(${u.id}, '${safeUser}')" title="Yangi apparat ulashga ruxsat berish (Almashtirish)" aria-label="Almashtirish">
+              <svg class="emp-btn-icon"><use href="#icon-device-swap"></use></svg>
             </button>
           </div>
         `;
@@ -6272,6 +6276,10 @@ function getClientDeviceName() {
     let raw = androidMatch[1].trim();
     if (raw.includes("ANY-NX1") || raw.includes("Honor") || raw.includes("HONOR")) {
       return "Honor X9b (Android)";
+    }
+    // Chromium User-Agent Client Hints reduction freezes device model to "K"
+    if (!raw || raw.toUpperCase() === "K" || raw.length <= 1) {
+      return "Android telefon";
     }
     return raw;
   }

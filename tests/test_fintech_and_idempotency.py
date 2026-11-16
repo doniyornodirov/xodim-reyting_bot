@@ -353,5 +353,27 @@ class TestFintechAndIdempotency(unittest.IsolatedAsyncioTestCase):
             self.assertIn("total_collected_uzs", range_summary)
             self.assertIn("total_difference_uzs", range_summary)
 
+    async def test_09_device_name_normalization_and_migration(self):
+        """Chromium UA Reduction ('K') va qisqa qurilma nomlarini avtomatik to'g'rilash testi"""
+        from app.database import get_db_connection
+        async with get_db_connection() as conn:
+            cur = await conn.execute("SELECT id FROM users LIMIT 1")
+            first_user = await cur.fetchone()
+            if not first_user:
+                return
+            uid = first_user["id"]
+
+            # 'K' qiymatini kiritamiz
+            await conn.execute("UPDATE users SET bound_device_name = 'K' WHERE id = ?", (uid,))
+            await conn.commit()
+
+            # Migratsiya tekshiruvi
+            await conn.execute("UPDATE users SET bound_device_name = 'Android telefon' WHERE bound_device_name = 'K' OR bound_device_name = 'k' OR LENGTH(TRIM(bound_device_name)) <= 1")
+            await conn.commit()
+
+            cur = await conn.execute("SELECT bound_device_name FROM users WHERE id = ?", (uid,))
+            row = await cur.fetchone()
+            self.assertEqual(row["bound_device_name"], "Android telefon")
+
 if __name__ == "__main__":
     unittest.main()
