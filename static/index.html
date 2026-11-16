@@ -18,7 +18,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=916', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=917', { scope: '/' })
         .then(function (r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function (e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -27,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=916">
+  <link rel="stylesheet" href="/static/css/style.css?v=917">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -2204,8 +2204,8 @@
 
     <!-- Kassir: Kassa qabul qilish oynasi (Faqat Kassir uchun) -->
     <section class="tab-pane employee-pane" id="pane-cashier-intake" style="display: none;">
-      <!-- 1 kunlik yig'ilgan kassalar indikatori va umumiy statistika -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+      <!-- 1 kunlik yig'ilgan kassalar indikatori -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
         <div class="card-box" style="margin-bottom: 0; padding: 1.1rem 1.25rem; border-left: 4px solid #10b981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%);">
           <div style="font-size: 0.8rem; color: #34d399; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">📅 Bugun yig'ilgan kassa</div>
           <div id="cashier-indicator-today-total" style="font-size: 1.45rem; font-weight: 800; color: #10b981; margin: 0.35rem 0;">0 so'm</div>
@@ -2216,12 +2216,6 @@
           <div style="font-size: 0.8rem; color: #93c5fd; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">💵 So'm / Dollarda taqsimot</div>
           <div id="cashier-indicator-today-breakdown" style="font-size: 1.15rem; font-weight: 700; color: #60a5fa; margin: 0.35rem 0;">0 so'm / 0 $</div>
           <div style="font-size: 0.8rem; color: var(--text-sub);">Bugungi qabul qilingan valyutalar</div>
-        </div>
-
-        <div class="card-box" style="margin-bottom: 0; padding: 1.1rem 1.25rem; border-left: 4px solid #a855f7; background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(15, 23, 42, 0.4) 100%);">
-          <div style="font-size: 0.8rem; color: #c084fc; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">📜 Barcha yig'ilgan kassa</div>
-          <div id="cashier-indicator-all-total" style="font-size: 1.45rem; font-weight: 800; color: #a855f7; margin: 0.35rem 0;">0 so'm</div>
-          <div id="cashier-indicator-all-sub" style="font-size: 0.8rem; color: var(--text-sub);">0 ta qabul qilingan operatsiya</div>
         </div>
       </div>
 
@@ -3587,7 +3581,7 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=916"></script>
+  <script src="/static/js/app.js?v=917"></script>
 </body>
 
 </html>
