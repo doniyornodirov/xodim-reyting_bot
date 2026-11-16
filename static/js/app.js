@@ -5733,58 +5733,58 @@ function renderSaasCompaniesTable(companies) {
     const safeCompName = (c.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const safeOwnerName = (c.owner_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
-    let actionsHtml = `<div style="display: inline-flex; gap: 0.3rem; align-items: center; white-space: nowrap; flex-wrap: wrap;">`;
+    let actionsHtml = `<div class="emp-action-cell">`;
     
     // Rahbar parolini yangilash tugmasi
     actionsHtml += `
-      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 6px; font-weight: 600;" onclick="openSaasEditField(${c.id}, 'password')" title="Rahbar parolini yangilash">
-        🔑 Parol
+      <button type="button" class="emp-action-btn emp-btn-debt" onclick="openSaasEditField(${c.id}, 'password')" title="Rahbar parolini yangilash" aria-label="Parol">
+        <svg class="emp-btn-icon"><use href="#icon-password"></use></svg>
       </button>
     `;
 
     // Rahbar kabinetiga kirib ko'rish (Impersonate) va Telegram orqali rekvizit jo'natish barcha firmalarga ruxsat etiladi
     actionsHtml += `
-      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 6px; font-weight: 600;" onclick="handleImpersonateCompany(${c.id}, '${safeCompName}')" title="Firma kabinetiga uning Rahbari sifatida kirib ko'rish">
-        👁️ Kirish
+      <button type="button" class="emp-action-btn emp-btn-password" onclick="handleImpersonateCompany(${c.id}, '${safeCompName}')" title="Firma kabinetiga uning Rahbari sifatida kirib ko'rish (Kuzatuv)" aria-label="Kirish">
+        <svg class="emp-btn-icon"><use href="#icon-eye"></use></svg>
       </button>
     `;
 
     actionsHtml += `
-      <button type="button" class="btn" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 6px; font-weight: 600;" onclick="handleSendCompanyCredentials(${c.id}, '${safeCompName}', '${safeOwnerName}')" title="Rahbarga Telegram bot orqali kirish ma'lumotlarini jo'natish">
-        ✉️ Rekvizit
+      <button type="button" class="emp-action-btn emp-btn-role-emp" onclick="handleSendCompanyCredentials(${c.id}, '${safeCompName}', '${safeOwnerName}')" title="Rahbarga Telegram bot orqali kirish ma'lumotlarini jo'natish" aria-label="Rekvizit">
+        <svg class="emp-btn-icon"><use href="#icon-mail"></use></svg>
       </button>
     `;
 
     if (!isMain) {
       if (c.plan !== "UNLIMITED") {
         actionsHtml += `
-          <button type="button" class="btn btn-primary" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; font-weight: 600; border-radius: 6px;" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Obuna muddatini uzaytirish">
-            📅 Uzaytirish
+          <button type="button" class="emp-action-btn emp-btn-role-cashier" onclick="openSaasExtendModal(${c.id}, '${safeCompName}', '${c.subscription_expires_at || ''}')" title="Obuna muddatini uzaytirish" aria-label="Uzaytirish">
+            <svg class="emp-btn-icon"><use href="#icon-calendar"></use></svg>
           </button>
         `;
       }
 
       if (c.is_active) {
         actionsHtml += `
-          <button type="button" class="btn btn-danger" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, true)" title="Firmani to'xtatish (bloklash)">
-            Bloklash
+          <button type="button" class="emp-action-btn emp-btn-fire" onclick="toggleCompanyActive(${c.id}, true)" title="Firmani to'xtatish (bloklash)" aria-label="Bloklash">
+            <svg class="emp-btn-icon"><use href="#icon-fire"></use></svg>
           </button>
         `;
       } else {
         actionsHtml += `
-          <button type="button" class="btn btn-success" style="font-size: 0.72rem; padding: 0.28rem 0.55rem; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; font-weight: 600;" onclick="toggleCompanyActive(${c.id}, false)" title="Firmani qayta faollashtirish">
-            Faollashtirish
+          <button type="button" class="emp-action-btn emp-btn-hire" onclick="toggleCompanyActive(${c.id}, false)" title="Firmani qayta faollashtirish" aria-label="Faollashtirish">
+            <svg class="emp-btn-icon"><use href="#icon-hire"></use></svg>
           </button>
         `;
       }
 
       actionsHtml += `
-        <button type="button" class="btn btn-logout" style="font-size: 0.72rem; padding: 0.28rem 0.45rem; border-color: rgba(239, 68, 68, 0.3); color: #f87171; border-radius: 6px;" onclick="handleDeleteCompany(${c.id}, '${safeCompName}')" title="Firmani va barcha ma'lumotlarini butunlay o'chirish">
-          🗑️
+        <button type="button" class="emp-action-btn emp-btn-fire" onclick="handleDeleteCompany(${c.id}, '${safeCompName}')" title="Firmani va barcha ma'lumotlarini butunlay o'chirish" aria-label="O'chirish">
+          <svg class="emp-btn-icon"><use href="#icon-trash"></use></svg>
         </button>
       `;
     } else {
-      actionsHtml += `<span class="badge" style="font-size: 0.7rem; background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.35); font-weight: 600;">🏛️ Asosiy Baza (Daxlsiz)</span>`;
+      actionsHtml += `<span class="emp-action-btn emp-btn-immune" title="Asosiy Baza (Daxlsiz firma)" aria-label="Asosiy Baza (Daxlsiz)"><svg class="emp-btn-icon"><use href="#icon-bank"></use></svg></span>`;
     }
     actionsHtml += `</div>`;
 
