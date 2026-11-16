@@ -17,7 +17,7 @@
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png?v=880">
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=891', { scope: '/' })
+      navigator.serviceWorker.register('/sw.js?v=892', { scope: '/' })
         .then(function(r) { console.log('PWA ServiceWorker faol:', r.scope); })
         .catch(function(e) { console.warn('PWA ServiceWorker ogohlantirish:', e); });
     }
@@ -26,7 +26,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/style.css?v=891">
+  <link rel="stylesheet" href="/static/css/style.css?v=892">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -131,6 +131,39 @@
       <circle cx="10" cy="9.25" r="2.25" stroke="currentColor" stroke-width="2"/>
       <path d="M6.25 16.5C6.25 14.7 7.9 13.5 10 13.5C11.1 13.5 12.1 13.8 12.8 14.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       <path d="M14.75 13.75L17.75 16.75M17.75 13.75L14.75 16.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <!-- 6. Sozlash / Kordinata & Vaqt (icon-tune) -->
+    <symbol id="icon-tune" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M14.75 7.25L16.75 9.25M8.5 15.5L7.5 16.5L8.5 13.5L14.75 7.25L16.75 9.25L10.5 15.5H8.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- 7. Geolokatsiya tarixi / Hisobot (icon-history) -->
+    <symbol id="icon-history" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 9.5V12L13.75 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- 8. Xodim jonli lokatsiyasi xaritada (icon-map-person) -->
+    <symbol id="icon-map-person" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 6.5C10.07 6.5 8.5 8.07 8.5 10C8.5 12.63 12 17.5 12 17.5C12 17.5 15.5 12.63 15.5 10C15.5 8.07 13.93 6.5 12 6.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="10" r="1.5" stroke="currentColor" stroke-width="2"/>
+    </symbol>
+
+    <!-- 9. Ish joyi ofisi xaritada (icon-workplace) -->
+    <symbol id="icon-workplace" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 17.5V7.5C8 7 8.5 6.5 9 6.5H15C15.5 6.5 16 7 16 7.5V17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M10.5 9.5H11M13 9.5H13.5M10.5 12.5H11M13 12.5H13.5M11 17.5V15H13V17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- 10. Kordinatani tozalash (icon-trash) -->
+    <symbol id="icon-trash" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2.25C18.5 2.25 21.75 5.5 21.75 12C21.75 18.5 21.75 12 21.75 18.5C5.5 21.75 2.25 18.5 2.25 12C2.25 5.5 5.5 2.25 12 2.25Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M8 8.5H16M10 8.5V6.75C10 6.34 10.34 6 10.75 6H13.25C13.66 6 14 6.34 14 6.75V8.5M9 8.5L9.75 16.5C9.8 17.05 10.25 17.5 10.8 17.5H13.2C13.75 17.5 14.2 17.05 14.25 16.5L15 8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11.25 11V15M12.75 11V15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
     </symbol>
   </svg>
 
@@ -2715,6 +2748,6 @@
 
   <!-- SheetJS (XLSX) Kutubxonasi — B2B Excel Eksporti -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="/static/js/app.js?v=891"></script>
+  <script src="/static/js/app.js?v=892"></script>
 </body>
 </html>

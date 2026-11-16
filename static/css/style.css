@@ -5816,7 +5816,7 @@ body.theme-light .segmented-control .btn-logout:hover {
 .action-btn-group {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0.35rem !important;
+  gap: 0.38rem !important;
   flex-wrap: nowrap !important;
   white-space: nowrap !important;
 }
@@ -5825,116 +5825,174 @@ body.theme-light .segmented-control .btn-logout:hover {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 0.3rem !important;
-  height: 28px !important;
-  min-height: 28px !important;
-  max-height: 28px !important;
-  padding: 0 0.55rem !important;
-  font-size: 0.74rem !important;
-  font-weight: 600 !important;
-  border-radius: 6px !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
   border: 1px solid transparent !important;
   text-decoration: none !important;
   cursor: pointer !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
   white-space: nowrap !important;
   box-sizing: border-box !important;
   line-height: 1 !important;
   user-select: none !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  position: relative;
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid #6366f1 !important;
+  outline-offset: 1px !important;
 }
 
 .action-btn:hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(-1.5px) !important;
 }
 
 .action-btn:active {
-  transform: translateY(0) scale(0.97) !important;
+  transform: translateY(1px) scale(0.95) !important;
 }
 
-/* Primary (Sozlash / Asosiy) */
+.action-btn .emp-btn-icon {
+  width: 17px !important;
+  height: 17px !important;
+  min-width: 17px !important;
+  max-width: 17px !important;
+  display: block !important;
+  margin: auto !important;
+  stroke: currentColor !important;
+  fill: none !important;
+  stroke-width: 2 !important;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.action-btn:hover .emp-btn-icon {
+  transform: scale(1.18) !important;
+}
+
+/* Primary (Sozlash / Kordinata & Vaqt) */
 .action-btn-primary {
-  background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
-  color: #ffffff !important;
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3) !important;
+  background: rgba(99, 102, 241, 0.12) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.38) !important;
 }
 .action-btn-primary:hover {
-  background: linear-gradient(135deg, #4338ca, #4f46e5) !important;
-  box-shadow: 0 3px 8px rgba(79, 70, 229, 0.45) !important;
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  color: #ffffff !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45) !important;
 }
 
 /* Success (Tarix / Hisobot) */
 .action-btn-success {
-  background: rgba(16, 185, 129, 0.15) !important;
+  background: rgba(16, 185, 129, 0.12) !important;
   color: #34d399 !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
+  border-color: rgba(16, 185, 129, 0.38) !important;
 }
 .action-btn-success:hover {
-  background: rgba(16, 185, 129, 0.28) !important;
-  color: #6ee7b7 !important;
-  border-color: rgba(16, 185, 129, 0.6) !important;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45) !important;
 }
 
-/* Info (Xodim xaritasi) */
+/* Info (Xodim jonli lokatsiyasi) */
 .action-btn-info {
-  background: rgba(2, 132, 199, 0.15) !important;
+  background: rgba(2, 132, 199, 0.12) !important;
   color: #38bdf8 !important;
-  border-color: rgba(2, 132, 199, 0.35) !important;
+  border-color: rgba(2, 132, 199, 0.38) !important;
 }
 .action-btn-info:hover {
-  background: rgba(2, 132, 199, 0.28) !important;
-  color: #7dd3fc !important;
-  border-color: rgba(2, 132, 199, 0.6) !important;
+  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.45) !important;
 }
 
-/* Purple (Ish joyi) */
+/* Purple (Ish joyi ofis manzili) */
 .action-btn-purple {
-  background: rgba(147, 51, 234, 0.15) !important;
+  background: rgba(168, 85, 247, 0.12) !important;
   color: #c084fc !important;
-  border-color: rgba(147, 51, 234, 0.35) !important;
+  border-color: rgba(168, 85, 247, 0.38) !important;
 }
 .action-btn-purple:hover {
-  background: rgba(147, 51, 234, 0.28) !important;
-  color: #d8b4fe !important;
-  border-color: rgba(147, 51, 234, 0.6) !important;
+  background: linear-gradient(135deg, #a855f7, #9333ea) !important;
+  color: #ffffff !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.45) !important;
 }
 
 /* Danger (O'chirish / Tozalash) */
 .action-btn-danger {
-  background: rgba(244, 63, 94, 0.12) !important;
-  color: #fb7185 !important;
-  border-color: rgba(244, 63, 94, 0.35) !important;
-  width: 28px !important;
-  min-width: 28px !important;
-  padding: 0 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.38) !important;
 }
 .action-btn-danger:hover {
-  background: rgba(244, 63, 94, 0.25) !important;
-  color: #fda4af !important;
-  border-color: rgba(244, 63, 94, 0.6) !important;
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.45) !important;
 }
 
 /* Light Theme Moslashuvi */
+body.theme-light .action-btn-primary {
+  background: rgba(99, 102, 241, 0.08) !important;
+  color: #4f46e5 !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+body.theme-light .action-btn-primary:hover {
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
+}
+
 body.theme-light .action-btn-success {
-  background: #ecfdf5 !important;
+  background: rgba(16, 185, 129, 0.08) !important;
   color: #059669 !important;
-  border-color: #a7f3d0 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
 }
+body.theme-light .action-btn-success:hover {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35) !important;
+}
+
 body.theme-light .action-btn-info {
-  background: #f0f9ff !important;
+  background: rgba(2, 132, 199, 0.08) !important;
   color: #0284c7 !important;
-  border-color: #bae6fd !important;
+  border-color: rgba(2, 132, 199, 0.3) !important;
 }
+body.theme-light .action-btn-info:hover {
+  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35) !important;
+}
+
 body.theme-light .action-btn-purple {
-  background: #faf5ff !important;
-  color: #7e22ce !important;
-  border-color: #e9d5ff !important;
+  background: rgba(168, 85, 247, 0.08) !important;
+  color: #9333ea !important;
+  border-color: rgba(168, 85, 247, 0.3) !important;
 }
+body.theme-light .action-btn-purple:hover {
+  background: linear-gradient(135deg, #a855f7, #9333ea) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.35) !important;
+}
+
 body.theme-light .action-btn-danger {
-  background: #fff1f2 !important;
-  color: #e11d48 !important;
-  border-color: #fecdd3 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+body.theme-light .action-btn-danger:hover {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35) !important;
 }
 
 /* ========================================================= */

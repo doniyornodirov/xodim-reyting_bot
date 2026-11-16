@@ -4844,31 +4844,33 @@ function renderAdminLocationTable(filterVal = "all") {
       : `<span style="opacity: 0.5; font-size: 0.75rem;">-</span>`;
 
     // Yagona va zamonaviy amallar tugmalari guruhi (advise.md qoidasi)
+    const configTitle = isConfigured ? "Ish joyi va vaqtini sozlash" : "Ish joyi va vaqtini biriktirish";
     const configBtn = `
-      <button type="button" class="action-btn action-btn-primary" onclick="openSetEmployeeLocationModal(${emp.id})" title="${isConfigured ? 'Ish joyi va vaqtini tahrirlash' : 'Ish joyi va vaqtini biriktirish'}">
-        ${isConfigured ? '✏️ Sozlash' : '📍 Kordinata & Vaqt'}
+      <button type="button" class="action-btn action-btn-primary" onclick="openSetEmployeeLocationModal(${emp.id})" title="${configTitle}" aria-label="${configTitle}">
+        <svg class="emp-btn-icon"><use href="#icon-tune"></use></svg>
       </button>
     `;
 
     const historyBtn = `
-      <button type="button" class="action-btn action-btn-success" onclick="openLocationHistoryModal(${emp.id})" title="Ushbu xodimning geolokatsiya tarixi (DOCX)">
-        📄 Tarix
+      <button type="button" class="action-btn action-btn-success" onclick="openLocationHistoryModal(${emp.id})" title="Geolokatsiya tarixi (DOCX hisobot)" aria-label="Geolokatsiya tarixi">
+        <svg class="emp-btn-icon"><use href="#icon-history"></use></svg>
       </button>
     `;
 
     // Xaritada ko'rish tugmasi (xodimning oxirgi jonli lokatsiyasi)
     const mapBtn = (emp.last_latitude && emp.last_longitude)
-      ? `<a href="https://www.google.com/maps?q=${emp.last_latitude},${emp.last_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-info" title="Xodimning hozirgi/oxirgi joylashuvi xaritada">🗺️ Xodim</a>`
+      ? `<a href="https://www.google.com/maps?q=${emp.last_latitude},${emp.last_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-info" title="Xodimning jonli lokatsiyasi xaritada" aria-label="Xodim xaritada"><svg class="emp-btn-icon"><use href="#icon-map-person"></use></svg></a>`
       : "";
 
     // Ish joyini xaritada ko'rish tugmasi (agar belgilangan bo'lsa)
     const wpMapBtn = isConfigured
-      ? `<a href="https://www.google.com/maps?q=${emp.workplace_latitude},${emp.workplace_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-purple" title="Belgilangan ish joyi manzili xaritada">🏢 Ish joyi</a>`
+      ? `<a href="https://www.google.com/maps?q=${emp.workplace_latitude},${emp.workplace_longitude}" target="_blank" rel="noopener noreferrer" class="action-btn action-btn-purple" title="Belgilangan ish joyi (ofis) xaritada" aria-label="Ish joyi xaritada"><svg class="emp-btn-icon"><use href="#icon-workplace"></use></svg></a>`
       : "";
 
     // Ish joyini tozalash tugmasi
+    const safeEmpName = (emp.full_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const clearBtn = isConfigured
-      ? `<button type="button" class="action-btn action-btn-danger" onclick="handleClearEmployeeWorkplace(${emp.id}, '${emp.full_name}')" title="Kordinatani tozalash">🗑️</button>`
+      ? `<button type="button" class="action-btn action-btn-danger" onclick="handleClearEmployeeWorkplace(${emp.id}, '${safeEmpName}')" title="Kordinatani tozalash" aria-label="Tozalash"><svg class="emp-btn-icon"><use href="#icon-trash"></use></svg></button>`
       : "";
 
     tbody.innerHTML += `
