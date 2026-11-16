@@ -2448,6 +2448,37 @@ button[onclick="handleAppointCashierSubmit()"] {
   transform: translateX(4px) scale(1.15);
 }
 
+/* Tekshirilmoqda Squircle Lupa ikonasi */
+.btn-checking-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: inline-block;
+  vertical-align: middle;
+  animation: pulseChecking 1.2s ease-in-out infinite;
+}
+
+@keyframes pulseChecking {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.14);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+}
+
 /* Hover holatida yaqqol ko'tarilib, nur sochib ajralib chiqishi (Pop-Out & Glow) */
 .btn-primary:hover,
 button[type="submit"]:hover,

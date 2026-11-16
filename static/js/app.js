@@ -898,7 +898,7 @@ async function handleLoginStep1(e) {
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerText = "⏳ Tekshirilmoqda...";
+    submitBtn.innerHTML = `<svg class="btn-checking-icon" viewBox="0 0 24 24"><use href="#icon-checking"></use></svg> <span>Tekshirilmoqda...</span>`;
   }
 
   try {
@@ -1010,7 +1010,7 @@ async function handleVerifyOtp(e) {
 
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.innerText = "⏳ Tekshirilmoqda...";
+    submitBtn.innerHTML = `<svg class="btn-checking-icon" viewBox="0 0 24 24"><use href="#icon-checking"></use></svg> <span>Tekshirilmoqda...</span>`;
   }
 
   try {
