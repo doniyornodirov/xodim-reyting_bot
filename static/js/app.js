@@ -2514,7 +2514,7 @@ async function loadCashierMyHandovers() {
       const allSubEl = document.getElementById("cashier-indicator-all-sub");
 
       if (todayTotalEl) todayTotalEl.innerText = `${formatNumberSpaces(res.summary.today_total)} so'm`;
-      if (todaySubEl) todaySubEl.innerText = `${res.summary.today_count} nafar xodimdan (${formatDateOnly(res.summary.today_date)})`;
+      if (todaySubEl) todaySubEl.innerText = `${res.summary.today_count} ta operatsiya (Bugun qabul qilingan)`;
       if (todayBreakdownEl) todayBreakdownEl.innerText = `${formatNumberSpaces(res.summary.today_uzs)} so'm / ${formatNumberSpaces(res.summary.today_usd)} $`;
       if (allTotalEl) allTotalEl.innerText = `${formatNumberSpaces(res.summary.all_total)} so'm`;
       if (allSubEl) allSubEl.innerText = `${res.summary.all_count} ta operatsiya (Doimiy tarix)`;

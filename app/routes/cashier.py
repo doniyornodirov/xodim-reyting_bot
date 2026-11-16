@@ -244,7 +244,8 @@ async def get_my_handovers(
         rows = await cursor.fetchall()
         rows_list = [dict(r) for r in rows]
 
-        # Bugungi kun uchun alohida 1 kunlik yig'ilgan kassalar indikatori
+        # Bugun haqiqatda qabul qilingan kassalar (boshqa kun uchun qabul qilingan bo'lsa ham,
+        # bugun kassirning qo'liga tushgani uchun bugungi yig'ilgan kassa indikatorida hisoblanadi)
         cur_today = await conn.execute("""
             SELECT 
                 COALESCE(SUM(amount), 0) as total_amount,
@@ -252,8 +253,9 @@ async def get_my_handovers(
                 COALESCE(SUM(amount_usd), 0) as total_usd,
                 COUNT(*) as total_count
             FROM cashier_handovers
-            WHERE company_id = ? AND handover_date = ?
-        """, (comp_id, today_str))
+            WHERE company_id = ? 
+              AND (DATE(created_at, '+5 hours') = ? OR DATE(created_at) = ? OR handover_date = ?)
+        """, (comp_id, today_str, today_str, today_str))
         today_row = await cur_today.fetchone()
 
         # Barcha davr uchun jami yig'ilgan kassa

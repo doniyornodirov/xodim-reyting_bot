@@ -127,7 +127,7 @@ class TestCashierEnhancements(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(summary["today_count"], 1)
 
         # Barcha davr indikatori (bugun + kecha)
-        self.assertGreaterEqual(summary["all_total"], summary["today_total"] + 500000)
+        self.assertGreaterEqual(summary["all_total"], summary["today_total"])
 
     async def test_04_duplicate_handover_same_day_blocked(self):
         """4. 1 kunga 1 marta kassa qabul qilinadi, takroriy qabul qilish bloklanishi shart"""
@@ -166,6 +166,32 @@ class TestCashierEnhancements(unittest.IsolatedAsyncioTestCase):
         already_ids = [e["id"] for e in emp_res.get("already_handed_over", [])]
         self.assertNotIn(self.emp1_id, pending_ids)
         self.assertIn(self.emp1_id, already_ids)
+
+    async def test_05_cashier_today_indicator_includes_delayed_handovers_received_today(self):
+        """5. Boshqa kun uchun qabul qilingan kassa bugun olingan bo'lsa, bugungi indikator hisobiga kirishi shart"""
+        today_str = get_tashkent_today_str()
+        three_days_ago = (datetime.strptime(today_str, "%Y-%m-%d") - timedelta(days=3)).strftime("%Y-%m-%d")
+
+        # 3 kun oldingi sana uchun bugun kassa qabul qilish
+        req = CashierHandoverCreate(
+            employee_id=self.emp1_id,
+            handover_date=three_days_ago,
+            amount_uzs=750000,
+            amount_usd=50,
+            usd_rate=12000,
+            idempotency_key="delayed-received-today"
+        )
+        res = await record_handover(req, self.cashier_user)
+        self.assertTrue(res["success"])
+
+        # Kassir panelidagi bugungi indikatorni tekshirish
+        handovers = await get_my_handovers(date=None, user=self.cashier_user)
+        summary = handovers["summary"]
+
+        # Jami summa = 750000 + 50*rate >= 1 250 000 so'm
+        self.assertGreaterEqual(summary["today_total"], 1250000, "Bugun qabul qilingan kassa boshqa sana uchun bo'lsa ham, bugungi indikatorga kirishi kerak!")
+        self.assertGreaterEqual(summary["today_uzs"], 750000)
+        self.assertGreaterEqual(summary["today_usd"], 50)
 
 if __name__ == "__main__":
     unittest.main()
