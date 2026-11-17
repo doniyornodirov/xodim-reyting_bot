@@ -3315,7 +3315,7 @@ function renderMainAnalyticsChart(timeline) {
         borderColor: "#6366f1",
         backgroundColor: "rgba(99, 102, 241, 0.18)",
         fill: true,
-        tension: 0.35,
+        tension: 0,
         yAxisID: "yLeft",
         pointRadius: 4,
         pointHoverRadius: 6
@@ -3327,7 +3327,7 @@ function renderMainAnalyticsChart(timeline) {
           borderColor: "#10b981",
           backgroundColor: "rgba(16, 185, 129, 0.1)",
           fill: true,
-          tension: 0.35,
+          tension: 0,
           yAxisID: "yLeft",
           pointRadius: 4,
           pointHoverRadius: 6
@@ -3342,7 +3342,7 @@ function renderMainAnalyticsChart(timeline) {
         borderColor: "#10b981",
         backgroundColor: "rgba(16, 185, 129, 0.15)",
         fill: currentChartMetric === "paynet",
-        tension: 0.35,
+        tension: 0,
         yAxisID: "yLeft",
         pointRadius: 4,
         pointHoverRadius: 6
@@ -3357,7 +3357,7 @@ function renderMainAnalyticsChart(timeline) {
         backgroundColor: "rgba(6, 182, 212, 0.14)",
         fill: currentChartMetric === "cards",
         borderDash: currentChartMetric === "all" ? [5, 5] : [],
-        tension: 0.35,
+        tension: 0,
         yAxisID: "yLeft",
         pointRadius: 4,
         pointHoverRadius: 6
@@ -3374,7 +3374,7 @@ function renderMainAnalyticsChart(timeline) {
         borderColor: "#f59e0b",
         backgroundColor: isSimsOnly ? "rgba(245, 158, 11, 0.22)" : "rgba(245, 158, 11, 0.8)",
         fill: isSimsOnly,
-        tension: 0.35,
+        tension: 0,
         yAxisID: currentChartMetric === "all" ? "yRight" : "yLeft",
         pointRadius: isSimsOnly ? 6 : 4,
         pointHoverRadius: isSimsOnly ? 8 : 6,
@@ -3452,6 +3452,11 @@ function renderMainAnalyticsChart(timeline) {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
+        elements: {
+          line: {
+            tension: 0
+          }
+        },
         plugins: {
           legend: {
             position: "top",
