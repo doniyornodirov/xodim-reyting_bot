@@ -119,7 +119,14 @@ async def create_user(req: CreateUserRequest, admin: dict = Depends(require_role
 
     return {
         "success": True,
-        "message": f"Xodim {req.full_name} muvaffaqiyatli ro'yxatga olindi! Boshlang'ich login va parol: {req.telegram_id}"
+        "message": f"Xodim {req.full_name} muvaffaqiyatli ro'yxatga olindi! Boshlang'ich login va parol: {req.telegram_id}",
+        "data": {
+            "id": user_id,
+            "telegram_id": req.telegram_id,
+            "full_name": req.full_name,
+            "role": role,
+            "company_id": comp_id
+        }
     }
 
 @router.post("/users/{user_id}/toggle-active")
