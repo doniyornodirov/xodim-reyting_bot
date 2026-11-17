@@ -6838,7 +6838,7 @@ body.theme-light .comparison-kpi-sub {
   flex-wrap: nowrap !important;
   align-items: center !important;
   white-space: nowrap !important;
-  min-width: 185px;
+  min-width: 220px;
 }
 
 .emp-action-btn {
@@ -7032,6 +7032,21 @@ body.theme-light .comparison-kpi-sub {
   transform: translateY(-1.5px) !important;
 }
 
+/* 10. Butunlay o'chirish (Delete / Trash) */
+.emp-btn-delete {
+  background: rgba(225, 29, 72, 0.12) !important;
+  color: #fb7185 !important;
+  border-color: rgba(225, 29, 72, 0.38) !important;
+}
+
+.emp-btn-delete:hover {
+  background: linear-gradient(135deg, #e11d48, #be123c) !important;
+  color: #ffffff !important;
+  border-color: #e11d48 !important;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.45) !important;
+  transform: translateY(-1.5px) !important;
+}
+
 /* --------------------------------------------------------
    LIGHT REJIM SOZLAMALARI (body.theme-light)
    -------------------------------------------------------- */
@@ -7147,6 +7162,18 @@ body.theme-light .emp-btn-device-swap:hover {
   background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
   color: #ffffff !important;
   box-shadow: 0 4px 14px rgba(14, 165, 233, 0.3) !important;
+}
+
+body.theme-light .emp-btn-delete {
+  background: rgba(225, 29, 72, 0.08) !important;
+  color: #e11d48 !important;
+  border-color: rgba(225, 29, 72, 0.3) !important;
+}
+
+body.theme-light .emp-btn-delete:hover {
+  background: linear-gradient(135deg, #e11d48, #be123c) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.35) !important;
 }
 
 /* ========================================================

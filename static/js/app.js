@@ -4390,6 +4390,10 @@ async function loadAdminUsers() {
       const safeJsName = (u.full_name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       const passwordBtn = `<button type="button" class="emp-action-btn emp-btn-password" onclick="promptUpdatePassword(${u.id}, '${safeJsName}')" title="Parol o'rnatish" aria-label="Parol"><svg class="emp-btn-icon"><use href="#icon-password"></use></svg></button>`;
 
+      const deleteBtn = (u.role !== "ADMIN" && u.role !== "DEVELOPER")
+        ? `<button type="button" class="emp-action-btn emp-btn-delete" onclick="deleteEmployee(${u.id}, '${safeJsName}')" title="Butunlay o'chirish (Firmadan chiqarish)" aria-label="O'chirish"><svg class="emp-btn-icon"><use href="#icon-trash"></use></svg></button>`
+        : "";
+
       let statusHtml = '<span style="color: #f87171;">Bo\'shatilgan</span>';
       if (u.is_active) {
         if (u.role === "ADMIN") {
@@ -4445,6 +4449,7 @@ async function loadAdminUsers() {
             ${passwordBtn}
             ${appointCashierBtn}
             ${shiftToggleBtn}
+            ${deleteBtn}
           </td>
         </tr>
       `;
@@ -4513,6 +4518,39 @@ async function toggleUserActive(userId) {
     showToast(res.message, "success");
     loadAdminUsers();
   } catch (e) {}
+}
+
+async function deleteEmployee(userId, userName) {
+  const targetUser = (adminUsersCache || []).find(u => u.id === userId);
+  if (targetUser && (targetUser.role === "ADMIN" || targetUser.role === "DEVELOPER")) {
+    showToast("Bosh Rahbar daxlsiz! Uni tizimdan o'chirib bo'lmaydi!", "danger");
+    return;
+  }
+  const debtAmount = targetUser ? (targetUser.debt_amount ?? 0) : 0;
+  const debtNotice = debtAmount > 0 
+    ? `\n\n⚠️ DIQQAT: Ushbu xodimda ${formatNumberSpaces(debtAmount)} so'm qarz mavjud!`
+    : "";
+
+  const ok = await appConfirm({
+    title: "Xodimni butunlay o'chirish",
+    message: `Haqiqatan ham '${userName}'ni firmadan butunlay o'chirib tashlamoqchimisiz?${debtNotice}\n\nBu amal bekor qilinmaydi va xodim firmadan butunlay chiqib ketadi!`,
+    confirmText: "Butunlay o'chirish",
+    type: "danger",
+    icon: "🗑️"
+  });
+  if (!ok) return;
+
+  try {
+    const res = await api(`/api/admin/users/${userId}`, "DELETE");
+    if (res.success) {
+      showToast(res.message || "Xodim firmadan butunlay o'chirildi!", "success");
+      loadAdminUsers();
+    } else {
+      showToast(res.detail || "Xatolik yuz berdi!", "danger");
+    }
+  } catch (e) {
+    showToast(e.message || "Server xatosi!", "danger");
+  }
 }
 
 function selectUserForDebt(userId) {

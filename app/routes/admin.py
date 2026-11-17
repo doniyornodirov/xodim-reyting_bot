@@ -191,6 +191,56 @@ async def toggle_user_active(user_id: int, admin: dict = Depends(require_role(["
 
     return {"success": True, "message": f"Xodim {user['full_name']} muvaffaqiyatli {status_name}!"}
 
+@router.delete("/users/{user_id}")
+@router.post("/users/{user_id}/delete")
+async def delete_user(user_id: int, admin: dict = Depends(require_role(["ADMIN"]))):
+    """
+    Xodimni firmadan butunlay o'chirish (Hard Delete).
+    Bosh Rahbar daxlsiz bo'lib, xodim o'chirilganda uning barcha bog'liq yozuvlari
+    tozalanadi va u firmadan butunlay chiqib ketadi.
+    """
+    comp_id = admin.get("company_id") or 1
+    async with aiosqlite.connect(DB_PATH) as conn:
+        conn.row_factory = aiosqlite.Row
+        cursor = await conn.execute("SELECT * FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
+        user = await cursor.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="Foydalanuvchi topilmadi!")
+
+        if user["role"] in ("ADMIN", "DEVELOPER") or user["id"] == admin["id"] or user["telegram_id"] == 8686341550:
+            raise HTTPException(
+                status_code=403, 
+                detail="Bosh Rahbar daxlsiz! Uni tizimdan hech kim o'chira olmaydi!"
+            )
+
+        # Xodimning tegishli yozuvlarini tozalash
+        await conn.execute("DELETE FROM sim_cards WHERE employee_id = ? AND company_id = ?", (user_id, comp_id))
+        await conn.execute("DELETE FROM sim_distributions WHERE employee_id = ? AND company_id = ?", (user_id, comp_id))
+        await conn.execute("DELETE FROM location_events WHERE user_id = ? AND company_id = ?", (user_id, comp_id))
+        await conn.execute("DELETE FROM otp_codes WHERE telegram_id = ?", (user["telegram_id"],))
+        await conn.execute("DELETE FROM cashier_history WHERE user_id = ? OR assigned_by_id = ?", (user_id, user_id))
+        await conn.execute("DELETE FROM cashier_handovers WHERE (employee_id = ? OR cashier_id = ?) AND company_id = ?", (user_id, user_id, comp_id))
+        await conn.execute("DELETE FROM daily_reports WHERE employee_id = ? AND company_id = ?", (user_id, comp_id))
+        await conn.execute("DELETE FROM card_topups WHERE employee_id = ? AND company_id = ?", (user_id, comp_id))
+        await conn.execute("DELETE FROM given_amounts WHERE employee_id = ? AND company_id = ?", (user_id, comp_id))
+        
+        # Foydalanuvchini bazadan butunlay o'chirish
+        await conn.execute("DELETE FROM users WHERE id = ? AND company_id = ?", (user_id, comp_id))
+
+        # Audit log yozish
+        await conn.execute("""
+            INSERT INTO audit_logs (company_id, entity_type, entity_id, action, actor_name, details)
+            VALUES (?, 'USER', ?, 'DELETE', ?, ?)
+        """, (comp_id, user_id, admin["full_name"], f"Xodim '{user['full_name']}' (ID: {user_id}, TG: {user['telegram_id']}) firmadan butunlay o'chirildi."))
+
+        await conn.commit()
+        invalidate_user_cache(user_id)
+
+    return {
+        "success": True,
+        "message": f"Xodim '{user['full_name']}' firmadan butunlay o'chirildi!"
+    }
+
 @router.post("/users/{user_id}/reset-device")
 async def reset_user_device(
     user_id: int,
