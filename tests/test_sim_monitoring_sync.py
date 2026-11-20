@@ -7,6 +7,12 @@ from app.services.analytics_service import get_sales_monitoring_data, invalidate
 
 class TestSimMonitoringSync(unittest.IsolatedAsyncioTestCase):
     async def test_legacy_sim_cards_migration_and_monitoring_consistency(self):
+        from datetime import datetime, timezone, timedelta
+        tz = timezone(timedelta(hours=5))
+        today = datetime.now(tz).date()
+        date1 = (today - timedelta(days=2)).isoformat()
+        date2 = (today - timedelta(days=1)).isoformat()
+
         # 1. Baza initsializatsiyasi
         await init_db()
 
@@ -19,26 +25,26 @@ class TestSimMonitoringSync(unittest.IsolatedAsyncioTestCase):
             await conn.execute("DELETE FROM daily_reports WHERE employee_id = 999")
             
             # 1 ta eski hisobot: sim_cards_count = 7, operatorlar = 0
-            await conn.execute("""
+            await conn.execute(f"""
                 INSERT INTO daily_reports (
                     company_id, employee_id, report_date, paynet, card_amount, leviy, debt_snapshot, debt_paid,
                     sim_cards_count, sim_uzmobile, sim_beeline, sim_ucell, sim_mobiuz, sim_perfectum,
                     kunlik, terminal, given_amount, skidka, xarajat, total_inflow, total_outflow, net_amount, status
                 ) VALUES (
-                    1, 999, '2026-11-11', 100000, 0, 0, 0, 0,
+                    1, 999, '{date1}', 100000, 0, 0, 0, 0,
                     7, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 100000, 0, 100000, 'APPROVED'
                 )
             """)
 
             # 2 ta yangi hisobot: jami 12 ta sim-karta (operatorlar ajratilgan)
-            await conn.execute("""
+            await conn.execute(f"""
                 INSERT INTO daily_reports (
                     company_id, employee_id, report_date, paynet, card_amount, leviy, debt_snapshot, debt_paid,
                     sim_cards_count, sim_uzmobile, sim_beeline, sim_ucell, sim_mobiuz, sim_perfectum,
                     kunlik, terminal, given_amount, skidka, xarajat, total_inflow, total_outflow, net_amount, status
                 ) VALUES (
-                    1, 999, '2026-11-15', 100000, 0, 0, 0, 0,
+                    1, 999, '{date2}', 100000, 0, 0, 0, 0,
                     12, 5, 2, 3, 1, 1,
                     0, 0, 0, 0, 0, 100000, 0, 100000, 'APPROVED'
                 )
@@ -49,7 +55,7 @@ class TestSimMonitoringSync(unittest.IsolatedAsyncioTestCase):
         await init_db()
 
         async with get_db_connection() as conn:
-            cur = await conn.execute("SELECT sim_cards_count, sim_uzmobile FROM daily_reports WHERE employee_id = 999 AND report_date = '2026-11-11'")
+            cur = await conn.execute(f"SELECT sim_cards_count, sim_uzmobile FROM daily_reports WHERE employee_id = 999 AND report_date = '{date1}'")
             row = await cur.fetchone()
             self.assertEqual(row["sim_cards_count"], 7)
             self.assertEqual(row["sim_uzmobile"], 7, "Eski hisobotdagi 7 ta sim-karta Uzmobile'ga o'tishi kerak!")

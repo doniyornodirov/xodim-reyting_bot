@@ -501,9 +501,12 @@ function getAmountEmoji(amount) {
 // Formatters
 function formatNumberSpaces(val) {
   if (val === 0 || val === "0") return "0";
-  if (!val) return "";
+  if (!val && val !== 0) return "";
   const clean = val.toString().replace(/\D/g, "");
-  return clean ? clean.replace(/\B(?=(\d{3})+(?!\d))/g, " ") : "";
+  if (!clean) return "";
+  // Yetakchi nollarni tozalash (masalan "01" -> "1", "005" -> "5")
+  const normalized = clean.replace(/^0+(?=\d)/, "");
+  return normalized ? normalized.replace(/\B(?=(\d{3})+(?!\d))/g, " ") : "0";
 }
 
 function parseFormattedNumber(val) {
@@ -517,6 +520,7 @@ const MAX_AMOUNT_LIMIT = 1000000000;
 /**
  * Summa kiritish maydonlarini 0 dan 1 milliardgacha cheklash va probellar bilan formatlash.
  * Undan kichik (<0) yoki katta (>1 mlrd) summa kiritib bo'lmaydi.
+ * Maydonda "0" turgan bo'lsa, raqam (masalan 1) kiritilganda "01" emas, "1" bo'lib to'ldiriladi.
  */
 function handleAmountInput(e, callback) {
   let raw = (e.target.value || "").toString().replace(/\D/g, "");
@@ -525,15 +529,36 @@ function handleAmountInput(e, callback) {
     if (callback) callback(0);
     return;
   }
+  // Agar maydonda 0 bo'lib, unga yangi raqam kiritilsa (masalan "01"),
+  // yetakchi nollarni olib tashlaymiz: "01" -> "1", "0500" -> "500", "00" -> "0"
+  raw = raw.replace(/^0+(?=\d)/, "");
+
   let num = parseInt(raw, 10);
   if (isNaN(num) || num < 0) num = 0;
   if (num > MAX_AMOUNT_LIMIT) {
     num = MAX_AMOUNT_LIMIT;
     raw = MAX_AMOUNT_LIMIT.toString();
   }
-  e.target.value = formatNumberSpaces(raw);
+  e.target.value = (raw === "0") ? "0" : formatNumberSpaces(raw);
   if (callback) callback(num);
 }
+
+// Maydonga fokuslanganda, agar unda "0" turgan bo'lsa, foydalanuvchi yangi raqam kiritganida
+// "01" emas, balki to'g'ridan-to'g'ri yangi raqam bo'lib to'ldirilishi uchun matnni avtomatik belgilash (select)
+document.addEventListener("focusin", (e) => {
+  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) {
+    const val = (e.target.value || "").trim();
+    if (val === "0" || val === "00") {
+      setTimeout(() => {
+        try {
+          if (typeof e.target.select === "function") {
+            e.target.select();
+          }
+        } catch (_) {}
+      }, 20);
+    }
+  }
+});
 
 // Copy to Clipboard
 function copyToClipboard(text) {
@@ -2009,6 +2034,12 @@ let prefillData = {
 };
 
 function updateSimTotalBadge() {
+  ["rep-sim-uzmobile", "rep-sim-beeline", "rep-sim-ucell", "rep-sim-mobiuz", "rep-sim-perfectum"].forEach(id => {
+    const input = document.getElementById(id);
+    if (input && input.value && input.value.length > 1 && input.value.startsWith("0")) {
+      input.value = input.value.replace(/^0+(?=\d)/, "");
+    }
+  });
   const uzm = parseInt(document.getElementById("rep-sim-uzmobile")?.value) || 0;
   const bee = parseInt(document.getElementById("rep-sim-beeline")?.value) || 0;
   const uce = parseInt(document.getElementById("rep-sim-ucell")?.value) || 0;
